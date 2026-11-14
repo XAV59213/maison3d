@@ -73,16 +73,22 @@ export function createAtmosphere({scene, sun, renderer}) {
     sun.intensity = night ? 0.14 : evening ? 1.5 : cloudy ? 1.15 : 3;
     renderer.toneMappingExposure = night ? 0.6 : evening ? 0.85 : 1;
     const temp = typeof live?.temperature === "number" ? live.temperature+"°C · " : "";
-    const display = live?.weather || "Météo non connectée";
-    const source = live ? "Home Assistant" : "Simulation locale";
+    const display = manualWeather ? "Simulation "+manualWeather : live?.weather || "Météo non connectée";
+    const source = manualWeather || manualTime ? "Aperçu manuel" : live?.weather ? "Home Assistant" : "Simulation locale";
     const light = night ? "Nuit" : evening ? "Soir" : "Jour";
     status.textContent = "☁ "+temp+display+" · "+light+" · "+source;
+    window.dispatchEvent(new CustomEvent("maison3d:weather", {detail:{
+      weather: manualWeather ?? live?.weather ?? null,
+      sun: manualTime === "night" ? "below_horizon" : manualTime ? "above_horizon" : live?.sun ?? null,
+      windSpeed: live?.windSpeed ?? 0
+    }}));
   }
   function setLive(payload) {
     live = {
       weather: typeof payload.weather === "string" ? payload.weather : null,
       sun: payload.sun === "above_horizon" || payload.sun === "below_horizon" ? payload.sun : null,
-      temperature: typeof payload.temperature === "number" && Number.isFinite(payload.temperature) ? payload.temperature : null
+      temperature: typeof payload.temperature === "number" && Number.isFinite(payload.temperature) ? payload.temperature : null,
+      windSpeed: typeof payload.windSpeed === "number" && Number.isFinite(payload.windSpeed) ? payload.windSpeed : 0
     };
     update();
   }
