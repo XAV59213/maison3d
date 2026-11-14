@@ -222,6 +222,24 @@ class TestMaison3D(unittest.TestCase):
         self.assertIn('id="tab3d"', app)
         self.assertIn('state.enabled=false;state.model_view=view', photo)
 
+    def test_automatic_seasons_follow_home_assistant_time_zone(self):
+        season = (COMPONENT / "www" / "season-effects.js").read_text(encoding="utf-8")
+        photo = (COMPONENT / "www" / "photo-view.js").read_text(encoding="utf-8")
+        panel = (COMPONENT / "www" / "maison3d-panel.js").read_text(encoding="utf-8")
+        card = (COMPONENT / "www" / "maison3d-card.js").read_text(encoding="utf-8")
+        self.assertIn('Intl.DateTimeFormat("en-GB"', season)
+        self.assertIn("timeZone:zone", season)
+        self.assertIn('month>=3&&month<=5?"spring"', season)
+        self.assertIn('month>=6&&month<=8?"summer"', season)
+        self.assertIn('month>=9&&month<=11?"autumn":"winter"', season)
+        self.assertIn('automaticSeason(haTimeZone)', photo)
+        self.assertIn('seasonalEffects.frame(time,seasonNow()', photo)
+        self.assertIn('lastAutoSeason=currentSeason;update()', photo)
+        self.assertIn('time_zone: this._hass.config?.time_zone', panel)
+        self.assertIn('time_zone:this._hass.config?.time_zone', card)
+        self.assertIn('state.season=key', photo)
+        self.assertIn('seasonalCanvas.className="season-overlay"', photo)
+
     def test_exact_approved_readme_image(self):
         self.assertTrue((ROOT / "assets" / "maison3d-reference.jpg").is_file())
         content = (ROOT / "README.md").read_text(encoding="utf-8")
