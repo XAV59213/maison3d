@@ -1,0 +1,97 @@
+name: Publish Maison 3D v2.4.0
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/publish-v2-4-0.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    if: github.repository == 'XAV59213/maison3d'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Verify HA storage, photo upload, project name and version
+        run: |
+          python -m pip install --quiet voluptuous
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          repo=Path(".")
+          root=Path("custom_components/maison3d")
+          manifest=json.loads((root/"manifest.json").read_text())
+          assert manifest["version"]=="2.4.0"
+          store=(root/"store.py").read_text()
+          assert 'STORAGE_KEY = f"{DOMAIN}.data"' in store
+          assert '"maison3d/get"' in store and '"maison3d/save"' in store
+          assert "require_admin" in store
+          upload=(root/"upload.py").read_text()
+          assert 'UPLOAD_URL = "/api/maison3d/upload"' in upload
+          assert 'MEDIA_URL = "/maison3d-media"' in upload
+          assert "if user is None or not user.is_admin:" in upload
+          init=(root/"__init__.py").read_text()
+          assert "async_register_websocket(hass)" in init
+          assert "await async_register_upload(hass)" in init
+          flow=(root/"config_flow.py").read_text()
+          assert 'vol.Optional("project_name"' in flow
+          assert 'DEFAULT_PROJECT_NAME = "Maison 3D"' in (root/"const.py").read_text()
+          old="Mar"+"ly"
+          for path in repo.rglob("*"):
+              if ".git" in path.parts or not path.is_file() or path.suffix in {".jpg",".png",".zip",".pyc"}:
+                  continue
+              assert old not in path.read_text(encoding="utf-8", errors="ignore"), path
+          PY
+          for f in maison3d-card.js maison3d-card-editor.js maison3d-panel.js photo-view.js photo-source.js ha-storage.js storage-bridge.js media-resolver.js; do
+            node --check "custom_components/maison3d/www/$f"
+          done
+          node tests/test_storage_bridge.mjs
+          node tests/test_media_resolver.mjs
+          node tests/test_upload_photo.mjs
+          node tests/test_main_photo.mjs
+          node tests/test_weather_photos.mjs
+          python3 -m unittest discover -s tests -q
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          if gh release view v2.4.0 >/dev/null 2>&1; then
+            echo "v2.4.0 already exists"
+            exit 0
+          fi
+          cat >/tmp/notes.md <<'NOTES'
+          ## Maison 3D v2.4.0 — Sauvegarde dans HA, envoi de photos et nom de projet
+
+          ### 💾 Sauvegarde dans Home Assistant
+          - Le plan 3D, les réglages photo (menu ⚙) et la vue choisie sont enregistrés **dans Home Assistant** : on les retrouve sur tous ses appareils et navigateurs.
+          - **Migration automatique** : au premier lancement, le projet déjà enregistré dans votre navigateur est copié une fois dans Home Assistant. Le navigateur garde une copie de secours.
+          - **Enregistrement réservé aux administrateurs** ; les autres comptes voient le projet en lecture seule.
+          - Export / import JSON toujours disponibles (l'import est aussi enregistré dans Home Assistant). Les réglages propres à une carte restent dans la configuration de la carte.
+
+          ### 📤 Envoi de photos depuis Home Assistant
+          - Bouton **📤 Envoyer une photo** dans le menu ⚙ Images / météo et dans l'éditeur de la carte : photo principale ou n'importe quelle photo météo jour/nuit, depuis l'ordinateur ou le téléphone.
+          - Sélecteur **Médias** de Home Assistant dans l'éditeur de la carte (valeurs `media-source://…`, aussi acceptées dans l'option « Image principale »).
+          - **Réservé aux administrateurs.** JPEG, PNG ou WebP, 10 Mo maximum, type réellement vérifié, nom de fichier nettoyé.
+          - Fichiers rangés dans `/config/www/maison3d/` et servis par `/maison3d-media/…`. Les chemins `/local/…` et HTTPS existants continuent de fonctionner.
+
+          ### 🏷️ Nom de projet et valeurs neutres
+          - Nouvelle option **Nom du projet** (intégration et carte, « Maison 3D » par défaut) : affichée dans la vue 3D, titre par défaut des cartes, nom du fichier d'export.
+          - Plus aucun nom de propriété personnel codé en dur ; image du README nettoyée. Les photos fournies restent un exemple à remplacer par la vôtre.
+
+          ### Installer
+          Dans HACS, mettre à jour **Maison 3D vers v2.4.0**, redémarrer Home Assistant puis actualiser le navigateur (Ctrl + F5).
+
+          > La ressource Lovelace manuelle `/maison3d-assets/maison3d-card.js` reste **facultative** : la carte est chargée automatiquement par l'intégration. La garder ne casse rien.
+
+          ### Contrôles
+          Les PR #18, #19 et #20 ont passé les tests Python/JavaScript, HACS et Hassfest, des tests sur un vrai cœur Home Assistant (sauvegarde, envoi de photo, nom du projet) et des vérifications dans Chrome headless avec un Home Assistant simulé. Le rendu réel sur votre Home Assistant et votre téléphone devra être vérifié.
+          NOTES
+          sed -i 's/^          //' /tmp/notes.md
+          gh release create v2.4.0 --target "${GITHUB_SHA}" --latest --title "Maison 3D v2.4.0 — Sauvegarde dans HA, envoi de photos et nom de projet" --notes-file /tmp/notes.md
