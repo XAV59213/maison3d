@@ -16,6 +16,7 @@
         "title": "Configurer les capteurs et l’image Maison 3D",
         "description": "Configurez vos capteurs et, si vous le souhaitez, une image principale. Laissez l’URL vide pour utiliser la photo officielle.",
         "data": {
+          "project_name": "Nom du projet (affiché dans le panneau, « Maison 3D » par défaut)",
           "weather_entity": "Entité météo",
           "sun_entity": "Entité soleil",
           "moon_entity": "Capteur phase lunaire",

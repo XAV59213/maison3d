@@ -9,7 +9,7 @@ from homeassistant import config_entries
 from homeassistant.core import callback
 from homeassistant.helpers import selector
 
-from .const import DOMAIN
+from .const import DEFAULT_PROJECT_NAME, DOMAIN, PROJECT_NAME_MAX
 
 SENSOR_OPTIONS = {
     "weather_entity": ("weather",),
@@ -40,6 +40,12 @@ def validate_image_url(value: str) -> str:
     if parsed.scheme == "https" and parsed.hostname and not parsed.username and not parsed.password:
         return value
     raise vol.Invalid("invalid_image_url")
+
+
+def clean_project_name(value: str) -> str:
+    """Project name shown in the panel; empty means the neutral default."""
+    value = " ".join("".join(char for char in str(value) if ord(char) >= 32).split())
+    return value[:PROJECT_NAME_MAX] or DEFAULT_PROJECT_NAME
 
 
 DEFAULT_ENTITIES = {
@@ -86,6 +92,7 @@ class Maison3DOptionsFlow(config_entries.OptionsFlowWithReload):
             else:
                 options = dict(DEFAULT_ENTITIES)
                 options.update({k: v for k, v in user_input.items() if k in SENSOR_OPTIONS})
+                options["project_name"] = clean_project_name(user_input.get("project_name", ""))
                 options["base_image_url"] = base_image_url
                 options["effects_enabled"] = bool(user_input.get("effects_enabled", True))
                 options["frost_enabled"] = bool(user_input.get("frost_enabled", True))
@@ -93,6 +100,12 @@ class Maison3DOptionsFlow(config_entries.OptionsFlowWithReload):
                 return self.async_create_entry(data=options)
 
         schema = {}
+        schema[vol.Optional("project_name", description={
+            "suggested_value": (
+                user_input.get("project_name", "") if user_input is not None
+                else self.config_entry.options.get("project_name", DEFAULT_PROJECT_NAME)
+            ),
+        })] = selector.TextSelector(selector.TextSelectorConfig())
         for key, domains in SENSOR_OPTIONS.items():
             default = self.config_entry.options.get(key, DEFAULT_ENTITIES[key])
             config = selector.EntitySelectorConfig(

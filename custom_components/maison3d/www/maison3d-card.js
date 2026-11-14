@@ -16,7 +16,8 @@ class Maison3DCard extends HTMLElement {
       throw new Error("Maison 3D: height must be between 240 and 1400 pixels");
     }
     this._config = {
-      title: String(config.title || "Maison 3D"),
+      title: String(config.title ?? "").slice(0,120),
+      project_name: String(config.project_name ?? "").trim().slice(0,60),
       height,
       weather_entity: String(config.weather_entity ?? ""),
       sun_entity: String(config.sun_entity ?? ""),
@@ -40,6 +41,8 @@ class Maison3DCard extends HTMLElement {
 
   set hass(value) {
     this._hass = value;
+    const title=this.shadowRoot?.querySelector(".card-title");
+    if (title && title.textContent!==this._title()) title.textContent=this._title();
     this._updateStates();
   }
 
@@ -84,7 +87,7 @@ class Maison3DCard extends HTMLElement {
     if (!this.shadowRoot) this.attachShadow({mode:"open"});
     if (this._frame) {
       const title = this.shadowRoot.querySelector(".card-title");
-      if (title) title.textContent = this._config.title;
+      if (title) title.textContent = this._title();
       this._frame.style.height = this._config.height + "px";
       return;
     }
@@ -100,7 +103,7 @@ class Maison3DCard extends HTMLElement {
     const card = document.createElement("ha-card");
     const heading = document.createElement("div");
     heading.className="card-title";
-    heading.textContent=this._config.title;
+    heading.textContent=this._title();
     const frame=document.createElement("iframe");
     frame.title="Maison 3D interactive";
     frame.loading="lazy";
@@ -150,6 +153,7 @@ class Maison3DCard extends HTMLElement {
     const cloud=numeric(choice("cloud_entity"),null);
     const payload={
       type:"maison3d:conditions",
+      project_name:this._projectName(),
       base_image_url:this._media.url(this._config.base_image_url||diagnostic?.attributes?.base_image_url||""),
       effects_enabled:this._config.effects_enabled??(diagnostic?.attributes?.effects_enabled!==false),
       frost_enabled:this._config.frost_enabled??(diagnostic?.attributes?.frost_enabled!==false),
@@ -171,6 +175,16 @@ class Maison3DCard extends HTMLElement {
     if (!force && serialized===this._lastState) return;
     this._lastState=serialized;
     this._frame.contentWindow.postMessage(payload,window.location.origin);
+  }
+
+  // Card option → integration option → neutral default.
+  _projectName() {
+    const diagnostic=Object.values(this._hass?.states||{}).find(e=>e.attributes?.maison3d_config===true);
+    const attribute=diagnostic?.attributes?.project_name;
+    return this._config?.project_name||(typeof attribute==="string"?attribute.trim().slice(0,60):"")||"Maison 3D";
+  }
+  _title() {
+    return this._config?.title||this._projectName();
   }
 
   getCardSize() {

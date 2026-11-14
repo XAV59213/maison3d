@@ -85,7 +85,8 @@ class Maison3DCardEditor extends HTMLElement {
       parent.append(label,input);
     };
     const base=section("Général","Tout est facultatif : une carte sans réglage reprend la configuration de l'intégration (Paramètres → Appareils et services → Maison 3D → Configurer). Un champ vide = hériter.");
-    field(base,"title","Titre (vide = « Maison 3D »)","Maison 3D");
+    field(base,"project_name","Nom du projet (vide = celui de l’intégration, sinon « Maison 3D »)","Maison 3D");
+    field(base,"title","Titre de la carte (vide = nom du projet)","Maison 3D");
     field(base,"height","Hauteur de la carte en px (vide = 440)","440","number");
     const photoSection=section("Image principale de la propriété",
       "Facultatif : cette photo reste fixe et reçoit les animations météo. Laissez vide pour hériter de l'image configurée dans l'intégration ou de la photo officielle.");

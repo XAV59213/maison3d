@@ -9,7 +9,7 @@ from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.event import async_track_state_change_event
 
 from .config_flow import DEFAULT_ENTITIES
-from .const import DOMAIN
+from .const import DEFAULT_PROJECT_NAME, DOMAIN
 
 FIELD_LABELS = {
     "weather_entity": "Météo",
@@ -98,6 +98,7 @@ class Maison3DConfigurationSensor(SensorEntity):
         return {
             "maison3d_config": True,
             "entities": selected,
+            "project_name": str(self._entry.options.get("project_name", "") or DEFAULT_PROJECT_NAME),
             "base_image_url": str(self._entry.options.get("base_image_url", "") or ""),
             "effects_enabled": bool(self._entry.options.get("effects_enabled", True)),
             "frost_enabled": bool(self._entry.options.get("frost_enabled", True)),

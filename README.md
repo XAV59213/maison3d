@@ -178,6 +178,8 @@ Aller dans **Paramètres → Appareils et services → Maison 3D → Configurer*
 | ❄️ Neige | `sensor.*` / `binary_sensor.*` | Neige active |
 | ☁️ Nuages | `sensor.*` / `binary_sensor.*` | Couverture nuageuse |
 
+Le champ **Nom du projet** (facultatif, « Maison 3D » par défaut) s'affiche dans le panneau (bandeau « Mode édition » et « 📁 Projet : … » en bas de la vue 3D), sert de titre par défaut aux cartes et nomme le fichier d'export JSON.
+
 Tous les capteurs supplémentaires sont facultatifs. La météo et le soleil peuvent fournir les données de base ; les autres valeurs enrichissent l'animation.
 
 La page de l'appareil Maison 3D propose **un diagnostic général et des diagnostics individuels** : `OK`, `Non configuré`, `Introuvable`, `Indisponible`. Ils vérifient la disponibilité des entités, pas l'exactitude météorologique d'une mesure.
@@ -198,7 +200,8 @@ Pour personnaliser une carte, utiliser **son éditeur visuel** (ou le YAML). **T
 
 | Option | Défaut si vide |
 |---|---|
-| `title` | « Maison 3D » |
+| `project_name` | nom du projet de l'intégration, sinon « Maison 3D » |
+| `title` | nom du projet |
 | `height` (240 à 1400 px) | 440 |
 | `base_image_url` | photo de l'intégration, sinon photo officielle |
 | `effects_enabled` / `frost_enabled` / `weather_photos` (true/false) | réglage de l'intégration |
@@ -210,7 +213,8 @@ Pour personnaliser une carte, utiliser **son éditeur visuel** (ou le YAML). **T
 
 ```yaml
 type: custom:maison3d-card
-title: Ma propriété
+project_name: Ma maison
+title: Météo de la maison
 height: 600
 weather_photos: true
 temperature_entity: sensor.temperature_exterieure

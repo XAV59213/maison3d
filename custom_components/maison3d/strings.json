@@ -17,6 +17,7 @@
         "title": "Configure Maison 3D sensors and main image",
         "description": "Select sensors and optionally set your own main photo. Leave the URL empty to use the bundled official photo.",
         "data": {
+          "project_name": "Project name (shown in the panel, default « Maison 3D »)",
           "weather_entity": "Weather entity",
           "sun_entity": "Sun entity",
           "moon_entity": "Moon phase entity",
