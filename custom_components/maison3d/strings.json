@@ -14,8 +14,8 @@
   "options": {
     "step": {
       "init": {
-        "title": "Configure Maison 3D sensors",
-        "description": "Select your Home Assistant entities. Additional sensors are optional.",
+        "title": "Configure Maison 3D sensors and main image",
+        "description": "Select sensors and optionally set your own main photo. Leave the URL empty to use the bundled official photo.",
         "data": {
           "weather_entity": "Weather entity",
           "sun_entity": "Sun entity",
@@ -24,9 +24,14 @@
           "wind_entity": "Wind sensor",
           "rain_entity": "Rain sensor",
           "snow_entity": "Snow sensor",
-          "cloud_entity": "Cloud cover sensor"
+          "cloud_entity": "Cloud cover sensor",
+          "base_image_url": "Main photo (URL /local/… or HTTPS)",
+          "effects_enabled": "Enable weather, lighting and seasonal effects"
         }
       }
+    },
+    "error": {
+      "invalid_image_url": "Invalid image URL: use /local/, /maison3d-assets/, /api/ or HTTPS."
     }
   }
 }

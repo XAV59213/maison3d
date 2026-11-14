@@ -1,3 +1,4 @@
+import {allowedPhotoUrl,DEFAULT_MAIN_PHOTO} from "./photo-source.js";
 /**
  * Visual configuration editor for the custom Maison 3D Lovelace card.
  * Lets users choose their actual Home Assistant entities without knowing IDs.
@@ -79,6 +80,68 @@ class Maison3DCardEditor extends HTMLElement {
     const base=section("Général","La carte utilise la photo officielle par défaut, sans configuration complexe.");
     field(base,"title","Titre","Maison 3D");
     field(base,"height","Hauteur de la carte (px)","500","number");
+    const photoSection=section("Image principale de la propriété",
+      "Facultatif : cette photo reste fixe et reçoit les animations météo. Laissez vide pour hériter de l'image configurée dans l'intégration ou de la photo officielle.");
+    const photoLabel=document.createElement("label");
+    photoLabel.textContent="URL de l'image principale (surcharge de la carte)";
+    const photoInput=document.createElement("input");
+    photoInput.type="text";
+    photoInput.placeholder="/local/maison3d/ma-maison.jpg";
+    photoInput.value=this._config.base_image_url||"";
+    const preview=document.createElement("img");
+    preview.alt="Aperçu de l'image principale de la propriété";
+    preview.hidden=true;
+    preview.style.cssText="display:block;max-width:100%;max-height:180px;object-fit:contain;border-radius:7px;margin-top:8px";
+    const status=document.createElement("p");
+    status.setAttribute("role","status");
+    const button=document.createElement("button");
+    button.type="button";button.textContent="Vérifier et prévisualiser";
+    const check=()=>{
+      const value=photoInput.value.trim();
+      if(value&&!allowedPhotoUrl(value)){
+        photoInput.setCustomValidity("URL invalide : /local/, /maison3d-assets/, /api/ ou HTTPS.");
+        photoInput.reportValidity();
+        status.textContent="URL invalide";
+        preview.hidden=true;return false;
+      }
+      photoInput.setCustomValidity("");
+      return true;
+    };
+    photoInput.addEventListener("change",()=>{
+      if(check()){this._changed("base_image_url",photoInput.value.trim());status.textContent="Image enregistrée"; }
+    });
+    button.addEventListener("click",()=>{
+      if(!check())return;
+      const value=photoInput.value.trim()||DEFAULT_MAIN_PHOTO;
+      status.textContent="Vérification…";preview.hidden=true;
+      const probe=new Image();
+      probe.onload=()=>{preview.src=value;preview.hidden=false;status.textContent="Image trouvée";};
+      probe.onerror=()=>{preview.hidden=true;status.textContent="Image inaccessible — image officielle utilisée en secours";};
+      probe.src=value;
+    });
+    photoSection.append(photoLabel,photoInput,button,status,preview);
+    const effects=section("Animations et effets",
+      "Laissez le réglage hérité de l’intégration, ou forcez les effets pour cette carte.");
+    const effectsLabel=document.createElement("label");
+    effectsLabel.textContent="Effets météo, saisons, lune et éclairages";
+    const effectsSelect=document.createElement("select");
+    for(const [value,text] of [["inherit","Hériter de l’intégration"],["on","Activer les effets"],["off","Désactiver les effets"]]){
+      const option=document.createElement("option");option.value=value;option.textContent=text;
+      effectsSelect.append(option);
+    }
+    effectsSelect.value=this._config.effects_enabled===true?"on":
+      this._config.effects_enabled===false?"off":"inherit";
+    effectsSelect.addEventListener("change",()=>{
+      const value=effectsSelect.value;
+      const next={...this._config,images:{...(this._config.images||{})}};
+      if(value==="inherit")delete next.effects_enabled;
+      else next.effects_enabled=value==="on";
+      this._config=next;
+      this.dispatchEvent(new CustomEvent("config-changed",{
+        detail:{config:next},bubbles:true,composed:true
+      }));
+    });
+    effects.append(effectsLabel,effectsSelect);
 
     const pickers=section("Capteurs Home Assistant",
       "Choisis tes propres entités. Laisse les champs complémentaires vides pour utiliser automatiquement les données de weather.*.");

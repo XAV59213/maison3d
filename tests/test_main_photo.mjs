@@ -1,0 +1,15 @@
+import assert from "node:assert/strict";
+import {readFileSync} from "node:fs";
+const text=readFileSync("custom_components/maison3d/www/photo-source.js","utf8");
+const {allowedPhotoUrl,resolveMainPhoto,DEFAULT_MAIN_PHOTO}=await import("data:text/javascript;base64,"+Buffer.from(text).toString("base64"));
+const official=DEFAULT_MAIN_PHOTO;
+assert.equal(official,"/maison3d-assets/maison3d-reference.jpg");
+for(const url of ["/local/maison3d/ma-maison.jpg","/maison3d-assets/images/jour.jpg","https://example.org/photo.jpg"])assert.equal(allowedPhotoUrl(url),true,url);
+for(const url of ["","http://example.org/x.jpg","javascript:alert(1)","//evil.test/house.jpg","/local/\\bad.jpg","https://user:pass@example.org/image.jpg"])assert.equal(allowedPhotoUrl(url),false,url);
+assert.equal(resolveMainPhoto(),official);
+assert.equal(resolveMainPhoto({parent:"/local/global.jpg"}),"/local/global.jpg");
+assert.equal(resolveMainPhoto({parent:"/local/global.jpg",local:"/local/panel.jpg"}),"/local/panel.jpg");
+assert.equal(resolveMainPhoto({isCard:true,parent:"/local/card.jpg",local:"/local/panel.jpg"}),"/local/card.jpg");
+assert.equal(resolveMainPhoto({isCard:true,parent:"/local/global.jpg",local:"/local/panel.jpg"}),"/local/global.jpg");
+assert.equal(resolveMainPhoto({parent:"javascript:alert(1)",local:"/local/my-house.jpg"}),"/local/my-house.jpg");
+console.log("Main photo selection, prioritization, and URL validation OK");

@@ -13,8 +13,8 @@
   "options": {
     "step": {
       "init": {
-        "title": "Configurer les capteurs Maison 3D",
-        "description": "Choisissez vos capteurs Home Assistant. Les capteurs complémentaires sont facultatifs.",
+        "title": "Configurer les capteurs et l’image Maison 3D",
+        "description": "Configurez vos capteurs et, si vous le souhaitez, une image principale. Laissez l’URL vide pour utiliser la photo officielle.",
         "data": {
           "weather_entity": "Entité météo",
           "sun_entity": "Entité soleil",
@@ -23,9 +23,14 @@
           "wind_entity": "Vitesse du vent",
           "rain_entity": "Capteur pluie",
           "snow_entity": "Capteur neige",
-          "cloud_entity": "Couverture nuageuse"
+          "cloud_entity": "Couverture nuageuse",
+          "base_image_url": "Image principale (URL /local/… ou HTTPS)",
+          "effects_enabled": "Activer les effets météo, lumineux et saisonniers"
         }
       }
+    },
+    "error": {
+      "invalid_image_url": "URL d’image invalide : utilisez /local/, /maison3d-assets/, /api/ ou HTTPS."
     }
   }
 }

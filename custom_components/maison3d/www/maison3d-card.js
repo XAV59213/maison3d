@@ -23,6 +23,8 @@ class Maison3DCard extends HTMLElement {
       rain_entity: String(config.rain_entity ?? ""),
       snow_entity: String(config.snow_entity ?? ""),
       cloud_entity: String(config.cloud_entity ?? ""),
+      base_image_url: String(config.base_image_url ?? "").slice(0,500),
+      effects_enabled: typeof config.effects_enabled === "boolean" ? config.effects_enabled : null,
       images: Object.fromEntries(Object.entries(config.images || {}).filter(([key,url])=>
         ["day","night","cloudy","rain","snow","wind","storm","spring","summer","autumn","winter",
          "moon_new_moon","moon_waxing_crescent","moon_first_quarter","moon_waxing_gibbous",
@@ -30,6 +32,7 @@ class Maison3DCard extends HTMLElement {
         typeof url==="string" && url.length<500))
     };
     this._renderCard();
+    this._updateStates(true);
   }
 
   set hass(value) {
@@ -115,6 +118,8 @@ class Maison3DCard extends HTMLElement {
     const cloud=numeric(choice("cloud_entity"),null);
     const payload={
       type:"maison3d:conditions",
+      base_image_url:this._config.base_image_url||diagnostic?.attributes?.base_image_url||"",
+      effects_enabled:this._config.effects_enabled??(diagnostic?.attributes?.effects_enabled!==false),
       time_zone:this._hass.config?.time_zone??"UTC",
       weather:weather?.state??null,
       temperature,
