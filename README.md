@@ -2,7 +2,9 @@
 
 <p align="center"><img src="assets/icon.svg" width="110" alt="Icône Maison 3D"/></p>
 
-> **Image officielle validée :** capture « Maison 3D V2.0 » fournie le 14 novembre 2026, montrant la rampe et les voitures à gauche, l’abri métallique au premier plan, la maison au centre, le garage à droite et la balançoire sur la droite de cette vue. La capture exacte doit être ajoutée sous `assets/maison3d-reference.png` ; elle n’est pas remplacée par une image générée différente.
+<p align="center"><img src="assets/maison3d-reference.jpg" width="100%" alt="Maison 3D V2.0 — image exacte validée : maison, rampe à gauche, abri métallique au premier plan et garage à droite"/></p>
+
+> **Image officielle validée :** capture « Maison 3D V2.0 » fournie le 14 novembre 2026, montrant la rampe et les voitures à gauche, l’abri métallique au premier plan, la maison au centre, le garage à droite et la balançoire sur la droite de cette vue. La capture exacte est maintenant publiée sous `assets/maison3d-reference.jpg` (conversion JPEG de la capture fournie, sans changement de composition).
 
 # Maison 3D V2.0 — Home Assistant
 
