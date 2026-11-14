@@ -1,0 +1,14 @@
+{
+  "title": "Maison 3D",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Maison 3D",
+        "description": "Ajoute le panneau Maison 3D dans la barre latérale de Home Assistant."
+      }
+    },
+    "abort": {
+      "already_configured": "Maison 3D est déjà configurée."
+    }
+  }
+}
