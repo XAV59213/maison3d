@@ -2,7 +2,7 @@
 
 <p align="center"><img src="assets/icon.svg" width="110" alt="Icône Maison 3D"/></p>
 
-> **Image de référence :** le rendu réaliste validé reste la direction artistique. Le modèle WebGL actuel est une maquette 3D interactive qui ne reproduit pas encore cette fidélité visuelle. Une affiche de présentation est en cours de préparation pour le README.
+> **Image officielle validée :** capture « Maison 3D V2.0 » fournie le 14 novembre 2026, montrant la rampe et les voitures à gauche, l’abri métallique au premier plan, la maison au centre, le garage à droite et la balançoire sur la droite de cette vue. La capture exacte doit être ajoutée sous `assets/maison3d-reference.png` ; elle n’est pas remplacée par une image générée différente.
 
 # Maison 3D V2.0 — Home Assistant
 
@@ -15,7 +15,7 @@ Intégration Home Assistant avec panneau 3D interactif et éditeur d'implantatio
 4. Ouvrir **Maison 3D** dans la barre latérale.
 
 ## Référence retenue
-La **dernière image validée le 14 novembre 2026** est la référence visuelle. La scène éditable est une maquette technique et ne reproduit pas encore photoréalistiquement cette image. Les positions et dimensions restent ajustables et approximatives.
+La **capture Maison 3D V2.0 fournie explicitement le 14 novembre 2026** est la seule référence visuelle. La scène éditable est une maquette technique et ne reproduit pas encore photoréalistiquement cette image. Les positions et dimensions restent ajustables et approximatives.
 
 Disposition : grange indépendante sur la gauche de la maison, rampe automobile côté gauche vers le stationnement, abri métallique au premier plan, garage à l'extrême droite, balançoire dans le jardin vers la piscine ; murets et paliers pour le dénivelé ; portail coulissant et portillon indépendant.
 
@@ -35,7 +35,7 @@ Copier `custom_components/maison3d` dans `/config/custom_components/maison3d`, r
 
 - Logo vectoriel : [assets/logo.svg](assets/logo.svg)
 - Icône vectorielle : [assets/icon.svg](assets/icon.svg)
-- L'affiche de présentation jour/nuit et saisons reste illustrative : ne pas confondre avec les fonctionnalités réellement testées.
+- Le rendu officiel doit utiliser **uniquement la capture fournie par le propriétaire**. Les montages promotionnels différents sont exclus de ce README.
 
 ## Météo et soleil
 
