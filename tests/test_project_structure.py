@@ -97,6 +97,28 @@ class TestMaison3D(unittest.TestCase):
         strings = json.loads((COMPONENT / "strings.json").read_text(encoding="utf-8"))
         self.assertIn("frost_enabled", strings["options"]["step"]["init"]["data"])
 
+    def test_clean_photos_and_right_menu_layout(self):
+        """Bundled photos carry no drawn interface; the seasons menu never covers the status or bottom bar."""
+        def jpeg_size(path):
+            data = path.read_bytes()
+            i = 2
+            while i < len(data):
+                marker, length = data[i + 1], int.from_bytes(data[i + 2:i + 4], "big")
+                if marker in (0xC0, 0xC1, 0xC2):
+                    return int.from_bytes(data[i + 7:i + 9], "big"), int.from_bytes(data[i + 5:i + 7], "big")
+                i += 2 + length
+            raise AssertionError(path.name)
+
+        www = COMPONENT / "www"
+        for path in [www / "maison3d-reference.jpg", *sorted((www / "images").glob("*.jpg"))]:
+            self.assertEqual(jpeg_size(path), (1286, 914), path.name)
+        photo = (www / "photo-view.js").read_text(encoding="utf-8")
+        self.assertIn("function placeSeasons(){", photo)
+        self.assertIn("const top=Math.max(st.bottom+8,innerHeight*.12);", photo)
+        self.assertIn('seasonalNav.classList.toggle("compact",bottom-top<215);', photo)
+        panel = (www / "maison3d-panel.js").read_text(encoding="utf-8")
+        self.assertIn("min-height:240px", panel)
+
     def test_panel_bridge(self):
         panel = (COMPONENT / "www" / "maison3d-panel.js").read_text(encoding="utf-8")
         self.assertIn("postMessage", panel)

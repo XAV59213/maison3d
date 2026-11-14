@@ -374,11 +374,14 @@ export function createPhotoView() {
     "#maison3d-photo-settings .main-photo-preview img[hidden]{display:none}",
     "#maison3d-photo-seasons{position:fixed;right:12px;top:26%;z-index:9;",
     "display:grid;gap:5px;padding:7px;border-radius:12px;background:#101923ee;",
-    "max-width:145px;max-height:45vh;overflow:auto}",
+    "max-width:145px;max-height:45vh;overflow:auto;overscroll-behavior:contain}",
     "#maison3d-photo-seasons button{border:0;border-radius:7px;background:#29405b;",
     "color:white;text-align:left;padding:9px;cursor:pointer;font:12px system-ui}",
     "#maison3d-photo-seasons button[aria-pressed=true]{background:#1477dc}",
     "html:not(.photo-active) #maison3d-photo-seasons{display:none}",
+    "#maison3d-photo-seasons.compact{grid-template-columns:1fr 1fr;gap:4px;padding:4px;max-width:190px}",
+    "#maison3d-photo-seasons.compact button{padding:5px 7px;font-size:11px}",
+    "#maison3d-photo-seasons.compact button:last-child{grid-column:1/-1}",
     ".maison3d-test-states{border:1px solid #66778c;border-radius:8px;margin-top:12px}",
     ".maison3d-test-states legend{font-size:13px;font-weight:bold}",
     ".maison3d-test-states .test-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}",
@@ -501,7 +504,10 @@ export function createPhotoView() {
     for(const [key,btn] of testButtons)btn.setAttribute("aria-pressed",String(state.mode===key));
     const effectLabel=LABELS[selected]||selected;
     const seasonLabel=SEASON_LABELS[seasonNow()]||seasonNow();
-    status.textContent=(state.mode==="auto"?"Automatique":"Aperçu manuel")+" · "+effectLabel+" · "+seasonLabel+
+    // Same word twice in a row (« Été · Été », « Nuit · Nuit ») is shown once.
+    const head=((state.mode==="auto"?"Automatique":"Aperçu manuel")+" · "+effectLabel).split(" · ");
+    if(!head.includes(seasonLabel))head.push(seasonLabel);
+    status.textContent=head.filter((w,i)=>w!==head[i-1]).join(" · ")+
       (typeof live.temperature==="number"?" · "+live.temperature+(live.temperatureUnit||"°C"):"")+
       (phaseName?" · Lune : "+String(currentMoon):"")+
       (state.moon_preview!=="auto"?" · Lune en test":"")+
@@ -519,6 +525,19 @@ export function createPhotoView() {
     section.hidden=!state.enabled;
     if(!state.enabled){section.style.display="none"}else{section.style.display="block"}
     document.documentElement.classList.toggle("photo-active",state.enabled);
+    placeSeasons();
+  }
+  // Right-hand seasons menu: always below the status bubble and above a bottom
+  // button bar, compact (2 columns) on short screens, so nothing overlaps.
+  function placeSeasons(){
+    if(!state.enabled)return;
+    const st=status.getBoundingClientRect(),bar=nav.getBoundingClientRect();
+    const top=Math.max(st.bottom+8,innerHeight*.12);
+    const atBottom=bar.top>innerHeight/2&&bar.right>innerWidth-160;
+    const bottom=atBottom?bar.top-8:innerHeight-8;
+    seasonalNav.classList.toggle("compact",bottom-top<215);
+    seasonalNav.style.top=Math.round(top)+"px";
+    seasonalNav.style.maxHeight=Math.max(60,Math.round(bottom-top))+"px";
   }
   photoBtn.addEventListener("click",()=>{state.enabled=true;persist();update()});
   const setQuickMode=mode=>{
@@ -598,7 +617,7 @@ export function createPhotoView() {
     canvas.height=Math.max(1,Math.round(r.height*dpr));
     ctx.setTransform(dpr,0,0,dpr,0,0);
   }
-  window.addEventListener("resize",resize);
+  window.addEventListener("resize",()=>{resize();placeSeasons()});
   resize();
   const spawn=(w,h)=>({x:Math.random()*w,y:Math.random()*h,
     speed:.6+Math.random()*1.7,turn:Math.random()*7});

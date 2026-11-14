@@ -26,7 +26,7 @@ class Maison3DPanel extends HTMLElement {
     if (this.shadowRoot) return;
     const root = this.attachShadow({ mode: "open" });
     const style = document.createElement("style");
-    style.textContent = ":host{display:block;height:100%;min-height:0}iframe{display:block;width:100%;height:calc(100dvh - 56px);min-height:480px;border:0;background:#101923}";
+    style.textContent = ":host{display:block;height:100%;min-height:0}iframe{display:block;width:100%;height:calc(100dvh - 56px);min-height:240px;border:0;background:#101923}";
     const frame = document.createElement("iframe");
     frame.src = "/maison3d-assets/index.html";
     frame.title = "Maison 3D V2.0";
