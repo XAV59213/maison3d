@@ -1,0 +1,13 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Maison 3D",
+        "description": "Ajouter un panneau 3D interactif à Home Assistant."
+      }
+    },
+    "abort": {
+      "already_configured": "Déjà configuré"
+    }
+  }
+}
