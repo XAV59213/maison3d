@@ -61,6 +61,46 @@ Cette branche prépare une **vue vivante de la propriété** en s'appuyant sur [
 
 **Limites de fidélité** : les presets caméra sont des approximations géométriques de la perspective de l'image, et non une reconstruction photogrammétrique exacte. Les modèles, textures, véhicules et reliefs devront encore être affinés dans une instance Home Assistant réelle. Aucune prévision météo n'est générée par l'intégration.
 
+## Vue photographique avec météo et saisons — prochaine version
+
+**Deux modes distincts** sont disponibles : **Photo réelle** affiche la capture officielle validée, avec animations météo superposées ; **3D éditable** conserve la scène Three.js navigable. Une photo 2D ne devient pas une reconstruction géométrique 3D.
+
+La vue Photo réelle est affichée initialement. Clique sur **⚙ Images / météo** pour personnaliser :
+
+- Les **11 images** : Jour, Nuit, Nuageux, Pluie, Neige, Vent, Orage, Printemps, Été, Automne et Hiver.
+- Les entités météo, soleil et lune : notamment `weather.maison`, `sun.sun` et ton entité personnalisée pour la phase lunaire (ex. `sensor.moon_phase`).
+- L'ambiance automatique depuis Home Assistant, ou une ambiance manuelle pour vérifier l'affichage.
+- L'activation des effets animés (pluie, neige, feuilles, vent et éclairs).
+
+Une URL vide utilise automatiquement l'image de référence livrée avec l'intégration, sans changer l'implantation de la propriété. Tu peux mettre tes images personnalisées dans `/config/www/maison3d/` puis saisir `/local/maison3d/jour.jpg`, `/local/maison3d/nuit.jpg`, etc. Les URL HTTPS et les chemins internes autorisés fonctionnent également. **Il ne s'agit pas d'un transfert de fichier** : les images doivent déjà être accessibles à Home Assistant. Les réglages du panneau sont enregistrés localement dans le navigateur et ne sont pas synchronisés entre appareils.
+
+La sélection automatique suit l'ordre **orage → neige → pluie → vent → nuageux → nuit → saison si image définie → jour**. La saison suit le calendrier local (modifiable manuellement) ; le soleil utilise `sun.sun`, et la phase de lune affichée utilise le capteur configuré. Les animations sont des effets visuels et ne prétendent pas modifier les conditions météo réelles.
+
+Pour définir les images **directement dans la carte Lovelace**, utiliser un mapping `images:` (les clefs non renseignées reviennent à l'image officielle) :
+
+```yaml
+type: custom:maison3d-card
+title: Propriété Marly
+height: 600
+weather_entity: weather.maison
+sun_entity: sun.sun
+moon_entity: sensor.moon_phase
+images:
+  day: /local/maison3d/jour.jpg
+  night: /local/maison3d/nuit.jpg
+  cloudy: /local/maison3d/nuageux.jpg
+  rain: /local/maison3d/pluie.jpg
+  snow: /local/maison3d/neige.jpg
+  wind: /local/maison3d/vent.jpg
+  storm: /local/maison3d/orage.jpg
+  spring: /local/maison3d/printemps.jpg
+  summer: /local/maison3d/ete.jpg
+  autumn: /local/maison3d/automne.jpg
+  winter: /local/maison3d/hiver.jpg
+```
+
+**Limite importante :** il faut vérifier visuellement les effets, les temps de chargement et le comportement du capteur lunaire sur une installation Home Assistant réelle. Les images restent des photographies fixes différentes avec effets animés, tandis que le modèle 3D reste indépendant.
+
 ## Référence retenue
 La **capture Maison 3D V2.0 fournie explicitement le 14 novembre 2026** est la seule référence visuelle. La scène éditable est une maquette technique et ne reproduit pas encore photoréalistiquement cette image. Les positions et dimensions restent ajustables et approximatives.
 
