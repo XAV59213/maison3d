@@ -30,6 +30,24 @@ class TestMaison3D(unittest.TestCase):
         self.assertIn('weather==="leaves"', effects)
         self.assertIn("setInterval(update,60000)", effects)
 
+    def test_three_is_bundled_locally(self):
+        """Three.js and its addons must load from vendor/, never from a CDN."""
+        www = COMPONENT / "www"
+        page = (www / "index.html").read_text(encoding="utf-8")
+        for name in ("jsdelivr", "unpkg", "cdn."):
+            self.assertNotIn(name, page)
+        importmap = json.loads(re.search(r'<script type="importmap">(.*?)</script>', page, re.S).group(1))
+        imports = importmap["imports"]
+        self.assertEqual(imports["three"], "./vendor/three/three.module.min.js")
+        self.assertTrue((www / imports["three"]).is_file())
+        self.assertTrue((www / "vendor" / "three" / "LICENSE").is_file())
+        addons = imports["three/addons/"]
+        for spec in re.findall(r'from "three/addons/([^"]+)"', page):
+            self.assertTrue((www / addons / spec).is_file(), spec)
+        for module in www.glob("*.js"):
+            text = module.read_text(encoding="utf-8")
+            self.assertNotIn("cdn.jsdelivr.net", text, module.name)
+
     def test_panel_bridge(self):
         panel = (COMPONENT / "www" / "maison3d-panel.js").read_text(encoding="utf-8")
         self.assertIn("postMessage", panel)

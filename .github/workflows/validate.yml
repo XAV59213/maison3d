@@ -33,6 +33,9 @@ jobs:
           node tests/test_seasons.mjs
           node --check custom_components/maison3d/www/photo-cinematics.js
           node --check custom_components/maison3d/www/weather-effects.js
+          node --check custom_components/maison3d/www/vendor/three/addons/controls/OrbitControls.js
+          test -f custom_components/maison3d/www/vendor/three/three.module.min.js
+          ! grep -rn "cdn.jsdelivr.net" custom_components/maison3d/www/index.html
           python - <<'PY'
           import pathlib, re
           page = pathlib.Path('custom_components/maison3d/www/index.html').read_text()
