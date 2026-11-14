@@ -206,7 +206,6 @@ export function createPhotoView() {
   let live={weather:null,sun:null,temperature:null,windSpeed:0,moon:null,rain:null,snow:null,cloud:null};
   let currentSrc="",active="day",lastFrame=0;
   let missingBundled=new Set();
-  const attempted=new Set();
   let particles=[];
   const seasonNow=()=>{
     if(state.season!=="auto")return state.season;
