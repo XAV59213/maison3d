@@ -183,17 +183,13 @@ La page de l'appareil Maison 3D propose **un diagnostic général et des diagnos
 
 ## 🖥️ Carte Lovelace prête à l'emploi
 
-Après installation de l'intégration, ajouter la ressource **Module JavaScript** :
-
-```text
-/maison3d-assets/maison3d-card.js
-```
-
-Puis ajouter la carte. **Aucune configuration n'est nécessaire** :
+La carte est **chargée automatiquement** par l'intégration (plus de ressource à ajouter). Après installation et redémarrage, actualiser le navigateur, puis **Modifier le tableau de bord → Ajouter une carte → Par carte** et chercher « Maison 3D ». **Aucune configuration n'est nécessaire** :
 
 ```yaml
 type: custom:maison3d-card
 ```
+
+> **Anciennes installations :** si vous aviez ajouté à la main la ressource **Module JavaScript** `/maison3d-assets/maison3d-card.js` (*Paramètres → Tableaux de bord → ⋮ → Ressources*), elle est désormais facultative. Elle ne casse rien (la carte ne s'enregistre qu'une fois), mais la supprimer évite de charger le fichier deux fois.
 
 Une carte sans réglage reprend **dynamiquement** tout ce qui est réglé dans l'intégration (capteurs, photo principale, effets, gel, photos météo) : changer une option de l'intégration met la carte à jour sans la modifier.
 
@@ -324,7 +320,7 @@ La géométrie 3D est approximative et ne doit pas être présentée comme la vr
 <details>
 <summary>Maison 3D ne s'affiche pas</summary>
 
-Vérifier que l'intégration a été ajoutée après l'installation HACS, puis **redémarrer Home Assistant**. Actualiser le navigateur (Ctrl + F5). Contrôler la ressource `/maison3d-assets/maison3d-card.js` et tester `/maison3d-assets/index.html`. Three.js est embarqué localement (`/maison3d-assets/vendor/three/`) : aucune connexion Internet n'est nécessaire. Si la vue 3D reste vide, vérifier que `/maison3d-assets/vendor/three/three.module.min.js` répond bien.
+Vérifier que l'intégration a été ajoutée après l'installation HACS, puis **redémarrer Home Assistant**. Actualiser le navigateur (Ctrl + F5). Vérifier que `/maison3d-assets/maison3d-card.js` répond (chargé automatiquement, aucune ressource à ajouter) et tester `/maison3d-assets/index.html`. Three.js est embarqué localement (`/maison3d-assets/vendor/three/`) : aucune connexion Internet n'est nécessaire. Si la vue 3D reste vide, vérifier que `/maison3d-assets/vendor/three/three.module.min.js` répond bien.
 
 </details>
 
