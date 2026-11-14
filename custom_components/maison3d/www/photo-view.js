@@ -3,6 +3,7 @@
  * default photo; conditions/seasons are distinct configurable image URL slots.
  * This is a photo-based presentation, NOT a rotatable 3D reconstruction.
  */
+import {createPhotoCinematics} from "./photo-cinematics.js";
 export function createPhotoView() {
   const KEYS=["day","night","cloudy","rain","snow","wind","storm",
     "spring","summer","autumn","winter",
@@ -26,7 +27,7 @@ export function createPhotoView() {
     images:defaults(),moon_entity:"sensor.moon_phase",
     weather_entity:"",sun_entity:"sun.sun",
     temperature_entity:"",wind_entity:"",rain_entity:"",snow_entity:"",cloud_entity:"",
-    enabled:true,mode:"auto",effect:true,season:"auto"
+    enabled:true,mode:"auto",effect:true,season:"auto",effect_intensity:1
   };
   try{
     const saved=JSON.parse(localStorage.getItem(STORAGE));
@@ -39,6 +40,7 @@ export function createPhotoView() {
       }
       if(typeof saved.enabled==="boolean")state.enabled=saved.enabled;
       if(typeof saved.effect==="boolean")state.effect=saved.effect;
+      if(Number.isFinite(saved.effect_intensity))state.effect_intensity=Math.min(2,Math.max(0,saved.effect_intensity));
       if(typeof saved.mode==="string"&&["auto",...KEYS].includes(saved.mode))state.mode=saved.mode;
       if(typeof saved.season==="string"&&["auto","spring","summer","autumn","winter"].includes(saved.season))state.season=saved.season;
     }
@@ -52,6 +54,9 @@ export function createPhotoView() {
   image.decoding="async";
   const tint=document.createElement("div");
   tint.className="photo-light";
+  const cinematicCanvas=document.createElement("canvas");
+  cinematicCanvas.className="photo-cinematics";
+  cinematicCanvas.setAttribute("aria-hidden","true");
   const canvas=document.createElement("canvas");
   canvas.setAttribute("aria-hidden","true");
   const ctx=canvas.getContext("2d");
@@ -63,7 +68,8 @@ export function createPhotoView() {
   const error=document.createElement("div");
   error.className="photo-error";error.hidden=true;
   error.textContent="Image inaccessible : corrigez son URL dans les réglages Photo.";
-  section.append(image,tint,canvas,status,moon,error);
+  section.append(image,tint,cinematicCanvas,canvas,status,moon,error);
+  const cinematics=createPhotoCinematics(cinematicCanvas);
   const nav=document.createElement("nav");
   nav.id="maison3d-photo-controls";
   const photoBtn=document.createElement("button");
@@ -130,6 +136,19 @@ export function createPhotoView() {
   const effect=document.createElement("input");effect.type="checkbox";effect.checked=state.effect;
   effect.addEventListener("change",()=>{state.effect=effect.checked;persist();update()});
   checkbox.append(effect,document.createTextNode("Animations météo"));settings.append(checkbox);
+  const strengthLabel=document.createElement("label");
+  strengthLabel.textContent="Intensité des animations (0 = aucune, 200 % = forte)";
+  const strength=document.createElement("input");
+  strength.type="range";strength.min="0";strength.max="2";strength.step="0.1";
+  strength.value=String(state.effect_intensity);
+  const strengthValue=document.createElement("span");
+  strengthValue.textContent=Math.round(state.effect_intensity*100)+" %";
+  strength.addEventListener("input",()=>{
+    state.effect_intensity=Number(strength.value);
+    strengthValue.textContent=Math.round(state.effect_intensity*100)+" %";
+    persist();
+  });
+  strengthLabel.append(strength,strengthValue);settings.append(strengthLabel);
   const reset=document.createElement("button");reset.type="button";reset.textContent="Réinitialiser les images";
   reset.addEventListener("click",()=>{
     if(!confirm("Réinitialiser toutes les URLs personnalisées ?"))return;
@@ -302,12 +321,17 @@ export function createPhotoView() {
   function frame(time){
     if(time-lastFrame<33)return;
     lastFrame=time;
-    if(!state.enabled||!state.effect)return;
+    if(!state.enabled||!state.effect){
+      cinematics.frame(time,"none",seasonNow(),0,0,false,false);
+      return;
+    }
     const w=section.clientWidth,h=section.clientHeight;
     if(w<=0||h<=0)return;
     if(Math.abs(canvas.width-w*(Math.min(devicePixelRatio||1,2)))>2)resize();
     ctx.clearRect(0,0,w,h);
     const kind=state.mode==="auto"?weatherKey():state.mode;
+    const isNight=state.mode==="night"||(state.mode==="auto"&&nighttime());
+    cinematics.frame(time,kind,seasonNow(),live.windSpeed,state.effect_intensity,isNight,true);
     const count=kind==="snow"?110:kind==="rain"?170:kind==="storm"?210:
       kind==="wind"?75:seasonNow()==="autumn"?42:0;
     const type=count && !["snow","rain","storm","wind"].includes(kind)?"leaves":kind;
@@ -356,7 +380,7 @@ export function createPhotoView() {
     actual++;
   }
   // Existing WebGL loop invokes this callback every frame.
-  document.addEventListener("visibilitychange",()=>{if(!document.hidden)resize()});
+  document.addEventListener("visibilitychange",()=>{if(!document.hidden){resize();cinematics.resize()}});
   requestEntities();
   update();
   return {frame,update,state};
