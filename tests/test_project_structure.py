@@ -91,6 +91,30 @@ class TestMaison3D(unittest.TestCase):
         self.assertIn("images:this._config.images", card)
         self.assertIn("weather_entity:", card)
 
+    def test_homeassistant_integration_options_and_diagnostics(self):
+        flow = (COMPONENT / "config_flow.py").read_text(encoding="utf-8")
+        sensors = (COMPONENT / "sensor.py").read_text(encoding="utf-8")
+        setup = (COMPONENT / "__init__.py").read_text(encoding="utf-8")
+        panel = (COMPONENT / "www" / "maison3d-panel.js").read_text(encoding="utf-8")
+        card = (COMPONENT / "www" / "maison3d-card.js").read_text(encoding="utf-8")
+        editor = (COMPONENT / "www" / "maison3d-card-editor.js").read_text(encoding="utf-8")
+        for key in ("weather_entity","sun_entity","moon_entity","temperature_entity","wind_entity","rain_entity","snow_entity","cloud_entity"):
+            self.assertIn(key, flow)
+            self.assertIn(key, sensors)
+            self.assertIn(key, editor)
+        self.assertIn("OptionsFlowWithReload",flow)
+        self.assertIn("async_get_options_flow",flow)
+        self.assertIn('async_forward_entry_setups(entry, ["sensor"])', setup)
+        self.assertIn("maison3d_config",sensors)
+        self.assertIn("Maison3DSourceStatusSensor",sensors)
+        self.assertIn("config-changed",editor)
+        self.assertIn("static getConfigElement()",card)
+        self.assertIn("maison3d_config",panel)
+        self.assertIn("maison3d_config",card)
+        for language in ("fr","en"):
+            translation = json.loads((COMPONENT / "translations" / f"{language}.json").read_text(encoding="utf-8"))
+            self.assertIn("options",translation)
+
     def test_exact_approved_readme_image(self):
         self.assertTrue((ROOT / "assets" / "maison3d-reference.jpg").is_file())
         content = (ROOT / "README.md").read_text(encoding="utf-8")
