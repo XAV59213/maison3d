@@ -97,7 +97,7 @@ Les images sont accessibles depuis le navigateur connecté à Home Assistant :
 5. Aller dans **Paramètres → Appareils et services → Ajouter une intégration** et chercher **Maison 3D**.
 6. Ouvrir le panneau **Maison 3D** dans la barre latérale.
 
-**Dernière release publiée lors de cette documentation : [v2.3.2](https://github.com/XAV59213/maison3d/releases/tag/v2.3.2).**
+**Version de cette PR : v2.3.3** (publication après fusion et validation). [Releases officielles](https://github.com/XAV59213/maison3d/releases).
 
 <details>
 <summary>Installation manuelle</summary>
