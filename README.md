@@ -61,6 +61,32 @@ Cette branche prépare une **vue vivante de la propriété** en s'appuyant sur [
 
 **Limites de fidélité** : les presets caméra sont des approximations géométriques de la perspective de l'image, et non une reconstruction photogrammétrique exacte. Les modèles, textures, véhicules et reliefs devront encore être affinés dans une instance Home Assistant réelle. Aucune prévision météo n'est générée par l'intégration.
 
+## Configuration des capteurs dans l'intégration Home Assistant
+
+La configuration des capteurs n'est **pas limitée à la carte Lovelace**.
+
+1. Installer la version intégrant la présente PR, puis redémarrer Home Assistant.
+2. Ouvrir **Paramètres → Appareils et services → Maison 3D** (ou `/config/integrations/integration/maison3d`).
+3. Ouvrir l'entrée **Maison 3D**, puis **Configurer**.
+4. Sélectionner les entités : **météo**, **soleil**, **phase de lune**, **température**, **vent**, **pluie**, **neige** et **nuages**. Les capteurs complémentaires sont facultatifs.
+5. Enregistrer : Home Assistant recharge l'intégration et conserve les choix dans ses options.
+
+Un équipement **Maison 3D** expose alors **État des capteurs** (synthèse avec attributs `entities` et `sensor_statuses`) et **huit entités de diagnostic**, une par source. Les états indiquent **OK**, **Non configuré**, **Introuvable** ou **Indisponible**. Ils évoluent lorsque les entités sources changent. Les diagnostics vérifient l'existence et la disponibilité des capteurs ; ils ne garantissent pas que leur valeur mesure physiquement la bonne grandeur.
+
+Le panneau Maison 3D et la carte Lovelace reprennent les choix de cette configuration. Une entité explicitement renseignée dans la configuration YAML de la carte prend priorité sur le choix global de l'intégration.
+
+### Carte prête à l'emploi
+
+Ajouter la ressource JavaScript **Module** `/maison3d-assets/maison3d-card.js`, puis sélectionner la carte **Maison 3D** dans l'éditeur visuel. Dans le menu de la carte, les capteurs peuvent aussi être choisis au moyen de sélecteurs Home Assistant. Pour commencer sans configuration supplémentaire :
+
+```yaml
+type: custom:maison3d-card
+title: Maison 3D
+height: 600
+```
+
+Elle reprend automatiquement la météo, le soleil, la lune et les autres capteurs configurés dans l'intégration. Tu peux ensuite personnaliser chacune des onze images dans l'éditeur visuel ou dans le panneau Photo, avec des chemins `/local/maison3d/....jpg`. Les images personnalisées doivent déjà être présentes dans `/config/www/maison3d/`.
+
 ## Vue photographique avec météo et saisons — prochaine version
 
 **Deux modes distincts** sont disponibles : **Photo réelle** affiche la capture officielle validée, avec animations météo superposées ; **3D éditable** conserve la scène Three.js navigable. Une photo 2D ne devient pas une reconstruction géométrique 3D.
