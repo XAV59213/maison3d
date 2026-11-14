@@ -7,10 +7,6 @@ from homeassistant.core import HomeAssistant
 from .const import DOMAIN, PANEL_PATH, ASSETS_URL
 
 
-async def async_setup(hass: HomeAssistant, config: dict) -> bool:
-    return True
-
-
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if not hass.data.get(DOMAIN):
         path = Path(__file__).parent / "www"
