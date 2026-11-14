@@ -1,115 +1,139 @@
-<p align="center"><img src="assets/logo.svg" width="560" alt="Maison 3D V2.0"/></p>
+<div align="center">
+  <img src="assets/logo.svg" width="540" alt="Logo Maison 3D" />
 
-<p align="center"><img src="assets/icon.svg" width="110" alt="Icône Maison 3D"/></p>
+# 🏡 Maison 3D
 
-<p align="center"><img src="assets/maison3d-reference.jpg" width="100%" alt="Maison 3D V2.0 — image exacte validée : maison, rampe à gauche, abri métallique au premier plan et garage à droite"/></p>
+**Votre propriété animée dans Home Assistant · Photographies météo · Saisons · Lune · Vue 3D**
 
-> **Image officielle validée :** capture « Maison 3D V2.0 » fournie le 14 novembre 2026, montrant la rampe et les voitures à gauche, l’abri métallique au premier plan, la maison au centre, le garage à droite et la balançoire sur la droite de cette vue. La capture exacte est maintenant publiée sous `assets/maison3d-reference.jpg` (conversion JPEG de la capture fournie, sans changement de composition).
+[![Release](https://img.shields.io/github/v/release/XAV59213/maison3d?label=Version&color=1086e8)](https://github.com/XAV59213/maison3d/releases/latest)
+[![Tests](https://github.com/XAV59213/maison3d/actions/workflows/validate.yml/badge.svg)](https://github.com/XAV59213/maison3d/actions/workflows/validate.yml)
+[![Home Assistant](https://img.shields.io/badge/Home%20Assistant-Int%C3%A9gration-41BDF5?logo=homeassistant&logoColor=white)](https://www.home-assistant.io/)
+[![HACS](https://img.shields.io/badge/HACS-Int%C3%A9gration-1d89d7)](https://www.hacs.xyz/)
 
-# Maison 3D V2.0 — Home Assistant
+<img src="assets/maison3d-reference.jpg" alt="Vue officielle de la propriété avec rampe, maison, jardin, abri métallique et garage" width="100%" />
 
-Intégration Home Assistant avec **panneau 3D interactif**, **carte Lovelace 3D interactive** et éditeur d'implantation. Ce n'est pas une image statique : la scène utilise Three.js/WebGL et les objets disposent d'une géométrie 3D.
+*Image officielle de référence, validée par le propriétaire : maison au centre, rampe et voitures à gauche, abri métallique au premier plan, garage et jardin à droite.*
 
-## Installation
+[**Installation**](#-installation-avec-hacs) · [**Galerie météo**](#-galerie-des-vraies-photos-météo) · [**Carte Lovelace**](#-carte-lovelace-prête-à-lemploi) · [**Capteurs**](#-configurer-les-capteurs-home-assistant) · [**Tests des effets**](#-tester-tous-les-états)
 
-> **Version publiée :** [v2.0.0](https://github.com/XAV59213/maison3d/releases/tag/v2.0.0). Les correctifs de fiabilité v2.0.1 sont en préparation dans une nouvelle PR. Ne pas confondre l'image de référence photoréaliste avec le rendu WebGL actuel.
+</div>
 
-1. HACS → Dépôts personnalisés → `https://github.com/XAV59213/maison3d` → **Intégration**.
-2. Télécharger, puis redémarrer Home Assistant.
-3. Paramètres → Appareils et services → Ajouter une intégration → **Maison 3D**.
-4. Ouvrir **Maison 3D** dans la barre latérale.
+---
 
+## ✨ Présentation
 
-## Carte Lovelace 3D interactive
+**Maison 3D** est une **intégration Home Assistant** installable via HACS, en catégorie **Intégration** et non en catégorie « Carte / Dashboard ».
 
-Maison 3D propose aussi une **véritable carte de tableau de bord**, distincte du panneau plein écran.
+Elle propose deux vues complémentaires :
 
-Après installation de l'intégration et redémarrage de Home Assistant :
+| Vue | Description |
+|:--|:--|
+| 🖼️ **Photo réelle animée** | Photographies de la propriété et effets météo superposés : pluie, neige, nuages, soleil, vent, orages et saisons |
+| 🏡 **Scène Three.js** | Maquette géométrique indépendante en 3D avec zoom, rotation, vues caméra et édition d'objets |
 
-1. Ouvrir le tableau de bord → **Modifier le tableau de bord** → menu à trois points → **Ressources** (ou **Paramètres → Tableaux de bord → Ressources** selon la version).
-2. Ajouter la ressource `/maison3d-assets/maison3d-card.js`, de type **Module JavaScript**. Il suffit de le faire une seule fois.
-3. Ajouter une carte manuelle contenant :
+**À savoir :** une photo est une image fixe enrichie d'animations ; ce n'est pas un modèle 3D rotatif. La maquette Three.js reste distincte et ne reproduit pas encore exactement la photographie officielle.
 
-```yaml
-type: custom:maison3d-card
-title: Maison 3D
-height: 500
-weather_entity: weather.maison
-sun_entity: sun.sun
+### Fonctionnalités
+
+- 🌤️ Ambiance selon l'entité météo et le soleil de Home Assistant.
+- 🌓 **Lune dessinée directement dans le ciel**, y compris en journée lorsque sa phase est disponible, avec huit formes lunaires.
+- ☀️ Commandes **Jour**, **Nuit réelle** et **Auto** : changement immédiat de l'ambiance photographique.
+- 🌧️ Gouttes de pluie et reflets graphiques ; ❄️ flocons et voile hivernal.
+- ⚡ Éclairs visibles en mode orage ; 💨 rafales de vent ; ☁️ nuages mobiles.
+- 🌸 Pétales de printemps, ☀️ rayons d'été, 🍂 feuilles d'automne, ❄️ chute de neige hivernale.
+- 🎚️ Intensité des animations de **0 à 200 %**.
+- 🎮 **Prévisualisation manuelle de chaque état**, sans modifier les entités Home Assistant.
+- 🩺 Sélection de capteurs et état de disponibilité depuis l'intégration.
+- 🎨 **19 emplacements d'images configurables** pour les météos, saisons et phases lunaires.
+
+## 📸 Galerie des vraies photos météo
+
+Les quatre fichiers ci-dessous sont **inclus dans le dépôt** et sont distribués par l'intégration depuis la version **v2.3.1**. Aucun chargement manuel dans `/config/www` n'est nécessaire pour ces images.
+
+<table>
+<tr>
+<td align="center" width="50%">
+  <strong>☀️ Jour ensoleillé</strong><br/>
+  <img src="custom_components/maison3d/www/images/jour.jpg" alt="Photo de la propriété par beau temps" width="100%"/><br/>
+  <sub>jour.jpg</sub>
+</td>
+<td align="center" width="50%">
+  <strong>☁️ Ciel nuageux</strong><br/>
+  <img src="custom_components/maison3d/www/images/nuageux.jpg" alt="Photo de la propriété par ciel couvert" width="100%"/><br/>
+  <sub>nuageux.jpg</sub>
+</td>
+</tr>
+<tr>
+<td align="center">
+  <strong>🌧️ Pluie</strong><br/>
+  <img src="custom_components/maison3d/www/images/pluie.jpg" alt="Photo de la propriété sous la pluie" width="100%"/><br/>
+  <sub>pluie.jpg</sub>
+</td>
+<td align="center">
+  <strong>❄️ Neige</strong><br/>
+  <img src="custom_components/maison3d/www/images/neige.jpg" alt="Photo de la propriété sous la neige" width="100%"/><br/>
+  <sub>neige.jpg</sub>
+</td>
+</tr>
+</table>
+
+Les images sont accessibles depuis le navigateur connecté à Home Assistant :
+
+| Ambiance | URL d'image installée |
+|---|---|
+| ☀️ Jour | `/maison3d-assets/images/jour.jpg` |
+| ☁️ Nuageux | `/maison3d-assets/images/nuageux.jpg` |
+| 🌧️ Pluie | `/maison3d-assets/images/pluie.jpg` |
+| ❄️ Neige | `/maison3d-assets/images/neige.jpg` |
+
+**Autres ambiances :** le dépôt ne livre pas encore de JPEG distinct pour Nuit, Vent, Orage, chaque saison ou chaque phase lunaire. Le logiciel utilise alors la photo de référence et les effets animés, ou une image personnalisée si vous l'avez configurée.
+
+## 📦 Installation avec HACS
+
+1. Ouvrir **HACS → Dépôts personnalisés**.
+2. Ajouter : **`https://github.com/XAV59213/maison3d`**.
+3. Choisir la catégorie **Intégration**.
+4. Installer Maison 3D puis **redémarrer Home Assistant**.
+5. Aller dans **Paramètres → Appareils et services → Ajouter une intégration** et chercher **Maison 3D**.
+6. Ouvrir le panneau **Maison 3D** dans la barre latérale.
+
+**Dernière release publiée lors de cette documentation : [v2.3.2](https://github.com/XAV59213/maison3d/releases/tag/v2.3.2).**
+
+<details>
+<summary>Installation manuelle</summary>
+
+Copier le dossier `custom_components/maison3d` vers `/config/custom_components/maison3d`, redémarrer Home Assistant, puis ajouter l'intégration. Le dossier `www/images` fait partie de l'intégration.
+
+</details>
+
+## 🌡️ Configurer les capteurs Home Assistant
+
+Aller dans **Paramètres → Appareils et services → Maison 3D → Configurer**.
+
+| Capteur | Domaine Home Assistant | Utilisation |
+|---|---|---|
+| 🌤️ Météo | `weather.*` | Condition actuelle |
+| ☀️ Soleil | `sun.sun` | Jour et nuit |
+| 🌙 Phase lunaire | `sensor.*` | Forme de la lune dessinée sur la photo |
+| 🌡️ Température | `sensor.*` | Relevé extérieur |
+| 💨 Vent | `sensor.*` | Rafales / mouvement |
+| 🌧️ Pluie | `sensor.*` / `binary_sensor.*` | Pluie active |
+| ❄️ Neige | `sensor.*` / `binary_sensor.*` | Neige active |
+| ☁️ Nuages | `sensor.*` / `binary_sensor.*` | Couverture nuageuse |
+
+Tous les capteurs supplémentaires sont facultatifs. La météo et le soleil peuvent fournir les données de base ; les autres valeurs enrichissent l'animation.
+
+La page de l'appareil Maison 3D propose **un diagnostic général et des diagnostics individuels** : `OK`, `Non configuré`, `Introuvable`, `Indisponible`. Ils vérifient la disponibilité des entités, pas l'exactitude météorologique d'une mesure.
+
+## 🖥️ Carte Lovelace prête à l'emploi
+
+Après installation de l'intégration, ajouter la ressource **Module JavaScript** :
+
+```text
+/maison3d-assets/maison3d-card.js
 ```
 
-Remplacer `weather.maison` par votre entité météo réelle. Ce paramètre est facultatif : en son absence, la carte utilise la première entité météo disponible. `height` peut varier de 240 à 1400 pixels.
-
-La carte offre une **vue orbitale 3D interactive** (rotation, zoom) et l'ambiance jour/nuit/météo. L'édition détaillée des objets s'effectue dans le panneau **Maison 3D** : menu latéral de Home Assistant. La carte reflète le modèle local dans le navigateur ; **la synchronisation des modifications entre navigateurs et appareils n'est pas encore implémentée**.
-
-⚠️ Le rendu est une scène Three.js composée de géométries 3D : il n'est pas encore une reconstitution photoréaliste identique à la capture officielle du README. Pour installer cette carte, utiliser la version intégrant les changements de la PR de maintenance v2.0.1, non la release v2.0.0.
-
-## Détails architecturaux 3D en développement
-
-Cette branche améliore le **véritable modèle géométrique Three.js** qui alimente à la fois le panneau plein écran et la carte Lovelace : façades pierre en texture procédurale, toitures à deux pans, encadrements de fenêtres, vitres, portes de garage, cheminée, gouttières, abri métallique, garde-corps, murets de soutènement, rampe inclinée, arbres et allées pavées.
-
-Les objets restent sélectionnables, déplaçables, redimensionnables et exportables grâce à l'éditeur existant. Aucun modèle 3D externe n'est nécessaire pour les nouveaux détails. **Le rendu photoréaliste de la capture officielle n'est pas encore atteint** : les dimensions, détails exacts, textures photographiques et implantations devront être validés sur des captures de l'application réellement exécutée.
-
-## Mode présentation réaliste — vues et météo 3D
-
-Cette branche prépare une **vue vivante de la propriété** en s'appuyant sur [l'image officielle de référence](assets/maison3d-reference.jpg) : maison au centre, accès automobile et voitures à gauche, abri métallique au premier plan, garage à droite, jardin et balançoire. La scène demeure un vrai modèle 3D Three.js et **n'affiche pas l'image en guise de faux rendu**.
-
-- **Vues 3D** : caméra « Façade » pour retrouver la composition générale de la référence, ainsi que les vues « Aérienne », « Jardin » et « Garage » ; déplacements de caméra animés et rotation libre possible.
-- **Présentation / édition** : mode présentation dégagé des outils, avec retour au mode édition dans le panneau complet. Dans une carte Lovelace, seule la présentation est disponible.
-- **Météo 3D** : pluie et neige sous forme de particules spatiales Three.js, feuilles d'automne, éclairage du terrain à la nuit tombée. Les effets Canvas d'appoint restent également disponibles.
-- **Météo actuelle** : les informations proviennent de l'entité `weather.*` Home Assistant (ou de l'entité configurée sur la carte) et de `sun.sun` ; mise à jour lorsque Home Assistant actualise les états. La démonstration manuelle reste distincte des conditions réelles.
-
-**Limites de fidélité** : les presets caméra sont des approximations géométriques de la perspective de l'image, et non une reconstruction photogrammétrique exacte. Les modèles, textures, véhicules et reliefs devront encore être affinés dans une instance Home Assistant réelle. Aucune prévision météo n'est générée par l'intégration.
-
-## Animations météorologiques renforcées
-
-La vue photo comporte désormais une couche d'animation atmosphérique supplémentaire au-dessus de l'image officielle. La météo actuelle peut activer **nuages mobiles, rayons de soleil, pluie avec éclats et reflets doux sur les surfaces, neige et voile hivernal, brume d'automne, feuilles emportées par le vent, éclairs visibles pendant les orages et éclairage de nuit**. La scène ne change pas de perspective et ces effets ne prétendent pas être des simulations physiques précises.
-
-Dans **Photo réelle → Images / météo**, régler le **curseur Intensité des animations** de 0 à 200 % et le bouton **Animations météo**. Le bouton de choix d'ambiance permet de prévisualiser chaque météo sans modifier les capteurs Home Assistant. Lorsque les préférences système demandent une réduction des animations, les mouvements atmosphériques sont réduits.
-
-### Import des quatre photos approuvées
-
-Le script `scripts/import_weather_images.py` importe les quatre photos JPG approuvées depuis l'archive `maison3d_images_meteo.zip` fournie lors de cette conversation :
-
-```sh
-python3 scripts/import_weather_images.py maison3d_images_meteo.zip
-```
-
-Il produit `custom_components/maison3d/www/images/day.jpg`, `cloudy.jpg`, `rain.jpg` et `snow.jpg`, qui pourront ensuite être versionnés dans le dépôt. **Ces fichiers binaires ne font pas encore partie de la PR tant que l'import n'a pas été exécuté depuis une copie de l'archive dans un environnement ayant accès au dépôt**. Il ne faut pas fusionner en supposant que les quatre JPEG ont été téléversés.
-
-## Photos météo intégrées — v2.3.1
-
-Les photos météo réelles ajoutées au dépôt GitHub sont **incluses dans l'intégration HACS** : `jour.jpg`, `nuageux.jpg`, `pluie.jpg`, `neige.jpg` dans `custom_components/maison3d/www/images/`.
-
-La vue photo sélectionne automatiquement l'image correspondant à la météo Home Assistant avec les URLs `/maison3d-assets/images/jour.jpg`, `nuageux.jpg`, `pluie.jpg`, `neige.jpg`. Il n'est **plus nécessaire** de copier ou de renommer ces quatre fichiers à la main. Les images personnalisées configurées dans la carte prennent priorité.
-
-Les autres états (nuit, vent, orage, saisons, lune) utilisent une image personnalisée lorsqu'elle est renseignée, sinon un repli sur la photo officielle avec les animations. Cela ne crée pas une image différente de nuit ou d'orage par magie.
-
-## Phases de lune, éclairs et fichiers d'images
-
-Le moteur utilise la valeur de ton capteur de **phase lunaire** pour afficher le bon symbole parmi les huit phases de lune (nouvelle lune, croissants, quartiers, gibbeuses et pleine lune). Tu peux maintenant définir une image spécifique pour chacune avec les clés `moon_new_moon`, `moon_waxing_crescent`, `moon_first_quarter`, `moon_waxing_gibbous`, `moon_full_moon`, `moon_waning_gibbous`, `moon_last_quarter` et `moon_waning_crescent`. Les images lunaires sont utilisées de nuit si une image correspondante existe et si aucun visuel météo spécifique n'a priorité.
-
-Les orages déclenchent **pluie et éclairs animés** sur la vue photo lorsque l'entité météo signale un orage. Les éclairs sont une animation Canvas, pas un effet réellement photographié. Ils ne doivent pas provoquer un changement intempestif de l'état des capteurs.
-
-**Images incluses dans le dépôt :** l'unique photo officielle `/maison3d-assets/maison3d-reference.jpg` sert d'image de secours. Les **19 emplacements** de photos personnalisées (11 météo/saisons et 8 phases lunaires) sont disponibles mais **les autres JPG/PNG ne sont pas tous livrés dans l'intégration**. Tu peux fournir tes propres variantes météo via `/config/www/maison3d/` et les choisir dans l'éditeur de carte ou les réglages Photo. Pour une scène vraiment différente lors de la neige, il faut une image enneigée propre à cet état ; l'effet animé seul ne blanchit pas le jardin ou les toits.
-
-## Configuration des capteurs dans l'intégration Home Assistant
-
-La configuration des capteurs n'est **pas limitée à la carte Lovelace**.
-
-1. Installer la version intégrant la présente PR, puis redémarrer Home Assistant.
-2. Ouvrir **Paramètres → Appareils et services → Maison 3D** (ou `/config/integrations/integration/maison3d`).
-3. Ouvrir l'entrée **Maison 3D**, puis **Configurer**.
-4. Sélectionner les entités : **météo**, **soleil**, **phase de lune**, **température**, **vent**, **pluie**, **neige** et **nuages**. Les capteurs complémentaires sont facultatifs.
-5. Enregistrer : Home Assistant recharge l'intégration et conserve les choix dans ses options.
-
-Un équipement **Maison 3D** expose alors **État des capteurs** (synthèse avec attributs `entities` et `sensor_statuses`) et **huit entités de diagnostic**, une par source. Les états indiquent **OK**, **Non configuré**, **Introuvable** ou **Indisponible**. Ils évoluent lorsque les entités sources changent. Les diagnostics vérifient l'existence et la disponibilité des capteurs ; ils ne garantissent pas que leur valeur mesure physiquement la bonne grandeur.
-
-Le panneau Maison 3D et la carte Lovelace reprennent les choix de cette configuration. Une entité explicitement renseignée dans la configuration YAML de la carte prend priorité sur le choix global de l'intégration.
-
-### Carte prête à l'emploi
-
-Ajouter la ressource JavaScript **Module** `/maison3d-assets/maison3d-card.js`, puis sélectionner la carte **Maison 3D** dans l'éditeur visuel. Dans le menu de la carte, les capteurs peuvent aussi être choisis au moyen de sélecteurs Home Assistant. Pour commencer sans configuration supplémentaire :
+Puis ajouter une carte manuelle :
 
 ```yaml
 type: custom:maison3d-card
@@ -117,95 +141,132 @@ title: Maison 3D
 height: 600
 ```
 
-Elle reprend automatiquement la météo, le soleil, la lune et les autres capteurs configurés dans l'intégration. Tu peux ensuite personnaliser chacune des onze images dans l'éditeur visuel ou dans le panneau Photo, avec des chemins `/local/maison3d/....jpg`. Les images personnalisées doivent déjà être présentes dans `/config/www/maison3d/`.
+Les capteurs sélectionnés dans l'intégration sont repris automatiquement si la carte ne définit pas de remplacement. L'éditeur visuel de la carte permet de choisir ses propres capteurs et les images de chaque état.
 
-## Vue photographique avec météo et saisons — prochaine version
-
-**Deux modes distincts** sont disponibles : **Photo réelle** affiche la capture officielle validée, avec animations météo superposées ; **3D éditable** conserve la scène Three.js navigable. Une photo 2D ne devient pas une reconstruction géométrique 3D.
-
-La vue Photo réelle est affichée initialement. Clique sur **⚙ Images / météo** pour personnaliser :
-
-- Les **11 images** : Jour, Nuit, Nuageux, Pluie, Neige, Vent, Orage, Printemps, Été, Automne et Hiver.
-- Les entités météo, soleil et lune : notamment `weather.maison`, `sun.sun` et ton entité personnalisée pour la phase lunaire (ex. `sensor.moon_phase`).
-- L'ambiance automatique depuis Home Assistant, ou une ambiance manuelle pour vérifier l'affichage.
-- L'activation des effets animés (pluie, neige, feuilles, vent et éclairs).
-
-Une URL vide utilise automatiquement l'image de référence livrée avec l'intégration, sans changer l'implantation de la propriété. Tu peux mettre tes images personnalisées dans `/config/www/maison3d/` puis saisir `/local/maison3d/jour.jpg`, `/local/maison3d/nuit.jpg`, etc. Les URL HTTPS et les chemins internes autorisés fonctionnent également. **Il ne s'agit pas d'un transfert de fichier** : les images doivent déjà être accessibles à Home Assistant. Les réglages du panneau sont enregistrés localement dans le navigateur et ne sont pas synchronisés entre appareils.
-
-La sélection automatique suit l'ordre **orage → neige → pluie → vent → nuageux → nuit → saison si image définie → jour**. La saison suit le calendrier local (modifiable manuellement) ; le soleil utilise `sun.sun`, et la phase de lune affichée utilise le capteur configuré. Les animations sont des effets visuels et ne prétendent pas modifier les conditions météo réelles.
-
-Pour définir les images **directement dans la carte Lovelace**, utiliser un mapping `images:` (les clefs non renseignées reviennent à l'image officielle) :
+<details>
+<summary>Exemple avancé : carte personnalisée</summary>
 
 ```yaml
 type: custom:maison3d-card
-title: Propriété Marly
+title: Ma propriété
 height: 600
 weather_entity: weather.maison
 sun_entity: sun.sun
 moon_entity: sensor.moon_phase
+temperature_entity: sensor.temperature_exterieure
+wind_entity: sensor.vitesse_vent
+rain_entity: binary_sensor.pluie
+snow_entity: binary_sensor.neige
+cloud_entity: sensor.couverture_nuageuse
 images:
-  day: /local/maison3d/jour.jpg
   night: /local/maison3d/nuit.jpg
-  cloudy: /local/maison3d/nuageux.jpg
-  rain: /local/maison3d/pluie.jpg
-  snow: /local/maison3d/neige.jpg
-  wind: /local/maison3d/vent.jpg
   storm: /local/maison3d/orage.jpg
-  spring: /local/maison3d/printemps.jpg
-  summer: /local/maison3d/ete.jpg
-  autumn: /local/maison3d/automne.jpg
-  winter: /local/maison3d/hiver.jpg
+  wind: /local/maison3d/vent.jpg
+  moon_full_moon: /local/maison3d/pleine_lune.jpg
 ```
 
-**Limite importante :** il faut vérifier visuellement les effets, les temps de chargement et le comportement du capteur lunaire sur une installation Home Assistant réelle. Les images restent des photographies fixes différentes avec effets animés, tandis que le modèle 3D reste indépendant.
+**Exemple à adapter** : ces noms d'entités ne sont pas garantis sur votre installation. Les images sous `/local/maison3d/` doivent être placées dans `/config/www/maison3d/`.
 
-## Référence retenue
-La **capture Maison 3D V2.0 fournie explicitement le 14 novembre 2026** est la seule référence visuelle. La scène éditable est une maquette technique et ne reproduit pas encore photoréalistiquement cette image. Les positions et dimensions restent ajustables et approximatives.
+</details>
 
-Disposition : grange indépendante sur la gauche de la maison, rampe automobile côté gauche vers le stationnement, abri métallique au premier plan, garage à l'extrême droite, balançoire dans le jardin vers la piscine ; murets et paliers pour le dénivelé ; portail coulissant et portillon indépendant.
+## 🎮 Tester tous les états
 
-## Édition
-Sélectionner un objet pour modifier sa position X/Z, ses dimensions, son orientation, le dupliquer ou le supprimer. Ajout de nouveaux objets avec l'outil **Ajouter**. Export/import JSON. La sauvegarde automatique utilise le stockage local du navigateur ; pensez à exporter une copie.
+Le panneau **⚙ Images / météo** contient une zone **« Tester chaque état »** qui sert à vérifier les effets **sans modifier les vrais capteurs**.
 
-## Limites
-- Three.js est chargé depuis un CDN, accès Internet requis.
-- Aucune commande d'entité Home Assistant (portail, lumière, volets) n'est activée pour le moment.
-- L'intégration utilise la **première entité `weather.*` disponible** dans Home Assistant ; si aucune n'est disponible, l'affichage indique une simulation locale. Les données météo viennent de Home Assistant, ce ne sont pas des prévisions générées par Maison 3D.
-- La photo de référence n'est pas un mesh 3D : le rendu est un modèle interactif distinct.
+| Test | Effet attendu |
+|---|---|
+| ☀ Jour | Photo lumineuse / soleil |
+| ☾ Nuit | Assombrissement de la photo |
+| ☁ Nuages | Photo nuageuse et voile mobile |
+| 🌧 Pluie | Gouttes et reflets visuels |
+| ❄ Neige | Flocons et atmosphère hivernale |
+| 💨 Vent | Rafales et feuilles en mouvement |
+| ⚡ Orage | Pluie et éclairs dessinés |
+| 🌸 Printemps | Pétales flottants |
+| ☀ Été | Rayons de soleil |
+| 🍂 Automne | Feuilles emportées |
+| ❄ Hiver | Neige et voile froid |
 
-## Installation manuelle
-Copier `custom_components/maison3d` dans `/config/custom_components/maison3d`, redémarrer, ajouter l'intégration.
+**Phases lunaires :** un sélecteur permet de tester **nouvelle lune**, **premier croissant**, **premier quartier**, **gibbeuse croissante**, **pleine lune**, **gibbeuse décroissante**, **dernier quartier** et **dernier croissant**. La lune apparaît **sur l'image même en journée**. En mode normal, sa phase provient du capteur Home Assistant configuré, s'il est disponible et reconnu.
 
-## Identité graphique
+À droite de la vue photo, les boutons **Printemps, Été, Automne, Hiver et Saisons auto** donnent aussi un accès direct aux démonstrations saisonnières.
 
-- Logo vectoriel : [assets/logo.svg](assets/logo.svg)
-- Icône vectorielle : [assets/icon.svg](assets/icon.svg)
-- Le rendu officiel doit utiliser **uniquement la capture fournie par le propriétaire**. Les montages promotionnels différents sont exclus de ce README.
+Pour retourner aux conditions réelles, utiliser **◉ Revenir à la météo réelle** dans le panneau de test ou **◉ Auto** dans la barre supérieure.
 
-## Météo et soleil
+> Les boutons de test sont un **aperçu manuel local**, et ne modifient ni la météo ni le capteur lunaire dans Home Assistant.
 
-Le panneau transmet les états de la première entité `weather.*` ainsi que `sun.sun` à la scène WebGL. L'éclairage suit `sun.sun` automatiquement : jour, soir et nuit. Les animations Canvas affichent pluie, neige ou feuilles d'automne selon la condition et la saison ; le bouton **Météo** permet une démonstration pluie/neige/soleil et **Auto** rétablit la météo réelle. Le moteur calcule les saisons à partir du calendrier local.
+## 🌙 Lune, saisons et météo animée
 
-**Limites à connaître :** premier capteur météo détecté automatiquement (choix explicite à développer), effets 2D superposés à la scène 3D et aucune commande d'appareil Home Assistant. Les animations météo et l'intégration complète n'ont pas encore été validées en conditions réelles sur une instance Home Assistant.
+Le module dessine la lune comme un disque lumineux dans le ciel, avec masque de phase, relief discret et halo. En journée, le halo est plus faible ; la lune reste visible tant qu'une phase valide est connue. Si le capteur de phase est absent, on peut tester manuellement les huit phases, mais le programme ne doit pas présenter une phase simulée comme une donnée astronomique réelle.
 
-## Dépannage installation
+Les animations météo sont **des effets visuels superposés à une photographie** : pluie, neige, reflets doux, brume, rafales, éclairs, rayons solaires et feuilles. Leur intensité est réglable de **0 à 200 %** et peut être désactivée.
 
-**Après installation HACS**, redémarrez complètement Home Assistant avant de chercher « Maison 3D » dans **Paramètres → Appareils et services**. HACS installe une **Intégration**, pas une carte Lovelace. L'ajout de l'intégration crée l'entrée du panneau dans la barre latérale. Sur mobile, déployez la barre latérale si nécessaire.
+Les saisons suivent le calendrier local en mode Auto ; les boutons de droite permettent de les forcer pour un aperçu. Une vraie photo enneigée présente de la neige sur les éléments de la propriété ; un simple filtre animé ne remplace pas une photographie d'hiver.
 
-- **L'intégration n'apparaît pas** : vérifier dans **Paramètres → Système → Journaux** l'absence d'erreurs `maison3d`, puis vérifier que `/config/custom_components/maison3d/manifest.json` existe. Effectuer un redémarrage complet.
-- **La page Maison 3D est vide** : essayer d'ouvrir `/maison3d-assets/index.html` depuis **la même adresse Home Assistant**, puis vérifier l'accès Internet vers jsDelivr (Three.js). Une restriction réseau ou CSP peut empêcher le chargement du moteur 3D.
-- **Pas de météo réelle** : vérifier qu'au moins une entité `weather.*` affiche un état utilisable dans **Outils de développement → États**. L'intégration utilise la première entité météo disponible ; `sun.sun` fournit le jour et la nuit.
-- **La scène ne mémorise pas les modifications** : le navigateur doit autoriser le stockage local ; utilisez l'export JSON pour une sauvegarde portable entre navigateurs. Les données ne sont pas encore stockées dans Home Assistant.
-- **Après une mise à jour HACS** : redémarrer Home Assistant, puis forcer le rechargement de la page (Ctrl+F5 ou vider les fichiers du site en cache) si nécessaire.
+## 🎨 Personnaliser les images
 
-**Diagnostic rapide :** depuis un navigateur déjà connecté à Home Assistant, ouvrir `https://VOTRE-HOME-ASSISTANT/maison3d-assets/index.html`. L'URL doit afficher l'éditeur 3D. Tester également le panneau `/maison3d`. En cas d'échec, relever les erreurs du navigateur et les journaux Home Assistant.
+**19 images peuvent être remplacées** :
 
-### Changements prévus pour v2.0.1
+- **Météo et saisons (11)** : `day`, `night`, `cloudy`, `rain`, `snow`, `wind`, `storm`, `spring`, `summer`, `autumn`, `winter`.
+- **Phases lunaires (8)** : `moon_new_moon`, `moon_waxing_crescent`, `moon_first_quarter`, `moon_waxing_gibbous`, `moon_full_moon`, `moon_waning_gibbous`, `moon_last_quarter`, `moon_waning_crescent`.
 
-- Nouvelle carte Lovelace `custom:maison3d-card` avec vue WebGL embarquée et météo en direct.
-- Enregistrement du panneau réentrant et déchargement prudent, sans redéclarer les chemins statiques lors des rechargements.
-- Transmission météo fiable après le chargement du panneau ; exclusion des entités météo `unavailable` et `unknown`.
-- Validation stricte des fichiers de scène JSON importés et sélection des objets sans injection HTML.
-- Message explicite si la sauvegarde navigateur est inaccessible.
+Pour utiliser une photo personnelle :
 
-**Important :** les contrôles HACS/Hassfest et les tests de syntaxe ne remplacent pas une validation sur votre propre version de Home Assistant.
+1. La déposer dans `/config/www/maison3d/`.
+2. Saisir son URL (exemple `/local/maison3d/nuit.jpg`) dans le champ correspondant de la carte ou du panneau.
+3. Choisir **Tester** pour vérifier le résultat.
+
+Les quatre photos météo installées avec HACS restent disponibles automatiquement sans configuration. Les réglages du panneau Photo sont enregistrés dans le **navigateur local** ; pour reproduire une configuration sur plusieurs appareils, préférer les options de l'intégration et la configuration YAML de la carte.
+
+## 🏗️ Vue 3D et édition
+
+La scène Three.js distincte propose les vues **Façade, Aérienne, Jardin et Garage**, ainsi que la rotation, le zoom, le déplacement et le redimensionnement des objets. Dans le panneau complet, elle permet également l'**export et l'import JSON**.
+
+La géométrie 3D est approximative et ne doit pas être présentée comme la vraie photographie en volume. Le stockage de la scène s'effectue dans le navigateur ; exporter le JSON pour conserver une sauvegarde.
+
+## 🛠️ Dépannage
+
+<details>
+<summary>Maison 3D ne s'affiche pas</summary>
+
+Vérifier que l'intégration a été ajoutée après l'installation HACS, puis **redémarrer Home Assistant**. Actualiser le navigateur (Ctrl + F5). Contrôler la ressource `/maison3d-assets/maison3d-card.js` et tester `/maison3d-assets/index.html`. La vue 3D dépend de Three.js chargé depuis un CDN ; vérifier la connexion réseau si elle reste vide.
+
+</details>
+
+<details>
+<summary>La météo ou la lune ne change pas</summary>
+
+Dans **Paramètres → Appareils et services → Maison 3D → Configurer**, vérifier l'identifiant des entités, puis leur état dans **Outils de développement → États**. Éviter `unknown` ou `unavailable`. Quitter le mode Test et réactiver **◉ Auto**.
+
+</details>
+
+<details>
+<summary>Le bouton « Nuit réelle » n'a pas d'effet</summary>
+
+La correction de la commande Nuit réelle est incluse dans **v2.3.2**. Vérifier la version installée avec HACS, redémarrer Home Assistant, vider le cache navigateur si nécessaire. La photo doit s'assombrir, même sans fichier de nuit personnalisé.
+
+</details>
+
+<details>
+<summary>Une image personnalisée est inaccessible</summary>
+
+Tester l'URL directement depuis Home Assistant. Exemple : `/config/www/maison3d/nuit.jpg` devient `/local/maison3d/nuit.jpg`. Une erreur de nom de fichier ou d'autorisation peut empêcher l'affichage.
+
+</details>
+
+## 🔗 Liens utiles
+
+- [Dépôt GitHub](https://github.com/XAV59213/maison3d)
+- [Releases officielles](https://github.com/XAV59213/maison3d/releases)
+- [Actions — Validation HACS, Hassfest et tests](https://github.com/XAV59213/maison3d/actions/workflows/validate.yml)
+- [Signaler un problème ou proposer une idée](https://github.com/XAV59213/maison3d/issues)
+
+---
+
+<div align="center">
+
+**Maison 3D · Home Assistant · © XAV59213**
+
+*Intégration communautaire non officielle. Les tests automatiques ne remplacent pas un essai visuel sur une instance Home Assistant réelle.*
+
+</div>
