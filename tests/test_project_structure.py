@@ -173,6 +173,29 @@ class TestMaison3D(unittest.TestCase):
         self.assertIn('selectMode.value=mode', photo)
         self.assertIn('persist();update()', photo)
 
+    def test_photo_moon_preview_and_right_hand_season_buttons(self):
+        photo = (COMPONENT / "www" / "photo-view.js").read_text(encoding="utf-8")
+        moon = (COMPONENT / "www" / "moon-effects.js").read_text(encoding="utf-8")
+        html = (COMPONENT / "www" / "index.html").read_text(encoding="utf-8")
+        self.assertIn('from "./moon-effects.js"', photo)
+        self.assertIn("createMoonOverlay({container:section})", photo)
+        self.assertIn("skyMoon.draw(", photo)
+        self.assertIn('seasonalNav.id="maison3d-photo-seasons"', photo)
+        self.assertIn("seasonButtons.set(key,btn)", photo)
+        self.assertIn("state.season=key", photo)
+        self.assertIn("moon_preview", photo)
+        self.assertIn("testButtons.set(key,btn)", photo)
+        self.assertIn('resetTest.textContent="◉ Revenir à la météo réelle"', photo)
+        for phase in ("new_moon","waxing_crescent","first_quarter",
+                      "waxing_gibbous","full_moon","waning_gibbous",
+                      "last_quarter","waning_crescent"):
+            self.assertIn(phase, moon)
+        self.assertIn("canvas.className=\"maison3d-sky-moon\"", moon)
+        self.assertIn("canvas.getContext", moon)
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        for img in ("jour.jpg","nuageux.jpg","pluie.jpg","neige.jpg"):
+            self.assertIn('src="custom_components/maison3d/www/images/'+img+'"', readme)
+
     def test_exact_approved_readme_image(self):
         self.assertTrue((ROOT / "assets" / "maison3d-reference.jpg").is_file())
         content = (ROOT / "README.md").read_text(encoding="utf-8")
