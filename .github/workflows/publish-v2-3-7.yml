@@ -1,0 +1,72 @@
+name: Publish Maison 3D v2.3.7
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/publish-v2-3-7.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    if: github.repository == 'XAV59213/maison3d'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Verify bundled Three.js and version
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path("custom_components/maison3d")
+          manifest=json.loads((root/"manifest.json").read_text())
+          assert manifest["version"]=="2.3.7"
+          page=(root/"www/index.html").read_text()
+          assert "cdn.jsdelivr.net" not in page
+          assert '"three":"./vendor/three/three.module.min.js"' in page
+          assert (root/"www/vendor/three/three.module.min.js").is_file()
+          assert (root/"www/vendor/three/addons/controls/OrbitControls.js").is_file()
+          assert (root/"www/vendor/three/LICENSE").is_file()
+          PY
+          node --check custom_components/maison3d/www/vendor/three/addons/controls/OrbitControls.js
+          node tests/test_main_photo.mjs
+          node tests/test_seasons.mjs
+          python3 -m unittest discover -s tests -q
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          if gh release view v2.3.7 >/dev/null 2>&1; then
+            echo "v2.3.7 already exists"
+            exit 0
+          fi
+          cat >/tmp/notes.md <<'NOTES'
+          ## Maison 3D v2.3.7 — Three.js embarqué, 3D hors-ligne
+
+          ### Vue 3D sans CDN
+          - **Three.js r170 (0.170.0)** et **OrbitControls** sont désormais fournis avec l'intégration dans `/maison3d-assets/vendor/three/` (licence MIT incluse).
+          - Plus aucun appel à jsDelivr : la vue 3D fonctionne **hors-ligne**, même si le CDN est lent ou bloqué.
+          - Même version de Three.js qu'avant : aucun changement de rendu attendu.
+
+          ### Qualité
+          - Nouveau test : aucune URL CDN, tous les modules de l'importmap présents localement.
+          - Le workflow de validation vérifie les fichiers Three.js embarqués.
+          - Ajout d'un `.gitignore` (`__pycache__/`, `*.pyc`).
+
+          ### Fonctionnalités conservées
+          Photo personnalisable, effets ON/OFF, plan 2D, modèle 3D éditable (rotation, zoom, édition, export/import JSON), animations météo, phase de lune et quatre saisons.
+
+          ### Installer
+          Dans HACS, mettre à jour **Maison 3D vers v2.3.7**, redémarrer Home Assistant puis actualiser le navigateur (Ctrl + F5). La ressource carte reste `/maison3d-assets/maison3d-card.js`.
+
+          ### Contrôles
+          La PR #13 a passé les tests Python/JavaScript, HACS et Hassfest, ainsi qu'un test Chrome headless avec tout accès externe bloqué (scène 3D, rotation, zoom, édition, export JSON). Le rendu réel sur votre Home Assistant devra être vérifié.
+          NOTES
+          sed -i 's/^          //' /tmp/notes.md
+          gh release create v2.3.7 --target "${GITHUB_SHA}" --latest --title "Maison 3D v2.3.7 — Three.js embarqué, 3D hors-ligne" --notes-file /tmp/notes.md
