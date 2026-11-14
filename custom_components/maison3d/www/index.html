@@ -31,7 +31,7 @@ html.card-mode{touch-action:pan-y}
 <label>Hauteur <input id="h" type="number" min=".2" step=".25"></label><label>Rotation ° <input id="r" type="number" step="5"></label>
 </div><div class="actions"><button id="add">+ Ajouter</button><button id="copy">Dupliquer</button><button id="del">Supprimer</button><button id="reset">Réinitialiser</button></div><label>Nouvel objet<select id="kind"><option value="tree">Arbre</option><option value="building">Bâtiment</option><option value="shed">Abri métal</option><option value="wall">Muret</option><option value="steps">Escalier</option><option value="road">Chemin / route</option><option value="gate">Portail</option><option value="pool">Piscine</option><option value="swing">Balançoire</option><option value="furniture">Mobilier</option></select></label></section>
 <input type="file" id="file" accept="application/json" hidden>
-<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}</script>
+<script type="importmap">{"imports":{"three":"./vendor/three/three.module.min.js","three/addons/":"./vendor/three/addons/"}}</script>
 <script type="module">
 import * as THREE from "three";
 import {OrbitControls} from "three/addons/controls/OrbitControls.js";

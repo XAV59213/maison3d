@@ -287,6 +287,8 @@ Le choix entre plan 2D et vue 3D est mémorisé localement. Il n'est plus néces
 
 La scène Three.js distincte propose les vues **Façade, Aérienne, Jardin et Garage**, ainsi que la rotation, le zoom, le déplacement et le redimensionnement des objets. Dans le panneau complet, elle permet également l'**export et l'import JSON**.
 
+**Three.js embarqué :** Three.js r170 (`0.170.0`) et `OrbitControls` sont fournis localement dans `custom_components/maison3d/www/vendor/three/` (licence MIT incluse). Aucun CDN n'est appelé : la vue 3D fonctionne hors-ligne, même si jsDelivr est lent ou bloqué.
+
 La géométrie 3D est approximative et ne doit pas être présentée comme la vraie photographie en volume. Le stockage de la scène s'effectue dans le navigateur ; exporter le JSON pour conserver une sauvegarde.
 
 ## 🛠️ Dépannage
@@ -294,7 +296,7 @@ La géométrie 3D est approximative et ne doit pas être présentée comme la vr
 <details>
 <summary>Maison 3D ne s'affiche pas</summary>
 
-Vérifier que l'intégration a été ajoutée après l'installation HACS, puis **redémarrer Home Assistant**. Actualiser le navigateur (Ctrl + F5). Contrôler la ressource `/maison3d-assets/maison3d-card.js` et tester `/maison3d-assets/index.html`. La vue 3D dépend de Three.js chargé depuis un CDN ; vérifier la connexion réseau si elle reste vide.
+Vérifier que l'intégration a été ajoutée après l'installation HACS, puis **redémarrer Home Assistant**. Actualiser le navigateur (Ctrl + F5). Contrôler la ressource `/maison3d-assets/maison3d-card.js` et tester `/maison3d-assets/index.html`. Three.js est embarqué localement (`/maison3d-assets/vendor/three/`) : aucune connexion Internet n'est nécessaire. Si la vue 3D reste vide, vérifier que `/maison3d-assets/vendor/three/three.module.min.js` répond bien.
 
 </details>
 
