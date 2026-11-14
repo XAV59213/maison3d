@@ -115,6 +115,7 @@ class Maison3DCard extends HTMLElement {
     const cloud=numeric(choice("cloud_entity"),null);
     const payload={
       type:"maison3d:conditions",
+      time_zone:this._hass.config?.time_zone??"UTC",
       weather:weather?.state??null,
       temperature,
       windSpeed,

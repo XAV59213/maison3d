@@ -6,6 +6,7 @@
  */
 import {createPhotoCinematics} from "./photo-cinematics.js";
 import {createMoonOverlay} from "./moon-effects.js";
+import {automaticSeason,SEASON_LABELS,createSeasonEffects} from "./season-effects.js";
 export function createPhotoView() {
   const KEYS=["day","night","cloudy","rain","snow","wind","storm",
     "spring","summer","autumn","winter",
@@ -35,7 +36,7 @@ export function createPhotoView() {
     images:defaults(),moon_entity:"sensor.moon_phase",
     weather_entity:"",sun_entity:"sun.sun",
     temperature_entity:"",wind_entity:"",rain_entity:"",snow_entity:"",cloud_entity:"",
-    enabled:true,mode:"auto",effect:true,season:"auto",effect_intensity:1,moon_preview:"auto",use_weather_photos:false
+    enabled:true,model_view:"3d",mode:"auto",effect:true,season:"auto",effect_intensity:1,moon_preview:"auto",use_weather_photos:false
   };
   try{
     const saved=JSON.parse(localStorage.getItem(STORAGE));
@@ -47,6 +48,7 @@ export function createPhotoView() {
         if(typeof saved[key]==="string")state[key]=saved[key].slice(0,150);
       }
       if(typeof saved.enabled==="boolean")state.enabled=saved.enabled;
+      if(saved.model_view==="2d"||saved.model_view==="3d")state.model_view=saved.model_view;
       if(typeof saved.effect==="boolean")state.effect=saved.effect;
       if(typeof saved.use_weather_photos==="boolean")state.use_weather_photos=saved.use_weather_photos;
       if(Number.isFinite(saved.effect_intensity))state.effect_intensity=Math.min(2,Math.max(0,saved.effect_intensity));
@@ -67,6 +69,9 @@ export function createPhotoView() {
   const cinematicCanvas=document.createElement("canvas");
   cinematicCanvas.className="photo-cinematics";
   cinematicCanvas.setAttribute("aria-hidden","true");
+  const seasonalCanvas=document.createElement("canvas");
+  seasonalCanvas.className="season-overlay";
+  seasonalCanvas.setAttribute("aria-hidden","true");
   const canvas=document.createElement("canvas");
   canvas.setAttribute("aria-hidden","true");
   const ctx=canvas.getContext("2d");
@@ -78,7 +83,8 @@ export function createPhotoView() {
   const error=document.createElement("div");
   error.className="photo-error";error.hidden=true;
   error.textContent="Image inaccessible : corrigez son URL dans les réglages Photo.";
-  section.append(image,tint,cinematicCanvas,canvas,status,moon,error);
+  section.append(image,tint,cinematicCanvas,seasonalCanvas,canvas,status,moon,error);
+  const seasonalEffects=createSeasonEffects(seasonalCanvas);
   const skyMoon=createMoonOverlay({container:section});
   const cinematics=createPhotoCinematics(cinematicCanvas);
   const nav=document.createElement("nav");
@@ -87,6 +93,9 @@ export function createPhotoView() {
   photoBtn.type="button";photoBtn.textContent="▣ Photo réelle";
   const modelBtn=document.createElement("button");
   modelBtn.type="button";modelBtn.textContent="⬡ 3D éditable";
+  const planBtn=document.createElement("button");
+  planBtn.type="button";planBtn.textContent="▤ Plan 2D";
+  planBtn.title="Afficher le plan de dessus du modèle, revenir à la photo à tout moment";
   const optionsBtn=document.createElement("button");
   optionsBtn.type="button";optionsBtn.textContent="⚙ Images / météo";
   const nightBtn=document.createElement("button");
@@ -98,7 +107,7 @@ export function createPhotoView() {
   const autoBtn=document.createElement("button");
   autoBtn.type="button";autoBtn.textContent="◉ Auto";
   autoBtn.title="Utiliser le soleil et la météo réels de Home Assistant";
-  nav.append(photoBtn,nightBtn,dayBtn,autoBtn,modelBtn,optionsBtn);
+  nav.append(photoBtn,planBtn,modelBtn,nightBtn,dayBtn,autoBtn,optionsBtn);
   const seasonalNav=document.createElement("nav");
   seasonalNav.id="maison3d-photo-seasons";
   seasonalNav.setAttribute("aria-label","Tester les saisons de la vue photo");
@@ -320,15 +329,12 @@ export function createPhotoView() {
   document.head.append(style);
   document.body.append(section,nav,seasonalNav,settings);
   let live={weather:null,sun:null,temperature:null,windSpeed:0,moon:null,rain:null,snow:null,cloud:null};
+  let haTimeZone="UTC";
+  let lastAutoSeason="";
   let currentSrc="",active="day",lastFrame=0;
   let missingBundled=new Set();
   let particles=[];
-  const seasonNow=()=>{
-    if(state.season!=="auto")return state.season;
-    const month=new Date().getMonth();
-    return month>=2&&month<=4?"spring":month>=5&&month<=7?"summer":
-      month>=8&&month<=10?"autumn":"winter";
-  };
+  const seasonNow=()=>state.season!=="auto"?state.season:automaticSeason(haTimeZone);
   const nighttime=()=>{
     if(live.sun==="below_horizon")return true;
     if(live.sun==="above_horizon")return false;
@@ -397,7 +403,8 @@ export function createPhotoView() {
     for(const [key,btn] of seasonButtons)btn.setAttribute("aria-pressed",String(state.season===key));
     for(const [key,btn] of testButtons)btn.setAttribute("aria-pressed",String(state.mode===key));
     const effectLabel=LABELS[selected]||selected;
-    status.textContent=(state.mode==="auto"?"Automatique":"Aperçu manuel")+" · "+effectLabel+
+    const seasonLabel=SEASON_LABELS[seasonNow()]||seasonNow();
+    status.textContent=(state.mode==="auto"?"Automatique":"Aperçu manuel")+" · "+effectLabel+" · "+seasonLabel+
       (typeof live.temperature==="number"?" · "+live.temperature+"°C":"")+
       (phaseName?" · Lune : "+String(currentMoon):"")+
       (state.moon_preview!=="auto"?" · Lune en test":"");
@@ -405,7 +412,8 @@ export function createPhotoView() {
     dayBtn.setAttribute("aria-pressed",String(state.mode==="day"));
     autoBtn.setAttribute("aria-pressed",String(state.mode==="auto"));
     photoBtn.setAttribute("aria-pressed",String(state.enabled));
-    modelBtn.setAttribute("aria-pressed",String(!state.enabled));
+    modelBtn.setAttribute("aria-pressed",String(!state.enabled && state.model_view==="3d"));
+    planBtn.setAttribute("aria-pressed",String(!state.enabled && state.model_view==="2d"));
     section.hidden=!state.enabled;
     if(!state.enabled){section.style.display="none"}else{section.style.display="block"}
     document.documentElement.classList.toggle("photo-active",state.enabled);
@@ -420,7 +428,15 @@ export function createPhotoView() {
   nightBtn.addEventListener("click",()=>setQuickMode("night"));
   dayBtn.addEventListener("click",()=>setQuickMode("day"));
   autoBtn.addEventListener("click",()=>setQuickMode("auto"));
-  modelBtn.addEventListener("click",()=>{state.enabled=false;persist();settings.hidden=true;update()});
+  const setModelView=view=>{
+    state.enabled=false;state.model_view=view;
+    settings.hidden=true;
+    persist();update();
+    // Reuse the existing camera controls so the editor remains consistent.
+    document.getElementById(view==="2d"?"topview":"tab3d")?.click();
+  };
+  planBtn.addEventListener("click",()=>setModelView("2d"));
+  modelBtn.addEventListener("click",()=>setModelView("3d"));
   optionsBtn.addEventListener("click",()=>{settings.hidden=!settings.hidden});
   close.addEventListener("click",()=>{settings.hidden=true});
   image.addEventListener("error",()=>{
@@ -452,6 +468,7 @@ export function createPhotoView() {
         if(allowedUrl(path))state.images[k]=path;
       }
     }
+    if(typeof event.data.time_zone==="string"&&event.data.time_zone.length<100)haTimeZone=event.data.time_zone;
     live={
       weather:typeof event.data.weather==="string"?event.data.weather:null,
       sun:typeof event.data.sun==="string"?event.data.sun:null,
@@ -482,22 +499,23 @@ export function createPhotoView() {
     if(!state.enabled||!state.effect||state.effect_intensity<=0){
       ctx.clearRect(0,0,canvas.width,canvas.height);
       cinematics.frame(time,"none",seasonNow(),0,0,false,false);
+      seasonalEffects.frame(time,seasonNow(),0,false,false);
       return;
     }
     const w=section.clientWidth,h=section.clientHeight;
     if(w<=0||h<=0)return;
     if(Math.abs(canvas.width-w*(Math.min(devicePixelRatio||1,2)))>2)resize();
     ctx.clearRect(0,0,w,h);
+    const currentSeason=seasonNow();
+    if(currentSeason!==lastAutoSeason){lastAutoSeason=currentSeason;update()}
     const kind=state.mode==="auto"?weatherKey():state.mode;
     const isNight=state.mode==="night"||(state.mode==="auto"&&nighttime());
     cinematics.frame(time,kind,seasonNow(),live.windSpeed,state.effect_intensity,isNight,true);
-    const count=kind==="snow"||kind==="winter"?180:
+    seasonalEffects.frame(time,seasonNow(),state.effect_intensity,isNight,true);
+    const count=kind==="snow"?180:
       kind==="rain"?190:kind==="storm"?235:
-      kind==="wind"?100:kind==="autumn"?75:
-      kind==="spring"?70:seasonNow()==="autumn"?42:0;
-    const type=kind==="winter"?"snow":kind==="spring"?"petals":
-      kind==="autumn"?"leaves":
-      count&&!["snow","rain","storm","wind"].includes(kind)?"leaves":kind;
+      kind==="wind"?100:0;
+    const type=kind;
     const scaledCount=Math.floor(count*Math.min(state.effect_intensity,2));
     while(particles.length<scaledCount)particles.push(spawn(w,h));
     particles.length=scaledCount;
@@ -565,8 +583,11 @@ export function createPhotoView() {
     actual++;
   }
   // Existing WebGL loop invokes this callback every frame.
-  document.addEventListener("visibilitychange",()=>{if(!document.hidden){resize();cinematics.resize()}});
+  document.addEventListener("visibilitychange",()=>{if(!document.hidden){resize();cinematics.resize();seasonalEffects.resize();update()}});
   requestEntities();
   update();
+  if(!state.enabled && state.model_view==="2d"){
+    document.getElementById("topview")?.click();
+  }
   return {frame,update,state};
 }
