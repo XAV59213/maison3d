@@ -36,6 +36,7 @@ html.card-mode{touch-action:pan-y}
 import * as THREE from "three";
 import {OrbitControls} from "three/addons/controls/OrbitControls.js";
 import {createAtmosphere} from "./weather-effects.js";
+import {createPhotoView} from "./photo-view.js";
 import {createPresentation} from "./presentation.js";
 import {createWorldAmbience} from "./world-ambience.js";
 import {createArchitectureKit} from "./architecture.js";
@@ -113,8 +114,9 @@ document.getElementById("tab3d").onclick=document.getElementById("orbit").onclic
 document.getElementById("export").onclick=()=>{let blob=new Blob([JSON.stringify({version:2,items:data},null,2)],{type:"application/json"});let a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="maison3d-projet.json";a.click();URL.revokeObjectURL(a.href)};
 document.getElementById("import").onclick=()=>document.getElementById("file").click();document.getElementById("file").onchange=async e=>{try{const obj=JSON.parse(await e.target.files[0].text());if(!Array.isArray(obj.items))throw Error("Format attendu : items[]");data=obj.items.filter(o=>o&&typeof o.id==="string"&&/^[a-z0-9_-]{1,80}$/i.test(o.id)&&typeof o.type==="string"&&["building","garage","ramp","shed","terrace","wall","gate","pool","swing","tree","furniture","steps","road"].includes(o.type)&&["x","z","w","d","h","r"].every(k=>Number.isFinite(Number(o[k])))&&o.w>0&&o.d>0&&o.h>0).map(o=>({...o,name:String(o.name||o.id).slice(0,120)}));if(!data.length)throw Error("Aucun objet valide");redraw();save()}catch(err){alert("Import impossible : "+err.message)}};
 const atmosphere=createAtmosphere({scene,sun,renderer});
+const photoView=createPhotoView();
 const presentation=createPresentation({THREE,camera,controls});
 const worldAmbience=createWorldAmbience({THREE,scene,sun});
 atmosphere.update();
-redraw();if(selected)choose(selected.id);addEventListener("resize",()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});renderer.setAnimationLoop((time)=>{presentation.frame();controls.update();worldAmbience.frame(time);renderer.render(scene,camera);atmosphere.frame(time)});
+redraw();if(selected)choose(selected.id);addEventListener("resize",()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});renderer.setAnimationLoop((time)=>{presentation.frame();controls.update();worldAmbience.frame(time);renderer.render(scene,camera);atmosphere.frame(time);photoView.frame(time)});
 </script></body></html>
