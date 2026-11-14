@@ -1,0 +1,70 @@
+name: Publish Maison 3D v2.3.0
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/publish-v2-3-0.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    if: github.repository == 'XAV59213/maison3d'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify v2.3.0 integration and photo weather modules
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import json
+          root = Path("custom_components/maison3d")
+          assert json.loads((root/"manifest.json").read_text())["version"] == "2.3.0"
+          for name in ("photo-view.js", "photo-cinematics.js", "maison3d-card.js", "maison3d-card-editor.js", "maison3d-panel.js"):
+              assert (root/"www"/name).is_file(), name
+          assert (root/"www"/"maison3d-reference.jpg").is_file()
+          assert (root/"sensor.py").is_file()
+          assert (root/"config_flow.py").is_file()
+          PY
+          node --check custom_components/maison3d/www/photo-view.js
+          node --check custom_components/maison3d/www/photo-cinematics.js
+          python3 -m unittest discover -s tests -q
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          if gh release view v2.3.0 >/dev/null 2>&1; then
+            echo "Release already published."
+            exit 0
+          fi
+          cat > /tmp/notes.md <<'EOF'
+          ## Maison 3D v2.3.0 — Vues photographiques et météo animée
+
+          Cette release réunit les PR #5 et #6 et les nouvelles fonctions destinées à Home Assistant / HACS.
+
+          ### Nouveautés
+          - Vue photo basée sur l'image officielle du propriétaire, conservant le mode Three.js interactif séparément.
+          - Images personnalisables pour les conditions météo, les 4 saisons et les 8 phases de lune.
+          - Effets visuels : soleil, nuages mobiles, pluie, reflets doux, neige, feuilles, vent, éclairs et éclairage nocturne.
+          - Réglage de l'intensité des animations de 0 à 200 %.
+          - Options de l'intégration Home Assistant : choix des capteurs météo, soleil, lune, température, vent, pluie, neige et nuages.
+          - Entités de diagnostic indiquant la disponibilité des sources et éditeur visuel de la carte Lovelace.
+
+          ### Images fournies
+          La photo officielle `/maison3d-assets/maison3d-reference.jpg` est incluse.
+          **Les 4 JPEG météo distincts jour, nuageux, pluie et neige ne sont pas encore inclus :** les chemins attendus, le repli sur la référence et un script d'import sont présents.
+          Pour les importer localement, consulter `scripts/import_weather_images.py` dans le dépôt.
+          Il reste possible d'utiliser ses propres images via `/local/maison3d/...` dans les réglages.
+
+          ### Mise à jour
+          Dans HACS, mettre à jour Maison 3D vers v2.3.0, redémarrer Home Assistant et rafraîchir le navigateur.
+          La ressource Lovelace reste `/maison3d-assets/maison3d-card.js`.
+
+          ### Contrôles
+          GitHub Actions : HACS, Hassfest et tests Python/JavaScript réussis.
+          Un essai dans une instance Home Assistant réelle reste nécessaire pour confirmer l'apparence et les options de configuration.
+          EOF
+          gh release create v2.3.0 --target "${GITHUB_SHA}" --title "Maison 3D v2.3.0 — Photos et météo animée" --notes-file /tmp/notes.md
