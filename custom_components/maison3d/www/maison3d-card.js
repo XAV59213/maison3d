@@ -32,6 +32,7 @@ class Maison3DCard extends HTMLElement {
         typeof url==="string" && url.length<500))
     };
     this._renderCard();
+    this._updateStates(true);
   }
 
   set hass(value) {
