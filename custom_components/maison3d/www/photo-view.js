@@ -17,6 +17,12 @@ export function createPhotoView() {
     moon_full_moon:"Pleine lune",moon_waning_gibbous:"Lune gibbeuse décroissante",
     moon_last_quarter:"Dernier quartier",moon_waning_crescent:"Dernier croissant"};
   const DEFAULT="/maison3d-assets/maison3d-reference.jpg";
+  const BUNDLED={
+    day:"/maison3d-assets/images/day.jpg",
+    cloudy:"/maison3d-assets/images/cloudy.jpg",
+    rain:"/maison3d-assets/images/rain.jpg",
+    snow:"/maison3d-assets/images/snow.jpg"
+  };
   const STORAGE="maison3d:photo-settings:v1";
   const allowedUrl=(url)=>typeof url==="string" && (
     url.startsWith("/local/") || url.startsWith("/maison3d-assets/") ||
@@ -199,6 +205,8 @@ export function createPhotoView() {
   document.body.append(section,nav,settings);
   let live={weather:null,sun:null,temperature:null,windSpeed:0,moon:null,rain:null,snow:null,cloud:null};
   let currentSrc="",active="day",lastFrame=0;
+  let missingBundled=new Set();
+  const attempted=new Set();
   let particles=[];
   const seasonNow=()=>{
     if(state.season!=="auto")return state.season;
@@ -251,7 +259,8 @@ export function createPhotoView() {
     active=selected;
     const night=state.mode==="night"||(state.mode==="auto"&&nighttime());
     const lunarKey=night&&moonPhase(live.moon)?"moon_"+moonPhase(live.moon):null;
-    const path=state.images[selected]||
+    const bundled=(BUNDLED[selected]&&!missingBundled.has(selected))?BUNDLED[selected]:"";
+    const path=state.images[selected]||bundled||
       (lunarKey && ["night","day"].includes(selected) ? state.images[lunarKey] : "")||
       (night?state.images.night:"")||
       (selected==="day"?state.images[seasonNow()]:"")||DEFAULT;
@@ -274,7 +283,16 @@ export function createPhotoView() {
   modelBtn.addEventListener("click",()=>{state.enabled=false;persist();settings.hidden=true;update()});
   optionsBtn.addEventListener("click",()=>{settings.hidden=!settings.hidden});
   close.addEventListener("click",()=>{settings.hidden=true});
-  image.addEventListener("error",()=>{error.hidden=false});
+  image.addEventListener("error",()=>{
+    const bundledKey=Object.keys(BUNDLED).find(k=>BUNDLED[k]===currentSrc);
+    if(bundledKey) {
+      missingBundled.add(bundledKey);
+      currentSrc=DEFAULT;
+      image.src=DEFAULT;
+      return;
+    }
+    error.hidden=false;
+  });
   image.addEventListener("load",()=>{error.hidden=true});
   function requestEntities(){
     // Explicit request; only this iframe's parent is allowed to receive it.
