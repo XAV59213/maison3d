@@ -25,7 +25,10 @@ FIELD_LABELS = {
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities):
     """Create a diagnostic sensor, visible on the Maison 3D integration page."""
-    async_add_entities([Maison3DConfigurationSensor(entry)])
+    async_add_entities([Maison3DConfigurationSensor(entry), *[
+        Maison3DSourceStatusSensor(entry, key, label)
+        for key, label in FIELD_LABELS.items()
+    ]])
 
 
 class Maison3DConfigurationSensor(SensorEntity):
@@ -107,6 +110,62 @@ class Maison3DConfigurationSensor(SensorEntity):
             self.async_on_remove(
                 async_track_state_change_event(
                     self.hass, entity_ids, self._async_source_updated
+                )
+            )
+
+    @callback
+    def _async_source_updated(self, event) -> None:
+        self.async_write_ha_state()
+
+
+class Maison3DSourceStatusSensor(SensorEntity):
+    """One visible diagnostic entity for every configurable sensor slot."""
+
+    _attr_has_entity_name = True
+    _attr_icon = "mdi:check-network-outline"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_should_poll = False
+
+    def __init__(self, entry: ConfigEntry, key: str, label: str) -> None:
+        self._entry = entry
+        self._key = key
+        self._attr_name = f"{label} - état"
+        self._attr_unique_id = f"{entry.entry_id}_{key}_status"
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, "maison3d_local")},
+            name="Maison 3D",
+            manufacturer="Maison 3D",
+            model="Tableau de bord 3D",
+        )
+
+    @property
+    def native_value(self) -> str:
+        entity_id = str(self._entry.options.get(self._key, DEFAULT_ENTITIES[self._key]) or "")
+        if not entity_id:
+            return "Non configuré"
+        entity = self.hass.states.get(entity_id)
+        if entity is None:
+            return "Introuvable"
+        if entity.state in ("unavailable", "unknown"):
+            return "Indisponible"
+        return "OK"
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        entity_id = str(self._entry.options.get(self._key, DEFAULT_ENTITIES[self._key]) or "")
+        entity = self.hass.states.get(entity_id) if entity_id else None
+        return {
+            "source_entity": entity_id,
+            "source_state": entity.state if entity else None,
+            "configured": bool(entity_id),
+        }
+
+    async def async_added_to_hass(self) -> None:
+        entity_id = str(self._entry.options.get(self._key, DEFAULT_ENTITIES[self._key]) or "")
+        if entity_id:
+            self.async_on_remove(
+                async_track_state_change_event(
+                    self.hass, [entity_id], self._async_source_updated
                 )
             )
 
