@@ -4,6 +4,15 @@ class Maison3DPanel extends HTMLElement {
     super();
     this._lastConditions = "";
     this._loaded = false;
+    this._choices = {weather_entity:"",sun_entity:"sun.sun",moon_entity:"sensor.moon_phase"};
+    this._onFrameMessage = event => {
+      if(event.origin!==window.location.origin || event.source!==this._frame?.contentWindow)return;
+      if(event.data?.type!=="maison3d:entity-selection")return;
+      for(const key of ["weather_entity","sun_entity","moon_entity"]){
+        if(typeof event.data[key]==="string" && event.data[key].length<150)this._choices[key]=event.data[key];
+      }
+      this.sendCurrentConditions(true);
+    };
   }
 
   set hass(value) {
@@ -12,6 +21,7 @@ class Maison3DPanel extends HTMLElement {
   }
 
   connectedCallback() {
+    window.addEventListener("message",this._onFrameMessage);
     if (this.shadowRoot) return;
     const root = this.attachShadow({ mode: "open" });
     const style = document.createElement("style");
@@ -32,16 +42,25 @@ class Maison3DPanel extends HTMLElement {
     root.append(style, frame);
   }
 
+  disconnectedCallback() {
+    window.removeEventListener("message",this._onFrameMessage);
+    this._loaded=false;
+  }
+
   sendCurrentConditions(force = false) {
     if (!this._loaded || !this._hass || !this._frame?.contentWindow) return;
 
     const states = this._hass.states || {};
     // Prefer a known/available weather entity rather than an unknown one.
-    const weather = Object.values(states).find(
+    const requested = this._choices.weather_entity && states[this._choices.weather_entity];
+    const weather = requested || Object.values(states).find(
       entity => entity.entity_id?.startsWith("weather.") &&
         entity.state !== "unknown" && entity.state !== "unavailable"
     );
-    const sun = states["sun.sun"];
+    const sun = states[this._choices.sun_entity || "sun.sun"];
+    const moonState = states[this._choices.moon_entity] ||
+      Object.values(states).find(entity=>entity.entity_id?.startsWith("sensor.") &&
+        entity.entity_id.includes("moon") && entity.state!=="unavailable");
     const attributes = weather?.attributes || {};
     const payload = {
       type: "maison3d:conditions",
@@ -50,6 +69,7 @@ class Maison3DPanel extends HTMLElement {
       windSpeed: typeof attributes.wind_speed === "number" ? attributes.wind_speed : null,
       windSpeedUnit: attributes.wind_speed_unit ?? "",
       sun: sun?.state ?? null,
+      moon: moonState?.state ?? null,
     };
 
     const next = JSON.stringify(payload);
