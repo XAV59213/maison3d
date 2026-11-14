@@ -1,0 +1,73 @@
+name: Publish Maison 3D v2.3.8
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/publish-v2-3-8.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    if: github.repository == 'XAV59213/maison3d'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Verify GPU memory release, render pause and version
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path("custom_components/maison3d")
+          manifest=json.loads((root/"manifest.json").read_text())
+          assert manifest["version"]=="2.3.8"
+          page=(root/"www/index.html").read_text()
+          card=(root/"www/maison3d-card.js").read_text()
+          assert "function disposeUnused(groups)" in page
+          assert "disposeUnused(old)" in page
+          assert "if(document.hidden||offscreen)return" in page
+          assert 'classList.contains("photo-active")' in page
+          assert "new IntersectionObserver" in card
+          assert 'type:"maison3d:visibility"' in card
+          PY
+          node --check custom_components/maison3d/www/maison3d-card.js
+          node tests/test_main_photo.mjs
+          node tests/test_seasons.mjs
+          python3 -m unittest discover -s tests -q
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          if gh release view v2.3.8 >/dev/null 2>&1; then
+            echo "v2.3.8 already exists"
+            exit 0
+          fi
+          cat >/tmp/notes.md <<'NOTES'
+          ## Maison 3D v2.3.8 — 3D plus légère : mémoire GPU libérée et rendu en pause
+
+          ### Mémoire GPU libérée
+          - Chaque modification d'objet dans la vue 3D éditable libère désormais les anciennes géométries et matériaux, sans toucher aux matériaux partagés encore utilisés.
+          - Mesure : après 30 modifications, **370 géométries** en mémoire au lieu de **9 695** auparavant.
+
+          ### Rendu 3D en pause quand il ne sert à rien
+          - Plus de rendu WebGL quand la photo recouvre la scène : **0 image rendue** au lieu d'environ 9 par seconde en vue photo. Les effets météo, saisons et lune de la photo restent animés.
+          - Boucle en pause quand l'onglet est masqué.
+          - Carte Lovelace : rendu en pause quand la carte sort de l'écran, reprise automatique au retour.
+
+          ### Fonctionnalités conservées
+          Three.js embarqué (hors-ligne), photo personnalisable, effets ON/OFF, plan 2D, modèle 3D éditable (rotation, zoom, édition, export/import JSON), animations météo, phase de lune et quatre saisons.
+
+          ### Installer
+          Dans HACS, mettre à jour **Maison 3D vers v2.3.8**, redémarrer Home Assistant puis actualiser le navigateur (Ctrl + F5). La ressource carte reste `/maison3d-assets/maison3d-card.js`.
+
+          ### Contrôles
+          La PR #14 a passé les tests Python/JavaScript, HACS et Hassfest, ainsi qu'un test Chrome headless (rendu logiciel) : scène 3D, rotation, zoom, redimensionnement, édition et export JSON. Le rendu réel sur votre Home Assistant devra être vérifié.
+          NOTES
+          sed -i 's/^          //' /tmp/notes.md
+          gh release create v2.3.8 --target "${GITHUB_SHA}" --latest --title "Maison 3D v2.3.8 — 3D plus légère : mémoire GPU libérée et rendu en pause" --notes-file /tmp/notes.md
