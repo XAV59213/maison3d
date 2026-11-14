@@ -130,6 +130,31 @@ class TestMaison3D(unittest.TestCase):
         panel = (www / "maison3d-panel.js").read_text(encoding="utf-8")
         self.assertIn("min-height:240px", panel)
 
+    def test_neutral_project_name(self):
+        """No personal project name in the sources; configurable name, default « Maison 3D »."""
+        for path in ROOT.rglob("*"):
+            if ".git" in path.parts or "__pycache__" in path.parts or not path.is_file():
+                continue
+            if path.suffix in {".jpg", ".png", ".zip", ".pyc"}:
+                continue
+            text = path.read_text(encoding="utf-8", errors="ignore")
+            self.assertNotIn("Mar" + "ly", text, str(path))
+        const = (COMPONENT / "const.py").read_text(encoding="utf-8")
+        self.assertIn('DEFAULT_PROJECT_NAME = "Maison 3D"', const)
+        flow = (COMPONENT / "config_flow.py").read_text(encoding="utf-8")
+        self.assertIn('vol.Optional("project_name"', flow)
+        self.assertIn('"project_name":', (COMPONENT / "sensor.py").read_text(encoding="utf-8"))
+        www = COMPONENT / "www"
+        page = (www / "index.html").read_text(encoding="utf-8")
+        self.assertEqual(page.count('<span class="project-name">Maison 3D</span>'), 2)
+        self.assertIn("project_name:", (www / "maison3d-panel.js").read_text(encoding="utf-8"))
+        card = (www / "maison3d-card.js").read_text(encoding="utf-8")
+        self.assertIn("project_name:this._projectName()", card)
+        self.assertIn('field(base,"project_name"', (www / "maison3d-card-editor.js").read_text(encoding="utf-8"))
+        for name in ("strings.json", "translations/fr.json", "translations/en.json"):
+            data = json.loads((COMPONENT / name).read_text(encoding="utf-8"))
+            self.assertIn("project_name", data["options"]["step"]["init"]["data"], name)
+
     def test_photo_upload_from_home_assistant(self):
         """Photos sent from the HA UI: admin-only view, own static folder, media-source ids."""
         www = COMPONENT / "www"

@@ -85,6 +85,7 @@ class Maison3DPanel extends HTMLElement {
     };
     const payload = {
       type: "maison3d:conditions",
+      project_name: typeof diagnostic?.attributes?.project_name === "string" ? diagnostic.attributes.project_name : "",
       base_image_url: this._media.url(typeof diagnostic?.attributes?.base_image_url === "string" ? diagnostic.attributes.base_image_url : ""),
       effects_enabled: diagnostic?.attributes?.effects_enabled !== false,
       frost_enabled: diagnostic?.attributes?.frost_enabled !== false,
