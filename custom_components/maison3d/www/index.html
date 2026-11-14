@@ -14,7 +14,11 @@ button:hover,.on{background:#1270e9!important}.brand{position:fixed;top:10px;lef
 .editor .cols{display:grid;grid-template-columns:1fr 1fr;gap:7px}.editor .actions{display:flex;gap:5px;margin-top:11px;flex-wrap:wrap}.editor button{background:#253e60}
 .hidden{display:none}#hint{position:fixed;right:15px;top:10px;background:#101923de;padding:11px;border-radius:10px;font-size:12px;color:#eee;z-index:2}
 @media(max-width:850px){.brand{font-size:12px;max-width:142px}.toolbar{top:77px;width:calc(100% - 12px);overflow:auto;justify-content:flex-start}.toolbar button{white-space:nowrap}.editor{width:230px}.modes{top:160px}#hint{font-size:10px;right:5px}}
+html.card-mode .toolbar,html.card-mode .side,html.card-mode .bottom,html.card-mode .brand,html.card-mode .editor,html.card-mode #hint,html.card-mode .modes{display:none!important}
+html.card-mode #maison3d-weather-status{top:8px!important;right:8px!important;font-size:11px!important;max-width:calc(100% - 16px)!important}
+html.card-mode{touch-action:pan-y}
 </style></head><body>
+<script>if(new URLSearchParams(location.search).get("mode")==="card")document.documentElement.classList.add("card-mode");</script>
 <div id="view"></div><div class="brand">⌂ Maison 3D V2.0<small>Mode édition · Propriété Marly</small></div>
 <nav class="toolbar"><button class="on" id="tab3d">▣ 3D</button><button id="topview">▤ Plan 2D</button><button id="terrain">△ Terrain</button><button id="addsteps">▤ Escalier</button><button id="addtree">♧ Végétation</button><button id="addchair">▣ Mobilier</button><button id="toggle">⚙ Édition</button></nav>
 <div id="hint">☀ Scène éditable · Déplacement, rotation, taille · Sauvegarde locale</div>
