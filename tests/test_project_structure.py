@@ -130,6 +130,22 @@ class TestMaison3D(unittest.TestCase):
         self.assertIn("ctx.lineTo(x,y)", photo)
         self.assertIn("moonPhase(live.moon)", photo)
 
+    def test_bundled_weather_assets_in_release(self):
+        from pathlib import Path
+        from hashlib import sha256
+        images = COMPONENT / "www" / "images"
+        photo = (COMPONENT / "www" / "photo-view.js").read_text(encoding="utf-8")
+        for name in ("jour.jpg", "nuageux.jpg", "pluie.jpg", "neige.jpg"):
+            path = images / name
+            self.assertTrue(path.is_file(), f"Missing bundled photo: {name}")
+            data = path.read_bytes()
+            self.assertGreater(len(data), 50000)
+            self.assertTrue(data.startswith(bytes.fromhex("ffd8ff")))
+            self.assertTrue(data.endswith(bytes.fromhex("ffd9")))
+            self.assertIn('images/' + name, photo)
+        self.assertEqual(len({sha256((images / n).read_bytes()).hexdigest()
+            for n in ("jour.jpg", "nuageux.jpg", "pluie.jpg", "neige.jpg")}), 4)
+
     def test_photo_weather_cinematics_and_import(self):
         module = (COMPONENT / "www" / "photo-cinematics.js").read_text(encoding="utf-8")
         photo = (COMPONENT / "www" / "photo-view.js").read_text(encoding="utf-8")
