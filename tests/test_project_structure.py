@@ -57,6 +57,24 @@ class TestMaison3D(unittest.TestCase):
         self.assertIn("architecture.build(g,o)", page)
         self.assertIn("architecture.landscape(scene)", page)
 
+    def test_realistic_views_and_live_3d_weather(self):
+        page = (COMPONENT / "www" / "index.html").read_text(encoding="utf-8")
+        presentation = (COMPONENT / "www" / "presentation.js").read_text(encoding="utf-8")
+        ambience = (COMPONENT / "www" / "world-ambience.js").read_text(encoding="utf-8")
+        effects = (COMPONENT / "www" / "weather-effects.js").read_text(encoding="utf-8")
+        self.assertIn('from "./presentation.js"', page)
+        self.assertIn('from "./world-ambience.js"', page)
+        self.assertIn("createPresentation({THREE,camera,controls})", page)
+        self.assertIn("createWorldAmbience({THREE,scene,sun})", page)
+        for key in ("reference:", "elevated:", "garden:", "garage:"):
+            self.assertIn(key, presentation)
+        self.assertIn("THREE.Vector3", presentation)
+        self.assertIn("THREE.Points(", ambience)
+        self.assertIn("maison3d:weather", ambience)
+        self.assertIn("windSpeed", ambience)
+        self.assertIn('CustomEvent("maison3d:weather"', effects)
+        self.assertIn("live?.sun", effects)
+
     def test_exact_approved_readme_image(self):
         self.assertTrue((ROOT / "assets" / "maison3d-reference.jpg").is_file())
         content = (ROOT / "README.md").read_text(encoding="utf-8")
