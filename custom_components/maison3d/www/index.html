@@ -115,5 +115,6 @@ document.getElementById("import").onclick=()=>document.getElementById("file").cl
 const atmosphere=createAtmosphere({scene,sun,renderer});
 const presentation=createPresentation({THREE,camera,controls});
 const worldAmbience=createWorldAmbience({THREE,scene,sun});
+atmosphere.update();
 redraw();if(selected)choose(selected.id);addEventListener("resize",()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});renderer.setAnimationLoop((time)=>{presentation.frame();controls.update();worldAmbience.frame(time);renderer.render(scene,camera);atmosphere.frame(time)});
 </script></body></html>
