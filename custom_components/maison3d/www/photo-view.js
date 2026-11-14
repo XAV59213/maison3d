@@ -34,7 +34,7 @@ export function createPhotoView() {
     images:defaults(),base_image_url:"",moon_entity:"sensor.moon_phase",
     weather_entity:"",sun_entity:"sun.sun",
     temperature_entity:"",wind_entity:"",rain_entity:"",snow_entity:"",cloud_entity:"",
-    enabled:true,model_view:"3d",mode:"auto",effect:true,season:"auto",effect_intensity:1,moon_preview:"auto",use_weather_photos:false
+    enabled:true,model_view:"3d",mode:"auto",effect:true,effect_override:null,season:"auto",effect_intensity:1,moon_preview:"auto",use_weather_photos:false
   };
   try{
     const saved=JSON.parse(localStorage.getItem(STORAGE));
@@ -48,7 +48,7 @@ export function createPhotoView() {
       if(allowedUrl(saved.base_image_url))state.base_image_url=saved.base_image_url;
       if(typeof saved.enabled==="boolean")state.enabled=saved.enabled;
       if(saved.model_view==="2d"||saved.model_view==="3d")state.model_view=saved.model_view;
-      if(typeof saved.effect==="boolean")state.effect=saved.effect;
+      if(typeof saved.effect_override==="boolean")state.effect_override=saved.effect_override;
       if(typeof saved.use_weather_photos==="boolean")state.use_weather_photos=saved.use_weather_photos;
       if(Number.isFinite(saved.effect_intensity))state.effect_intensity=Math.min(2,Math.max(0,saved.effect_intensity));
       if(typeof saved.mode==="string"&&["auto",...KEYS].includes(saved.mode))state.mode=saved.mode;
@@ -106,7 +106,9 @@ export function createPhotoView() {
   const autoBtn=document.createElement("button");
   autoBtn.type="button";autoBtn.textContent="◉ Auto";
   autoBtn.title="Utiliser le soleil et la météo réels de Home Assistant";
-  nav.append(photoBtn,planBtn,modelBtn,nightBtn,dayBtn,autoBtn,optionsBtn);
+  const effectsBtn=document.createElement("button");
+  effectsBtn.type="button";effectsBtn.title="Activer ou désactiver les effets animés";
+  nav.append(photoBtn,planBtn,modelBtn,nightBtn,dayBtn,autoBtn,effectsBtn,optionsBtn);
   const seasonalNav=document.createElement("nav");
   seasonalNav.id="maison3d-photo-seasons";
   seasonalNav.setAttribute("aria-label","Tester les saisons de la vue photo");
@@ -291,8 +293,16 @@ export function createPhotoView() {
   settings.append(baseNotice);
   const checkbox=document.createElement("label");checkbox.className="checkbox";
   const effect=document.createElement("input");effect.type="checkbox";effect.checked=state.effect;
-  effect.addEventListener("change",()=>{state.effect=effect.checked;persist();update()});
-  checkbox.append(effect,document.createTextNode("Animations météo"));settings.append(checkbox);
+  const setEffects=value=>{
+    state.effect=Boolean(value);
+    state.effect_override=state.effect;
+    effect.checked=state.effect;
+    effectsBtn.textContent=state.effect?"✦ Effets ON":"○ Effets OFF";
+    persist();update();
+  };
+  effect.addEventListener("change",()=>setEffects(effect.checked));
+  effectsBtn.addEventListener("click",()=>setEffects(!state.effect));
+  checkbox.append(effect,document.createTextNode("Activer les effets météo, lumineux et saisonniers"));settings.append(checkbox);
   const strengthLabel=document.createElement("label");
   strengthLabel.textContent="Intensité des animations (0 = aucune, 200 % = forte)";
   const strength=document.createElement("input");
@@ -322,9 +332,9 @@ export function createPhotoView() {
   style.textContent=[
     "#maison3d-photo-view{position:fixed;inset:0;z-index:5;overflow:hidden;background:#111c2d}",
     "#maison3d-photo-view img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:filter 1.3s ease}",
-    "#maison3d-photo-view.photo-night img{filter:brightness(.36) saturate(.70) contrast(1.09)}",
+    "#maison3d-photo-view.photo-night:not(.effects-off) img{filter:brightness(.36) saturate(.70) contrast(1.09)}",
     "#maison3d-photo-view.photo-night .moon-phase{filter:drop-shadow(0 0 18px #cdd9ff)}",
-    "#maison3d-photo-view.photo-night::after{content:'';position:absolute;pointer-events:none;inset:0;",
+    "#maison3d-photo-view.photo-night:not(.effects-off)::after{content:'';position:absolute;pointer-events:none;inset:0;",
     "background:radial-gradient(ellipse at 23% 10%,#d4def51c,transparent 35%),",
     "linear-gradient(180deg,#06102b29 0%,transparent 55%,#06102366 100%)}",
     "#maison3d-photo-view .photo-light{position:absolute;inset:0;pointer-events:none;transition:background 1s}",
@@ -450,12 +460,13 @@ export function createPhotoView() {
     const weatherTint=selected==="snow"||selected==="winter"?"linear-gradient(#e7f5ff18,#eaf7ff29)":
       selected==="storm"?"#101b3866":selected==="rain"?"#26344746":
       selected==="cloudy"?"#5b677523":"transparent";
-    tint.style.background=weatherTint;
+    tint.style.background=state.effect?weatherTint:"transparent";
     tint.style.opacity=night?"1":"0.8";
     section.classList.toggle("photo-night",night);
+    section.classList.toggle("effects-off",!state.effect);
     const currentMoon=state.moon_preview==="auto"?live.moon:state.moon_preview;
     const phaseName=skyMoon.normalize(currentMoon);
-    skyMoon.draw(phaseName,night,Boolean(phaseName),state.effect_intensity);
+    skyMoon.draw(phaseName,night,state.effect&&Boolean(phaseName),state.effect_intensity);
     moon.textContent=""; // The phase is rendered on the sky, including daytime.
     for(const [key,btn] of seasonButtons)btn.setAttribute("aria-pressed",String(state.season===key));
     for(const [key,btn] of testButtons)btn.setAttribute("aria-pressed",String(state.mode===key));
@@ -468,6 +479,8 @@ export function createPhotoView() {
     nightBtn.setAttribute("aria-pressed",String(state.mode==="night"));
     dayBtn.setAttribute("aria-pressed",String(state.mode==="day"));
     autoBtn.setAttribute("aria-pressed",String(state.mode==="auto"));
+    effectsBtn.textContent=state.effect?"✦ Effets ON":"○ Effets OFF";
+    effectsBtn.setAttribute("aria-pressed",String(state.effect));
     photoBtn.setAttribute("aria-pressed",String(state.enabled));
     modelBtn.setAttribute("aria-pressed",String(!state.enabled && state.model_view==="3d"));
     planBtn.setAttribute("aria-pressed",String(!state.enabled && state.model_view==="2d"));
@@ -518,6 +531,9 @@ export function createPhotoView() {
   window.addEventListener("message",event=>{
     if(event.source!==window.parent||event.origin!==window.location.origin)return;
     if(event.data?.type!=="maison3d:conditions")return;
+    const globalEffects=event.data.effects_enabled!==false;
+    state.effect=typeof state.effect_override==="boolean"?state.effect_override:globalEffects;
+    effect.checked=state.effect;
     const supplied=event.data.base_image_url;
     parentBasePhoto=allowedUrl(supplied)?supplied:"";
     if(event.data.images && typeof event.data.images==="object"){
