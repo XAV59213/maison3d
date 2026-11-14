@@ -36,6 +36,17 @@ class TestMaison3D(unittest.TestCase):
         self.assertIn("weather.", panel)
         self.assertIn("sun.sun", panel)
 
+    def test_interactive_lovelace_card(self):
+        card = (COMPONENT / "www" / "maison3d-card.js").read_text(encoding="utf-8")
+        page = (COMPONENT / "www" / "index.html").read_text(encoding="utf-8")
+        self.assertIn('customElements.define("maison3d-card"', card)
+        self.assertIn("custom:maison3d-card", card)
+        self.assertIn("maison3d:conditions", card)
+        self.assertIn("mode=card", card)
+        self.assertIn('get("mode")==="card"', page)
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        self.assertIn("maison3d-assets/maison3d-card.js", readme)
+
     def test_exact_approved_readme_image(self):
         self.assertTrue((ROOT / "assets" / "maison3d-reference.jpg").is_file())
         content = (ROOT / "README.md").read_text(encoding="utf-8")
