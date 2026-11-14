@@ -201,7 +201,7 @@ class TestMaison3D(unittest.TestCase):
         self.assertIn('use_weather_photos:false', photo)
         self.assertIn('const candidate=state.use_weather_photos ?', photo)
         self.assertIn(') : mainPhoto;', photo)
-        self.assertIn("tint.style.background=weatherTint", photo)
+        self.assertIn('tint.style.background=state.effect?weatherTint:"transparent"', photo)
         self.assertIn('photoBtn.setAttribute("aria-pressed"', photo)
         self.assertNotIn('realBtn.setAttribute(', photo)
         self.assertIn('swapPhotos.addEventListener("change"', photo)
