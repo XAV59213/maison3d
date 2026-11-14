@@ -75,6 +75,7 @@ class Maison3DPanel extends HTMLElement {
     };
     const payload = {
       type: "maison3d:conditions",
+      base_image_url: typeof diagnostic?.attributes?.base_image_url === "string" ? diagnostic.attributes.base_image_url : "",
       time_zone: this._hass.config?.time_zone ?? "UTC",
       weather: weather?.state ?? null,
       temperature: numeric("temperature_entity", typeof attributes.temperature === "number" ? attributes.temperature : null),
