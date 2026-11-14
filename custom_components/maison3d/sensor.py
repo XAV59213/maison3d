@@ -98,6 +98,7 @@ class Maison3DConfigurationSensor(SensorEntity):
         return {
             "maison3d_config": True,
             "entities": selected,
+            "base_image_url": str(self._entry.options.get("base_image_url", "") or ""),
             "sensor_statuses": statuses,
             "configured_count": sum(bool(v) for v in selected.values()),
             "available_count": sum(s["state"] == "ok" for s in statuses.values()),
