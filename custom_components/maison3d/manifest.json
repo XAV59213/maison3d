@@ -1,18 +1,19 @@
 {
   "domain": "maison3d",
   "name": "Maison 3D",
-  "version": "2.0.0",
-  "config_flow": true,
-  "documentation": "https://github.com/XAV59213/maison3d",
-  "issue_tracker": "https://github.com/XAV59213/maison3d/issues",
   "codeowners": [
     "@XAV59213"
   ],
+  "config_flow": true,
   "dependencies": [
     "http",
     "frontend",
     "panel_custom"
   ],
+  "documentation": "https://github.com/XAV59213/maison3d",
+  "integration_type": "service",
+  "iot_class": "local_push",
+  "issue_tracker": "https://github.com/XAV59213/maison3d/issues",
   "requirements": [],
-  "iot_class": "local_push"
+  "version": "2.0.0"
 }
