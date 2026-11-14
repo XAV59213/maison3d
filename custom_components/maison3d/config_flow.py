@@ -85,6 +85,7 @@ class Maison3DOptionsFlow(config_entries.OptionsFlowWithReload):
                 options.update({k: v for k, v in user_input.items() if k in SENSOR_OPTIONS})
                 options["base_image_url"] = base_image_url
                 options["effects_enabled"] = bool(user_input.get("effects_enabled", True))
+                options["frost_enabled"] = bool(user_input.get("frost_enabled", True))
                 return self.async_create_entry(data=options)
 
         schema = {}
@@ -105,6 +106,12 @@ class Maison3DOptionsFlow(config_entries.OptionsFlowWithReload):
             "suggested_value": (
                 user_input.get("effects_enabled", True) if user_input is not None
                 else self.config_entry.options.get("effects_enabled", True)
+            ),
+        })] = selector.BooleanSelector()
+        schema[vol.Optional("frost_enabled", description={
+            "suggested_value": (
+                user_input.get("frost_enabled", True) if user_input is not None
+                else self.config_entry.options.get("frost_enabled", True)
             ),
         })] = selector.BooleanSelector()
         return self.async_show_form(

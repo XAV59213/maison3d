@@ -4,11 +4,12 @@ class Maison3DPanel extends HTMLElement {
     super();
     this._lastConditions = "";
     this._loaded = false;
-    this._choices = {weather_entity:"",sun_entity:"sun.sun",moon_entity:"sensor.moon_phase"};
+    this._choices = {weather_entity:"",sun_entity:"sun.sun",moon_entity:"sensor.moon_phase",
+      temperature_entity:"",wind_entity:"",rain_entity:"",snow_entity:"",cloud_entity:""};
     this._onFrameMessage = event => {
       if(event.origin!==window.location.origin || event.source!==this._frame?.contentWindow)return;
       if(event.data?.type!=="maison3d:entity-selection")return;
-      for(const key of ["weather_entity","sun_entity","moon_entity"]){
+      for(const key of Object.keys(this._choices)){
         if(typeof event.data[key]==="string" && event.data[key].length<150)this._choices[key]=event.data[key];
       }
       this.sendCurrentConditions(true);
@@ -77,9 +78,11 @@ class Maison3DPanel extends HTMLElement {
       type: "maison3d:conditions",
       base_image_url: typeof diagnostic?.attributes?.base_image_url === "string" ? diagnostic.attributes.base_image_url : "",
       effects_enabled: diagnostic?.attributes?.effects_enabled !== false,
+      frost_enabled: diagnostic?.attributes?.frost_enabled !== false,
       time_zone: this._hass.config?.time_zone ?? "UTC",
       weather: weather?.state ?? null,
       temperature: numeric("temperature_entity", typeof attributes.temperature === "number" ? attributes.temperature : null),
+      temperatureUnit: states[choice("temperature_entity")]?.attributes?.unit_of_measurement ?? attributes.temperature_unit ?? "",
       windSpeed: numeric("wind_entity", typeof attributes.wind_speed === "number" ? attributes.wind_speed : null),
       rain: numeric("rain_entity", null),
       snow: numeric("snow_entity", null),

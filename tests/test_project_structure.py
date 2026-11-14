@@ -65,6 +65,35 @@ class TestMaison3D(unittest.TestCase):
         self.assertIn('type:"maison3d:visibility"', card)
         self.assertIn("this._observer?.disconnect()", card)
 
+    def test_frost_effect_wiring(self):
+        """Frost overlay: option flow, diagnostics, card/panel bridge and photo toggle."""
+        www = COMPONENT / "www"
+        config = (COMPONENT / "config_flow.py").read_text(encoding="utf-8")
+        sensor = (COMPONENT / "sensor.py").read_text(encoding="utf-8")
+        card = (www / "maison3d-card.js").read_text(encoding="utf-8")
+        panel = (www / "maison3d-panel.js").read_text(encoding="utf-8")
+        editor = (www / "maison3d-card-editor.js").read_text(encoding="utf-8")
+        photo = (www / "photo-view.js").read_text(encoding="utf-8")
+        frost = (www / "frost-effects.js").read_text(encoding="utf-8")
+        self.assertIn('vol.Optional("frost_enabled"', config)
+        self.assertIn('"frost_enabled":', sensor)
+        self.assertIn("frost_enabled:this._config.frost_enabled??", card)
+        self.assertIn("frost_enabled: diagnostic?.attributes?.frost_enabled !== false", panel)
+        self.assertIn('toggle("frost_enabled"', editor)
+        self.assertIn('from "./frost-effects.js"', photo)
+        self.assertIn('frostBtn.addEventListener("click"', photo)
+        self.assertIn("frost.frame(time,frostTarget())", photo)
+        self.assertIn("frost.frame(time,0)", photo)
+        self.assertIn("prefers-reduced-motion", frost)
+        for key in ("temperature_entity", "wind_entity", "rain_entity", "snow_entity", "cloud_entity"):
+            self.assertIn(key + ':""', panel)
+        self.assertIn("for(const key of Object.keys(this._choices))", panel)
+        for language in ("fr", "en"):
+            tr = json.loads((COMPONENT / "translations" / f"{language}.json").read_text(encoding="utf-8"))
+            self.assertIn("frost_enabled", tr["options"]["step"]["init"]["data"])
+        strings = json.loads((COMPONENT / "strings.json").read_text(encoding="utf-8"))
+        self.assertIn("frost_enabled", strings["options"]["step"]["init"]["data"])
+
     def test_panel_bridge(self):
         panel = (COMPONENT / "www" / "maison3d-panel.js").read_text(encoding="utf-8")
         self.assertIn("postMessage", panel)
@@ -294,7 +323,8 @@ class TestMaison3D(unittest.TestCase):
         self.assertIn('base_image_url: typeof diagnostic?.attributes?.base_image_url', panel)
         self.assertIn('effects_enabled: diagnostic?.attributes?.effects_enabled !== false', panel)
         self.assertIn('this._changed("base_image_url"', editor)
-        self.assertIn('effectsSelect.addEventListener("change"', editor)
+        self.assertIn('select.addEventListener("change"', editor)
+        self.assertIn('toggle("effects_enabled"', editor)
         self.assertIn("resolveMainPhoto({", photo)
         self.assertIn("previewBtn.addEventListener", photo)
         self.assertIn('effectsBtn.addEventListener("click"', photo)

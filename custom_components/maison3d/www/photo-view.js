@@ -8,6 +8,7 @@ import {createPhotoCinematics} from "./photo-cinematics.js";
 import {createMoonOverlay} from "./moon-effects.js";
 import {automaticSeason,SEASON_LABELS,createSeasonEffects} from "./season-effects.js";
 import {DEFAULT_MAIN_PHOTO,allowedPhotoUrl,resolveMainPhoto} from "./photo-source.js";
+import {createFrostEffects,frostLevel,toCelsius} from "./frost-effects.js";
 export function createPhotoView() {
   const KEYS=["day","night","cloudy","rain","snow","wind","storm",
     "spring","summer","autumn","winter",
@@ -34,7 +35,7 @@ export function createPhotoView() {
     images:defaults(),base_image_url:"",moon_entity:"sensor.moon_phase",
     weather_entity:"",sun_entity:"sun.sun",
     temperature_entity:"",wind_entity:"",rain_entity:"",snow_entity:"",cloud_entity:"",
-    enabled:true,model_view:"3d",mode:"auto",effect:true,effect_override:null,season:"auto",effect_intensity:1,moon_preview:"auto",use_weather_photos:false
+    enabled:true,model_view:"3d",mode:"auto",effect:true,effect_override:null,frost:true,frost_override:null,frost_preview:false,season:"auto",effect_intensity:1,moon_preview:"auto",use_weather_photos:false
   };
   try{
     const saved=JSON.parse(localStorage.getItem(STORAGE));
@@ -49,6 +50,8 @@ export function createPhotoView() {
       if(typeof saved.enabled==="boolean")state.enabled=saved.enabled;
       if(saved.model_view==="2d"||saved.model_view==="3d")state.model_view=saved.model_view;
       if(typeof saved.effect_override==="boolean")state.effect_override=saved.effect_override;
+      if(typeof saved.frost_override==="boolean")state.frost_override=saved.frost_override;
+      if(typeof saved.frost_preview==="boolean")state.frost_preview=saved.frost_preview;
       if(typeof saved.use_weather_photos==="boolean")state.use_weather_photos=saved.use_weather_photos;
       if(Number.isFinite(saved.effect_intensity))state.effect_intensity=Math.min(2,Math.max(0,saved.effect_intensity));
       if(typeof saved.mode==="string"&&["auto",...KEYS].includes(saved.mode))state.mode=saved.mode;
@@ -74,6 +77,9 @@ export function createPhotoView() {
   const canvas=document.createElement("canvas");
   canvas.setAttribute("aria-hidden","true");
   const ctx=canvas.getContext("2d");
+  const frostCanvas=document.createElement("canvas");
+  frostCanvas.className="frost-overlay";
+  frostCanvas.setAttribute("aria-hidden","true");
   const status=document.createElement("div");
   status.id="maison3d-photo-status";
   status.setAttribute("role","status");
@@ -82,7 +88,8 @@ export function createPhotoView() {
   const error=document.createElement("div");
   error.className="photo-error";error.hidden=true;
   error.textContent="Image inaccessible : corrigez son URL dans les réglages Photo.";
-  section.append(image,tint,cinematicCanvas,seasonalCanvas,canvas,status,moon,error);
+  section.append(image,tint,cinematicCanvas,seasonalCanvas,canvas,frostCanvas,status,moon,error);
+  const frost=createFrostEffects(frostCanvas);
   const seasonalEffects=createSeasonEffects(seasonalCanvas);
   const skyMoon=createMoonOverlay({container:section});
   const cinematics=createPhotoCinematics(cinematicCanvas);
@@ -108,7 +115,9 @@ export function createPhotoView() {
   autoBtn.title="Utiliser le soleil et la météo réels de Home Assistant";
   const effectsBtn=document.createElement("button");
   effectsBtn.type="button";effectsBtn.title="Activer ou désactiver les effets animés";
-  nav.append(photoBtn,planBtn,modelBtn,nightBtn,dayBtn,autoBtn,effectsBtn,optionsBtn);
+  const frostBtn=document.createElement("button");
+  frostBtn.type="button";frostBtn.title="Activer ou désactiver l'effet gel (température ≤ 0 °C)";
+  nav.append(photoBtn,planBtn,modelBtn,nightBtn,dayBtn,autoBtn,effectsBtn,frostBtn,optionsBtn);
   const seasonalNav=document.createElement("nav");
   seasonalNav.id="maison3d-photo-seasons";
   seasonalNav.setAttribute("aria-label","Tester les saisons de la vue photo");
@@ -254,6 +263,13 @@ export function createPhotoView() {
     testGrid.append(btn);testButtons.set(key,btn);
   }
   testSection.append(testGrid);
+  // Frost is an overlay on top of any ambience: test it independently of the temperature.
+  const frostTest=document.createElement("button");
+  frostTest.type="button";frostTest.textContent="🧊 Tester le gel";
+  frostTest.addEventListener("click",()=>{
+    state.enabled=true;state.frost_preview=!state.frost_preview;persist();update();
+  });
+  testGrid.append(frostTest);
   const moonPreview=selectField("Tester la phase de lune (jour ou nuit)",[
     ["auto","Depuis le capteur Home Assistant"],
     ["new_moon","Nouvelle lune"],["waxing_crescent","Premier croissant"],
@@ -267,7 +283,7 @@ export function createPhotoView() {
   const resetTest=document.createElement("button");
   resetTest.type="button";resetTest.textContent="◉ Revenir à la météo réelle";
   resetTest.addEventListener("click",()=>{
-    state.mode="auto";state.season="auto";state.moon_preview="auto";
+    state.mode="auto";state.season="auto";state.moon_preview="auto";state.frost_preview=false;
     state.enabled=true;selectMode.value="auto";seasonSelect.value="auto";
     moonPreview.value="auto";persist();update();
   });
@@ -303,6 +319,17 @@ export function createPhotoView() {
   effect.addEventListener("change",()=>setEffects(effect.checked));
   effectsBtn.addEventListener("click",()=>setEffects(!state.effect));
   checkbox.append(effect,document.createTextNode("Activer les effets météo, lumineux et saisonniers"));settings.append(checkbox);
+  const frostLabel=document.createElement("label");frostLabel.className="checkbox";
+  const frostInput=document.createElement("input");frostInput.type="checkbox";frostInput.checked=state.frost;
+  const setFrost=value=>{
+    state.frost=Boolean(value);
+    state.frost_override=state.frost;
+    frostInput.checked=state.frost;
+    persist();update();
+  };
+  frostInput.addEventListener("change",()=>setFrost(frostInput.checked));
+  frostBtn.addEventListener("click",()=>setFrost(!state.frost));
+  frostLabel.append(frostInput,document.createTextNode("Effet gel quand la température est ≤ 0 °C"));settings.append(frostLabel);
   const strengthLabel=document.createElement("label");
   strengthLabel.textContent="Intensité des animations (0 = aucune, 200 % = forte)";
   const strength=document.createElement("input");
@@ -387,7 +414,13 @@ export function createPhotoView() {
   ].join("");
   document.head.append(style);
   document.body.append(section,nav,seasonalNav,settings);
-  let live={weather:null,sun:null,temperature:null,windSpeed:0,moon:null,rain:null,snow:null,cloud:null};
+  let live={weather:null,sun:null,temperature:null,temperatureUnit:"",windSpeed:0,moon:null,rain:null,snow:null,cloud:null};
+  // 0..1 frost strength: forced by the test button, otherwise from the temperature.
+  const frostTarget=()=>{
+    if(!state.effect||!state.frost)return 0;
+    const level=state.frost_preview?1:frostLevel(toCelsius(live.temperature,live.temperatureUnit));
+    return level*Math.min(1,state.effect_intensity);
+  };
   let haTimeZone="UTC";
   let lastAutoSeason="";
   let currentSrc="",active="day",lastFrame=0;
@@ -473,9 +506,14 @@ export function createPhotoView() {
     const effectLabel=LABELS[selected]||selected;
     const seasonLabel=SEASON_LABELS[seasonNow()]||seasonNow();
     status.textContent=(state.mode==="auto"?"Automatique":"Aperçu manuel")+" · "+effectLabel+" · "+seasonLabel+
-      (typeof live.temperature==="number"?" · "+live.temperature+"°C":"")+
+      (typeof live.temperature==="number"?" · "+live.temperature+(live.temperatureUnit||"°C"):"")+
       (phaseName?" · Lune : "+String(currentMoon):"")+
-      (state.moon_preview!=="auto"?" · Lune en test":"");
+      (state.moon_preview!=="auto"?" · Lune en test":"")+
+      (frostTarget()>0?(state.frost_preview?" · Gel en test":" · Gel"):"");
+    frostBtn.textContent=state.frost?"❄ Gel ON":"○ Gel OFF";
+    frostBtn.setAttribute("aria-pressed",String(state.frost));
+    frostInput.checked=state.frost;
+    frostTest.setAttribute("aria-pressed",String(state.frost_preview));
     nightBtn.setAttribute("aria-pressed",String(state.mode==="night"));
     dayBtn.setAttribute("aria-pressed",String(state.mode==="day"));
     autoBtn.setAttribute("aria-pressed",String(state.mode==="auto"));
@@ -534,6 +572,8 @@ export function createPhotoView() {
     const globalEffects=event.data.effects_enabled!==false;
     state.effect=typeof state.effect_override==="boolean"?state.effect_override:globalEffects;
     effect.checked=state.effect;
+    const globalFrost=event.data.frost_enabled!==false;
+    state.frost=typeof state.frost_override==="boolean"?state.frost_override:globalFrost;
     const supplied=event.data.base_image_url;
     parentBasePhoto=allowedUrl(supplied)?supplied:"";
     if(event.data.images && typeof event.data.images==="object"){
@@ -547,6 +587,7 @@ export function createPhotoView() {
       weather:typeof event.data.weather==="string"?event.data.weather:null,
       sun:typeof event.data.sun==="string"?event.data.sun:null,
       temperature:Number.isFinite(event.data.temperature)?event.data.temperature:null,
+      temperatureUnit:typeof event.data.temperatureUnit==="string"?event.data.temperatureUnit.slice(0,10):"",
       windSpeed:Number.isFinite(event.data.windSpeed)?event.data.windSpeed:0,
       moon:typeof event.data.moon==="string"?event.data.moon:null,
       rain:Number.isFinite(event.data.rain)?event.data.rain:null,
@@ -574,6 +615,7 @@ export function createPhotoView() {
       ctx.clearRect(0,0,canvas.width,canvas.height);
       cinematics.frame(time,"none",seasonNow(),0,0,false,false);
       seasonalEffects.frame(time,seasonNow(),0,false,false);
+      frost.frame(time,0);
       return;
     }
     const w=section.clientWidth,h=section.clientHeight;
@@ -586,6 +628,7 @@ export function createPhotoView() {
     const isNight=state.mode==="night"||(state.mode==="auto"&&nighttime());
     cinematics.frame(time,kind,seasonNow(),live.windSpeed,state.effect_intensity,isNight,true);
     seasonalEffects.frame(time,seasonNow(),state.effect_intensity,isNight,true);
+    frost.frame(time,frostTarget());
     const count=kind==="snow"?180:
       kind==="rain"?190:kind==="storm"?235:
       kind==="wind"?100:0;
@@ -657,7 +700,7 @@ export function createPhotoView() {
     actual++;
   }
   // Existing WebGL loop invokes this callback every frame.
-  document.addEventListener("visibilitychange",()=>{if(!document.hidden){resize();cinematics.resize();seasonalEffects.resize();update()}});
+  document.addEventListener("visibilitychange",()=>{if(!document.hidden){resize();cinematics.resize();seasonalEffects.resize();frost.resize();update()}});
   requestEntities();
   update();
   if(!state.enabled && state.model_view==="2d"){

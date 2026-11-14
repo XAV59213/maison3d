@@ -25,7 +25,8 @@
           "snow_entity": "Snow sensor",
           "cloud_entity": "Cloud cover sensor",
           "base_image_url": "Main photo (URL /local/… or HTTPS)",
-          "effects_enabled": "Enable weather, lighting and seasonal effects"
+          "effects_enabled": "Enable weather, lighting and seasonal effects",
+          "frost_enabled": "Enable the frost effect when the temperature is at or below 0 °C"
         }
       }
     },
