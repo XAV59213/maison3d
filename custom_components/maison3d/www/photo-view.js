@@ -5,10 +5,16 @@
  */
 export function createPhotoView() {
   const KEYS=["day","night","cloudy","rain","snow","wind","storm",
-    "spring","summer","autumn","winter"];
+    "spring","summer","autumn","winter",
+    "moon_new_moon","moon_waxing_crescent","moon_first_quarter","moon_waxing_gibbous",
+    "moon_full_moon","moon_waning_gibbous","moon_last_quarter","moon_waning_crescent"];
   const LABELS={day:"Jour",night:"Nuit",cloudy:"Nuageux",rain:"Pluie",
     snow:"Neige",wind:"Vent",storm:"Orage",spring:"Printemps",
-    summer:"Été",autumn:"Automne",winter:"Hiver"};
+    summer:"Été",autumn:"Automne",winter:"Hiver",
+    moon_new_moon:"Nouvelle lune",moon_waxing_crescent:"Premier croissant",
+    moon_first_quarter:"Premier quartier",moon_waxing_gibbous:"Lune gibbeuse croissante",
+    moon_full_moon:"Pleine lune",moon_waning_gibbous:"Lune gibbeuse décroissante",
+    moon_last_quarter:"Dernier quartier",moon_waning_crescent:"Dernier croissant"};
   const DEFAULT="/maison3d-assets/maison3d-reference.jpg";
   const STORAGE="maison3d:photo-settings:v1";
   const allowedUrl=(url)=>typeof url==="string" && (
@@ -201,25 +207,36 @@ export function createPhotoView() {
     if(nighttime())return "night";
     const s=seasonNow();return state.images[s]?s:"day";
   }
-  const moonSymbol=(value)=>{
-    const v=String(value||"").toLowerCase().replaceAll(" ","_");
-    if(v.includes("new_moon"))return "🌑";
-    if(v.includes("waxing_crescent"))return "🌒";
-    if(v.includes("first_quarter"))return "🌓";
-    if(v.includes("waxing_gibbous"))return "🌔";
-    if(v.includes("full_moon"))return "🌕";
-    if(v.includes("waning_gibbous"))return "🌖";
-    if(v.includes("last_quarter"))return "🌗";
-    if(v.includes("waning_crescent"))return "🌘";
-    return "🌙";
+  const moonPhase=(value)=>{
+    const raw=String(value||"").toLowerCase().trim();
+    const v=raw.replace(/[\s-]+/g,"_");
+    const mapping={
+      new_moon:"new_moon",nouvelle_lune:"new_moon",
+      waxing_crescent:"waxing_crescent",premier_croissant:"waxing_crescent",
+      first_quarter:"first_quarter",premier_quartier:"first_quarter",
+      waxing_gibbous:"waxing_gibbous",gibbeuse_croissante:"waxing_gibbous",
+      full_moon:"full_moon",pleine_lune:"full_moon",
+      waning_gibbous:"waning_gibbous",gibbeuse_decroissante:"waning_gibbous",
+      last_quarter:"last_quarter",dernier_quartier:"last_quarter",
+      waning_crescent:"waning_crescent",dernier_croissant:"waning_crescent"
+    };
+    return mapping[v]||null;
   };
+  const moonSymbol=(value)=>({
+    new_moon:"🌑",waxing_crescent:"🌒",first_quarter:"🌓",
+    waxing_gibbous:"🌔",full_moon:"🌕",waning_gibbous:"🌖",
+    last_quarter:"🌗",waning_crescent:"🌘"
+  })[moonPhase(value)]||"🌙";
   function update(){
     const selected=weatherKey();
     active=selected;
-    const path=state.images[selected]||((nighttime()&&selected==="day")?state.images.night:"")||
-      (selected==="day"&&state.images[seasonNow()])||DEFAULT;
-    if(path!==currentSrc){image.src=path;currentSrc=path;error.hidden=true}
     const night=state.mode==="night"||(state.mode==="auto"&&nighttime());
+    const lunarKey=night&&moonPhase(live.moon)?"moon_"+moonPhase(live.moon):null;
+    const path=state.images[selected]||
+      (lunarKey && ["night","day"].includes(selected) ? state.images[lunarKey] : "")||
+      (night?state.images.night:"")||
+      (selected==="day"?state.images[seasonNow()]:"")||DEFAULT;
+    if(path!==currentSrc){image.src=path;currentSrc=path;error.hidden=true}
     tint.style.background=selected==="snow"?"linear-gradient(#f6fcff15,#f0f8ff25)":
       selected==="storm"?"#101b3866":selected==="rain"?"#26344746":
       selected==="cloudy"?"#5b677523":night?"#03132685":"transparent";
@@ -315,8 +332,26 @@ export function createPhotoView() {
       }
       if(p.y>h+12||p.x>w+15){p.x=Math.random()*w;p.y=-15}
     }
-    if(type==="storm" && Math.random()<.011){
-      ctx.fillStyle="#e4ecff55";ctx.fillRect(0,0,w,h);
+    if(type==="storm" && Math.random()<.015){
+      // Draw a jagged lightning bolt from cloud level, not just a white flash.
+      const startX=w*(.15+Math.random()*.7);
+      let x=startX,y=0;
+      ctx.save();
+      ctx.lineCap="round";
+      ctx.shadowColor="#b8ddff";
+      ctx.shadowBlur=28;
+      ctx.strokeStyle="#f5faff";
+      ctx.lineWidth=3.4;
+      ctx.beginPath();ctx.moveTo(x,y);
+      for(let k=0;k<7;k++){
+        y+=h*(.035+Math.random()*.045);
+        x+=(Math.random()-.5)*w*.05;
+        ctx.lineTo(x,y);
+      }
+      ctx.stroke();
+      ctx.lineWidth=1.2;ctx.strokeStyle="#a9d9ff";
+      ctx.stroke();ctx.restore();
+      ctx.fillStyle="#e4eeff26";ctx.fillRect(0,0,w,h);
     }
     actual++;
   }
