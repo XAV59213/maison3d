@@ -130,6 +130,26 @@ class TestMaison3D(unittest.TestCase):
         panel = (www / "maison3d-panel.js").read_text(encoding="utf-8")
         self.assertIn("min-height:240px", panel)
 
+    def test_project_saved_in_home_assistant(self):
+        """3D layout, photo settings and view saved in HA through the parent bridge."""
+        www = COMPONENT / "www"
+        page = (www / "index.html").read_text(encoding="utf-8")
+        self.assertIn('import {onHaData,onHaSaved,saveToHa} from "./ha-storage.js";', page)
+        self.assertIn("saveToHa({layout:data})", page)
+        photo = (www / "photo-view.js").read_text(encoding="utf-8")
+        self.assertIn("saveToHa({photo_settings:saveable()})", photo)
+        self.assertIn("onHaData((ha,{connected,canSave})=>{", photo)
+        presentation = (www / "presentation.js").read_text(encoding="utf-8")
+        self.assertIn("saveToHa({view:{preset:", presentation)
+        for name in ("maison3d-panel.js", "maison3d-card.js"):
+            source = (www / name).read_text(encoding="utf-8")
+            self.assertIn("createStorageBridge({getFrame:()=>this._frame,getHass:()=>this._hass})", source)
+        bridge = (www / "storage-bridge.js").read_text(encoding="utf-8")
+        self.assertIn('hass.callWS({type:"maison3d/save",...patch})', bridge)
+        self.assertIn("event.source!==frame.contentWindow||event.origin!==window.location.origin", bridge)
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        self.assertIn("## 💾 Sauvegarde dans Home Assistant", readme)
+
     def test_panel_bridge(self):
         panel = (COMPONENT / "www" / "maison3d-panel.js").read_text(encoding="utf-8")
         self.assertIn("postMessage", panel)

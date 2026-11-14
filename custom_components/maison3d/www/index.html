@@ -40,6 +40,7 @@ import {createPhotoView} from "./photo-view.js";
 import {createPresentation} from "./presentation.js";
 import {createWorldAmbience} from "./world-ambience.js";
 import {createArchitectureKit} from "./architecture.js";
+import {onHaData,onHaSaved,saveToHa} from "./ha-storage.js";
 const KEY="maison3d-v2-layout";const view=document.getElementById("view");const scene=new THREE.Scene();scene.background=new THREE.Color(0x89b7e7);scene.fog=new THREE.Fog(0x89b7e7,45,115);
 const camera=new THREE.PerspectiveCamera(46,innerWidth/innerHeight,.1,230);camera.position.set(31,23,35);
 const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(innerWidth,innerHeight);renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;view.appendChild(renderer.domElement);
@@ -98,7 +99,12 @@ function disposeUnused(groups){const used=new Set();scene.traverse(o=>{if(o.geom
 function redraw(){if(outline){scene.remove(outline);outline.geometry.dispose();outline.material.dispose();outline=null}const old=[...meshes.values()];for(const g of old)scene.remove(g);meshes.clear();data.forEach(build);disposeUnused(old);refreshSelect();if(selected)choose(selected.id)}
 const select=document.getElementById("objects"),ids=["x","z","w","d","h","r"];function refreshSelect(){select.replaceChildren(...data.map(o=>{const opt=document.createElement("option");opt.value=o.id;opt.textContent=o.name||o.id;return opt}));if(data.length){selected=data.find(o=>o.id===selected?.id)||data[0];select.value=selected.id;ids.forEach(k=>document.getElementById(k).value=selected[k])}else selected=null}
 function choose(id){selected=data.find(o=>o.id===id);refreshSelect();if(outline){scene.remove(outline);outline.geometry.dispose();outline.material.dispose();outline=null}if(selected&&meshes.get(id)){outline=new THREE.BoxHelper(meshes.get(id),0x00d8ff);scene.add(outline)}}
-function save(){try{localStorage.setItem(KEY,JSON.stringify(data));document.getElementById("save").textContent="Sauvegardé à "+new Date().toLocaleTimeString("fr-FR")}catch(err){document.getElementById("save").textContent="Sauvegarde locale impossible — exportez en JSON";console.warn("Maison 3D: storage unavailable",err)}}
+// Saved in Home Assistant (shared by every device) when possible; localStorage stays as cache / offline fallback.
+const saveStatus=t=>{document.getElementById("save").textContent=t};
+function save(){let local=true;try{localStorage.setItem(KEY,JSON.stringify(data))}catch(err){local=false;console.warn("Maison 3D: storage unavailable",err)}
+if(saveToHa({layout:data}))saveStatus("Enregistrement dans Home Assistant…");else saveStatus(local?"Sauvegardé dans ce navigateur à "+new Date().toLocaleTimeString("fr-FR"):"Sauvegarde locale impossible — exportez en JSON")}
+const validLayout=items=>Array.isArray(items)&&items.every(o=>o&&typeof o.id==="string"&&typeof o.type==="string");
+onHaSaved(({ok,error})=>saveStatus(ok?"Sauvegardé dans Home Assistant à "+new Date().toLocaleTimeString("fr-FR"):"Non enregistré dans Home Assistant ("+(error==="admin_required"?"administrateur requis":error)+") — gardé dans ce navigateur"));
 ids.forEach(k=>document.getElementById(k).addEventListener("change",e=>{if(!selected)return;const v=+e.target.value;selected[k]=["w","d","h"].includes(k)?Math.max(.2,v):v;redraw();save()}));
 select.onchange=e=>choose(e.target.value);
 const ray=new THREE.Raycaster(),pointer=new THREE.Vector2();renderer.domElement.addEventListener("pointerdown",e=>{pointer.set(e.clientX/innerWidth*2-1,1-e.clientY/innerHeight*2);ray.setFromCamera(pointer,camera);const hits=ray.intersectObjects([...meshes.values()],true);if(hits.length){let g=hits[0].object;while(g.parent&&!g.userData.id)g=g.parent;if(g.userData.id){choose(g.userData.id);if(ray.ray.intersectPlane(dragPlane,dragHit)){dragOffset.set(selected.x-dragHit.x,0,selected.z-dragHit.z);moving=true;controls.enabled=false}}}});
@@ -120,7 +126,18 @@ const photoView=createPhotoView();
 const presentation=createPresentation({THREE,camera,controls});
 const worldAmbience=createWorldAmbience({THREE,scene,sun});
 atmosphere.update();
-redraw();if(selected)choose(selected.id);addEventListener("resize",()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});// Pause everything when the page is hidden or the Lovelace card is off-screen;
+redraw();if(selected)choose(selected.id);
+// Load the project saved in Home Assistant; first time, migrate this browser's layout to it.
+onHaData((ha,{connected,canSave})=>{
+  if(!connected){saveStatus("Enregistré dans ce navigateur");return}
+  if(validLayout(ha.layout)){
+    if(JSON.stringify(ha.layout)!==JSON.stringify(data)){data=structuredClone(ha.layout);selected=null;redraw()}
+    try{localStorage.setItem(KEY,JSON.stringify(data))}catch{}
+    saveStatus("Enregistré dans Home Assistant");
+  }else if(canSave&&localStorage.getItem(KEY)){saveToHa({layout:data});saveStatus("Copie du projet de ce navigateur vers Home Assistant…")}
+  else saveStatus(canSave?"Projet par défaut · sera enregistré dans Home Assistant":"Lecture seule (administrateur requis pour enregistrer)");
+});
+addEventListener("resize",()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});// Pause everything when the page is hidden or the Lovelace card is off-screen;
 // skip the WebGL render when the opaque photo view covers the 3D scene.
 let offscreen=false;
 addEventListener("message",e=>{if(e.source!==window.parent||e.origin!==location.origin||e.data?.type!=="maison3d:visibility")return;offscreen=e.data.visible===false});

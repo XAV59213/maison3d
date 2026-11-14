@@ -9,6 +9,7 @@ import {createMoonOverlay} from "./moon-effects.js";
 import {automaticSeason,SEASON_LABELS,createSeasonEffects} from "./season-effects.js";
 import {DEFAULT_MAIN_PHOTO,allowedPhotoUrl,resolveMainPhoto,IMAGE_SLOTS,IMAGE_KEYS,pickWeatherPhoto,suggestedFileName} from "./photo-source.js";
 import {createFrostEffects,frostLevel,toCelsius} from "./frost-effects.js";
+import {onHaData,saveToHa} from "./ha-storage.js";
 export function createPhotoView() {
   const KEYS=IMAGE_KEYS;
   const LABELS={...Object.fromEntries(IMAGE_SLOTS),fog:"Brouillard",clear:"Clair",frost:"Gel"};
@@ -24,13 +25,15 @@ export function createPhotoView() {
     temperature_entity:"",wind_entity:"",rain_entity:"",snow_entity:"",cloud_entity:"",
     enabled:true,model_view:"3d",mode:"auto",effect:true,effect_override:null,frost:true,frost_override:null,frost_preview:false,season:"auto",effect_intensity:1,moon_preview:"auto",use_weather_photos:false,weather_photos_override:null
   };
-  try{
-    const saved=JSON.parse(localStorage.getItem(STORAGE));
-    if(saved&&typeof saved==="object"){
+  // Apply saved settings (Home Assistant or this browser), keeping only valid values.
+  const ENTITY_KEYS=["moon_entity","weather_entity","sun_entity","temperature_entity","wind_entity","rain_entity","snow_entity","cloud_entity"];
+  function applySaved(saved){
+    if(!saved||typeof saved!=="object")return;
+    state.images=defaults();
       for(const k of KEYS){
         if(allowedUrl(saved.images?.[k]))state.images[k]=saved.images[k];
       }
-      for(const key of ["moon_entity","weather_entity","sun_entity","temperature_entity","wind_entity","rain_entity","snow_entity","cloud_entity"]){
+      for(const key of ENTITY_KEYS){
         if(typeof saved[key]==="string")state[key]=saved[key].slice(0,150);
       }
       if(allowedUrl(saved.base_image_url))state.base_image_url=saved.base_image_url;
@@ -45,9 +48,13 @@ export function createPhotoView() {
       if(typeof saved.mode==="string"&&["auto",...AMBIANCES].includes(saved.mode))state.mode=saved.mode;
       if(typeof saved.season==="string"&&["auto","spring","summer","autumn","winter"].includes(saved.season))state.season=saved.season;
       if(typeof saved.moon_preview==="string"&&["auto","new_moon","waxing_crescent","first_quarter","waxing_gibbous","full_moon","waning_gibbous","last_quarter","waning_crescent"].includes(saved.moon_preview))state.moon_preview=saved.moon_preview;
-    }
-  }catch{}
-  const persist=()=>{try{localStorage.setItem(STORAGE,JSON.stringify(state))}catch{}};
+  }
+  try{applySaved(JSON.parse(localStorage.getItem(STORAGE)))}catch{}
+  // Saved in Home Assistant (shared) when possible; this browser keeps a cache / offline copy.
+  const saveable=()=>{const copy={...state};delete copy.frost_preview;delete copy.effect;delete copy.frost;return copy};
+  const persist=()=>{try{localStorage.setItem(STORAGE,JSON.stringify(state))}catch{};saveToHa({photo_settings:saveable()})};
+  const refreshers=[];
+  const bind=(el,get,prop="value")=>{refreshers.push(()=>{el[prop]=get()});return el};
   const section=document.createElement("section");
   section.id="maison3d-photo-view";
   section.setAttribute("aria-label","Vue photographique de la propriété");
@@ -172,6 +179,7 @@ export function createPhotoView() {
       persist();update();
       imageCheck.textContent=value?"Image enregistrée · prévisualisation conseillée":"Image principale par défaut";
     },"/local/maison3d/ma-maison.jpg");
+  bind(mainPhotoInput,()=>state.base_image_url);
   const previewRow=document.createElement("div");
   previewRow.className="main-photo-preview";
   const previewBtn=document.createElement("button");
@@ -206,10 +214,10 @@ export function createPhotoView() {
   });
   previewRow.append(previewBtn,imageCheck,previewThumbnail);
   settings.append(previewRow);
-  makeField("Entité météo",state.weather_entity,v=>{state.weather_entity=v;persist();requestEntities()},
-    "weather.ma_maison (vide = première disponible)");
-  makeField("Entité soleil",state.sun_entity,v=>{state.sun_entity=v||"sun.sun";persist();requestEntities()},"sun.sun");
-  makeField("Entité lune",state.moon_entity,v=>{state.moon_entity=v;persist();requestEntities()},"sensor.moon_phase");
+  bind(makeField("Entité météo",state.weather_entity,v=>{state.weather_entity=v;persist();requestEntities()},
+    "weather.ma_maison (vide = première disponible)"),()=>state.weather_entity);
+  bind(makeField("Entité soleil",state.sun_entity,v=>{state.sun_entity=v||"sun.sun";persist();requestEntities()},"sun.sun"),()=>state.sun_entity);
+  bind(makeField("Entité lune",state.moon_entity,v=>{state.moon_entity=v;persist();requestEntities()},"sensor.moon_phase"),()=>state.moon_entity);
   for(const [key,label] of [
     ["temperature_entity","Capteur température extérieure"],
     ["wind_entity","Capteur vitesse du vent"],
@@ -217,7 +225,7 @@ export function createPhotoView() {
     ["snow_entity","Capteur neige (valeur ou on/off)"],
     ["cloud_entity","Capteur nuages (pourcentage ou on/off)"]
   ]){
-    makeField(label,state[key],v=>{state[key]=v;persist();requestEntities()},"sensor.exemple");
+    bind(makeField(label,state[key],v=>{state[key]=v;persist();requestEntities()},"sensor.exemple"),()=>state[key]);
   }
   const selectMode=selectField("Ambiance",[
     ["auto","Automatique (Home Assistant)"],...AMBIANCES.map(k=>[k,LABELS[k]])
@@ -295,10 +303,10 @@ export function createPhotoView() {
   });
   testSection.append(resetTest);settings.append(testSection);
   for(const key of KEYS){
-    makeField("Image "+LABELS[key],state.images[key],(v,input)=>{
+    bind(makeField("Image "+LABELS[key],state.images[key],(v,input)=>{
       if(v&&!allowedUrl(v)){input.setCustomValidity("Utilise /local/…, /maison3d-assets/…, /api/… ou HTTPS.");input.reportValidity();return}
       input.setCustomValidity("");state.images[key]=v;persist();update();
-    },"/local/maison3d/"+suggestedFileName(key));
+    },"/local/maison3d/"+suggestedFileName(key)),()=>state.images[key]);
   }
   const swapLabel=document.createElement("label");swapLabel.className="checkbox";
   const swapPhotos=document.createElement("input");swapPhotos.type="checkbox";
@@ -340,6 +348,7 @@ export function createPhotoView() {
   const strength=document.createElement("input");
   strength.type="range";strength.min="0";strength.max="2";strength.step="0.1";
   strength.value=String(state.effect_intensity);
+  bind(strength,()=>String(state.effect_intensity));
   const strengthValue=document.createElement("span");
   strengthValue.textContent=Math.round(state.effect_intensity*100)+" %";
   strength.addEventListener("input",()=>{
@@ -596,16 +605,34 @@ export function createPhotoView() {
       rain_entity:state.rain_entity,snow_entity:state.snow_entity,
       cloud_entity:state.cloud_entity},window.location.origin);
   }
+  // Integration/card values, unless this view saved its own choice (override).
+  let globals={effects:true,frost:true,weather_photos:false};
+  function applyOverrides(){
+    state.effect=typeof state.effect_override==="boolean"?state.effect_override:globals.effects;
+    state.frost=typeof state.frost_override==="boolean"?state.frost_override:globals.frost;
+    state.use_weather_photos=typeof state.weather_photos_override==="boolean"?state.weather_photos_override:globals.weather_photos;
+    effect.checked=state.effect;swapPhotos.checked=state.use_weather_photos;
+  }
+  // Settings saved in Home Assistant win over this browser's copy; the first
+  // time, this browser's settings are copied to Home Assistant.
+  onHaData((ha,{connected,canSave})=>{
+    if(!connected)return;
+    const saved=ha.photo_settings;
+    if(saved&&typeof saved==="object"){
+      applySaved(saved);applyOverrides();
+      try{localStorage.setItem(STORAGE,JSON.stringify(state))}catch{}
+      for(const refresh of refreshers)refresh();
+      selectMode.value=state.mode;seasonSelect.value=state.season;moonPreview.value=state.moon_preview;
+      strengthValue.textContent=Math.round(state.effect_intensity*100)+" %";
+      update();
+    }else if(canSave&&localStorage.getItem(STORAGE))saveToHa({photo_settings:saveable()});
+  });
   window.addEventListener("message",event=>{
     if(event.source!==window.parent||event.origin!==window.location.origin)return;
     if(event.data?.type!=="maison3d:conditions")return;
-    const globalEffects=event.data.effects_enabled!==false;
-    state.effect=typeof state.effect_override==="boolean"?state.effect_override:globalEffects;
-    effect.checked=state.effect;
-    const globalFrost=event.data.frost_enabled!==false;
-    state.use_weather_photos=typeof state.weather_photos_override==="boolean"?state.weather_photos_override:event.data.weather_photos===true;
-    swapPhotos.checked=state.use_weather_photos;
-    state.frost=typeof state.frost_override==="boolean"?state.frost_override:globalFrost;
+    globals={effects:event.data.effects_enabled!==false,frost:event.data.frost_enabled!==false,
+      weather_photos:event.data.weather_photos===true};
+    applyOverrides();
     const supplied=event.data.base_image_url;
     parentBasePhoto=allowedUrl(supplied)?supplied:"";
     // Card/panel images apply on top of the menu ones but are never saved in this browser.

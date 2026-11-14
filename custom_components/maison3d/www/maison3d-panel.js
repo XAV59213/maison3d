@@ -1,4 +1,5 @@
 /** Home Assistant custom panel wrapper for the Maison 3D editor. */
+import {createStorageBridge} from "./storage-bridge.js";
 class Maison3DPanel extends HTMLElement {
   constructor() {
     super();
@@ -6,6 +7,9 @@ class Maison3DPanel extends HTMLElement {
     this._loaded = false;
     this._choices = {weather_entity:"",sun_entity:"sun.sun",moon_entity:"sensor.moon_phase",
       temperature_entity:"",wind_entity:"",rain_entity:"",snow_entity:"",cloud_entity:""};
+    // Project (3D layout, photo settings, view) saved in Home Assistant for the iframe.
+    this._storage = createStorageBridge({getFrame:()=>this._frame,getHass:()=>this._hass});
+    this._onStorageMessage = event => this._storage.onMessage(event);
     this._onFrameMessage = event => {
       if(event.origin!==window.location.origin || event.source!==this._frame?.contentWindow)return;
       if(event.data?.type!=="maison3d:entity-selection")return;
@@ -23,6 +27,7 @@ class Maison3DPanel extends HTMLElement {
 
   connectedCallback() {
     window.addEventListener("message",this._onFrameMessage);
+    window.addEventListener("message",this._onStorageMessage);
     if (this.shadowRoot) return;
     const root = this.attachShadow({ mode: "open" });
     const style = document.createElement("style");
@@ -45,6 +50,8 @@ class Maison3DPanel extends HTMLElement {
 
   disconnectedCallback() {
     window.removeEventListener("message",this._onFrameMessage);
+    window.removeEventListener("message",this._onStorageMessage);
+    this._storage.flush();
     this._loaded=false;
   }
 

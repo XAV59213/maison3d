@@ -278,7 +278,7 @@ Les saisons suivent le calendrier local en mode Auto ; les boutons de droite per
 
 **Ordre de choix** (photos météo activées) : image perso `<météo>_<jour|nuit>` → image perso `<météo>` → photo fournie `<météo>-<jour|nuit>.jpg` → la nuit : image de la phase de lune → `night` → `clair-nuit.jpg` ; le jour : image de la saison → `day` → `clair-jour.jpg` → photo principale.
 
-Les réglages du menu ⚙ sont enregistrés dans le **navigateur local** ; pour plusieurs appareils, préférer les options de l'intégration et la configuration de la carte (les images de la carte ne sont jamais recopiées dans le navigateur).
+Les réglages du menu ⚙ sont **enregistrés dans Home Assistant** (voir « Sauvegarde dans Home Assistant ») et donc partagés entre vos appareils. Les images définies dans une carte restent dans la configuration de cette carte.
 
 ## 🍂 Module des quatre saisons — calendrier Home Assistant
 
@@ -313,7 +313,20 @@ La scène Three.js distincte propose les vues **Façade, Aérienne, Jardin et Ga
 
 **Three.js embarqué :** Three.js r170 (`0.170.0`) et `OrbitControls` sont fournis localement dans `custom_components/maison3d/www/vendor/three/` (licence MIT incluse). Aucun CDN n'est appelé : la vue 3D fonctionne hors-ligne, même si jsDelivr est lent ou bloqué.
 
-La géométrie 3D est approximative et ne doit pas être présentée comme la vraie photographie en volume. Le stockage de la scène s'effectue dans le navigateur ; exporter le JSON pour conserver une sauvegarde.
+La géométrie 3D est approximative et ne doit pas être présentée comme la vraie photographie en volume. La scène est enregistrée dans Home Assistant (copie de secours dans le navigateur) ; l'export JSON reste utile pour garder une version.
+
+## 💾 Sauvegarde dans Home Assistant
+
+Le plan 3D (objets, positions), les réglages du menu ⚙ (images, capteurs, saison, intensité…) et la vue choisie sont **enregistrés dans Home Assistant** (`.storage/maison3d.data`), plus seulement dans le navigateur : on retrouve le même projet sur le PC, la tablette et le téléphone. Ils sont aussi inclus dans les sauvegardes de Home Assistant.
+
+- **Premier lancement après la mise à jour** : si ce navigateur avait déjà un projet, il est copié une fois dans Home Assistant.
+- **Enregistrement** : automatique, regroupé (≈ 1 s après la dernière modification). Le bas de l'écran indique « Sauvegardé dans Home Assistant à … ».
+- **Droits** : tout utilisateur connecté voit le projet ; seuls les **administrateurs** peuvent l'enregistrer. Pour les autres, les modifications restent dans leur navigateur.
+- **Hors connexion / ancienne version** : le navigateur garde une copie (cache) et sert de secours.
+- **Export / import JSON** : toujours disponibles ; un import est enregistré dans Home Assistant.
+- Les réglages propres à une carte (titre, hauteur, capteurs, images…) restent dans la configuration de la carte.
+
+Commandes websocket : `maison3d/get` (lecture) et `maison3d/save` (administrateur).
 
 ## 🛠️ Dépannage
 

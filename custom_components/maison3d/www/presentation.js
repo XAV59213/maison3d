@@ -1,4 +1,5 @@
 /** Cinematic presets for the editable 3D property, not a replacement image. */
+import {onHaData,saveToHa} from "./ha-storage.js";
 export function createPresentation({THREE,camera,controls}) {
   const presets={
     reference:{position:[-12,23,56],target:[0,1,1],fov:45,label:"Façade"},
@@ -54,6 +55,7 @@ export function createPresentation({THREE,camera,controls}) {
       controls.update();destination=null;
     }
     try{localStorage.setItem("maison3d:view:v1",name)}catch{}
+    if(!immediate)saveToHa({view:{preset:name,presentation}});
   }
   for(const [key,preset] of Object.entries(presets)){
     buttons.set(key,button(preset.label,()=>changeView(key)));
@@ -65,6 +67,7 @@ export function createPresentation({THREE,camera,controls}) {
     document.documentElement.classList.toggle("presentation-mode",presentation);
     mode.textContent=presentation?"✎ Édition":"▣ Présentation";
     try{localStorage.setItem("maison3d:presentation",String(presentation))}catch{}
+    saveToHa({view:{preset:selected,presentation}});
   });
   document.body.appendChild(root);
   document.documentElement.classList.toggle("presentation-mode",presentation);
@@ -73,6 +76,18 @@ export function createPresentation({THREE,camera,controls}) {
   const stored=(()=>{try{return localStorage.getItem("maison3d:view:v1")}catch{return null}})();
   changeView(Object.prototype.hasOwnProperty.call(presets,stored)?stored:"reference",true);
   controls.addEventListener("start",()=>{destination=null});
+  // View and presentation mode saved in Home Assistant (shared between devices).
+  onHaData((ha,{connected})=>{
+    const view=connected&&ha.view;
+    if(!view||typeof view!=="object")return;
+    if(typeof view.presentation==="boolean"&&view.presentation!==presentation){
+      presentation=view.presentation;
+      document.documentElement.classList.toggle("presentation-mode",presentation);
+      mode.textContent=presentation?"✎ Édition":"▣ Présentation";
+      try{localStorage.setItem("maison3d:presentation",String(presentation))}catch{}
+    }
+    if(Object.prototype.hasOwnProperty.call(presets,view.preset)&&view.preset!==selected)changeView(view.preset,true);
+  });
   function frame(){
     if(!destination)return;
     camera.position.lerp(destination.position,.09);
