@@ -318,6 +318,8 @@ La scène Three.js distincte propose les vues **Façade, Aérienne, Jardin et Ga
 
 **Three.js embarqué :** Three.js r170 (`0.170.0`) et `OrbitControls` sont fournis localement dans `custom_components/maison3d/www/vendor/three/` (licence MIT incluse). Aucun CDN n'est appelé : la vue 3D fonctionne hors-ligne, même si jsDelivr est lent ou bloqué.
 
+**Barres flottantes :** en mode Édition, les barres (vues, outils, bandeau du projet, éditeur des objets…) se placent automatiquement pour ne jamais se recouvrir, sur ordinateur comme sur téléphone (portrait ou paysage). Sur petit écran, elles passent en version compacte, et l'aide comme la bulle météo s'effacent s'il n'y a plus de place.
+
 La géométrie 3D est approximative et ne doit pas être présentée comme la vraie photographie en volume. La scène est enregistrée dans Home Assistant (copie de secours dans le navigateur) ; l'export JSON reste utile pour garder une version.
 
 ## 📤 Envoyer ses photos depuis Home Assistant

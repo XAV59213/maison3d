@@ -130,6 +130,17 @@ class TestMaison3D(unittest.TestCase):
         panel = (www / "maison3d-panel.js").read_text(encoding="utf-8")
         self.assertIn("min-height:240px", panel)
 
+    def test_scene_bars_never_overlap(self):
+        """Edit-mode floating bars are laid out by scene-layout.js (brand no longer hidden)."""
+        www = COMPONENT / "www"
+        page = (www / "index.html").read_text(encoding="utf-8")
+        self.assertIn('import {createSceneLayout} from "./scene-layout.js";', page)
+        self.assertIn("createSceneLayout();", page)
+        self.assertIn("html.compact-scene", page)
+        layout = (www / "scene-layout.js").read_text(encoding="utf-8")
+        self.assertIn('[".brand","top","left"]', layout)
+        self.assertIn("export function place(", layout)
+
     def test_neutral_project_name(self):
         """No personal project name in the sources; configurable name, default « Maison 3D »."""
         for path in ROOT.rglob("*"):

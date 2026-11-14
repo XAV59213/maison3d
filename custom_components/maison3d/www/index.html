@@ -17,6 +17,12 @@ button:hover,.on{background:#1270e9!important}.brand{position:fixed;top:10px;lef
 html.card-mode .toolbar,html.card-mode .side,html.card-mode .bottom,html.card-mode .brand,html.card-mode .editor,html.card-mode #hint,html.card-mode .modes{display:none!important}
 html.card-mode #maison3d-weather-status{top:8px!important;right:8px!important;font-size:11px!important;max-width:calc(100% - 16px)!important}
 html.card-mode{touch-action:pan-y}
+/* Small or short screens (set by scene-layout.js): compact floating bars. */
+html.compact-scene .side,html.compact-scene .modes{display:flex;padding:3px}html.compact-scene .side button,html.compact-scene .modes button{padding:8px;font-size:12px;white-space:nowrap}
+html.compact-scene .brand{padding:6px 10px;font-size:11px;max-width:none}html.compact-scene .brand small{font-size:10px;margin-top:1px}
+html.compact-scene .bottom{padding:6px 10px;font-size:11px}html.compact-scene .toolbar{width:auto;max-width:calc(100% - 20px);padding:3px}html.compact-scene .toolbar button{padding:7px 8px;font-size:12px}
+html.compact-scene .editor{width:min(250px,calc(100% - 20px));padding:9px;max-height:none}html.compact-scene .editor p{display:none}
+html.compact-scene #maison3d-photo-controls,html.compact-scene #maison3d-presentation{padding:4px!important;gap:3px!important}html.compact-scene #maison3d-photo-controls button,html.compact-scene #maison3d-presentation button{padding:6px 7px!important;font-size:11px!important}
 </style></head><body>
 <script>if(new URLSearchParams(location.search).get("mode")==="card")document.documentElement.classList.add("card-mode");</script>
 <div id="view"></div><div class="brand">⌂ Maison 3D V2.0<small>Mode édition · <span class="project-name">Maison 3D</span></small></div>
@@ -41,6 +47,7 @@ import {createPresentation} from "./presentation.js";
 import {createWorldAmbience} from "./world-ambience.js";
 import {createArchitectureKit} from "./architecture.js";
 import {onHaData,onHaSaved,saveToHa} from "./ha-storage.js";
+import {createSceneLayout} from "./scene-layout.js";
 const KEY="maison3d-v2-layout";const view=document.getElementById("view");const scene=new THREE.Scene();scene.background=new THREE.Color(0x89b7e7);scene.fog=new THREE.Fog(0x89b7e7,45,115);
 const camera=new THREE.PerspectiveCamera(46,innerWidth/innerHeight,.1,230);camera.position.set(31,23,35);
 const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(innerWidth,innerHeight);renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;view.appendChild(renderer.domElement);
@@ -129,6 +136,8 @@ document.getElementById("import").onclick=()=>document.getElementById("file").cl
 const atmosphere=createAtmosphere({scene,sun,renderer});
 const photoView=createPhotoView();
 const presentation=createPresentation({THREE,camera,controls});
+// Floating bars of the 3D view never cover each other (desktop, mobile, landscape).
+createSceneLayout();
 const worldAmbience=createWorldAmbience({THREE,scene,sun});
 atmosphere.update();
 redraw();if(selected)choose(selected.id);
