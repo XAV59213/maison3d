@@ -12,7 +12,7 @@ Intégration Home Assistant avec panneau 3D interactif et éditeur d'implantatio
 
 ## Installation
 
-> **Version en développement :** les corrections V2 sont dans la [PR #1](https://github.com/XAV59213/maison3d/pull/1), pas encore fusionnées. Ne pas interpréter la capture photoréaliste comme une capture de l'application WebGL actuelle.
+> **Version publiée :** [v2.0.0](https://github.com/XAV59213/maison3d/releases/tag/v2.0.0). Les correctifs de fiabilité v2.0.1 sont en préparation dans une nouvelle PR. Ne pas confondre l'image de référence photoréaliste avec le rendu WebGL actuel.
 
 1. HACS → Dépôts personnalisés → `https://github.com/XAV59213/maison3d` → **Intégration**.
 2. Télécharger, puis redémarrer Home Assistant.
@@ -47,3 +47,24 @@ Copier `custom_components/maison3d` dans `/config/custom_components/maison3d`, r
 Le panneau transmet les états de la première entité `weather.*` ainsi que `sun.sun` à la scène WebGL. L'éclairage suit `sun.sun` automatiquement : jour, soir et nuit. Les animations Canvas affichent pluie, neige ou feuilles d'automne selon la condition et la saison ; le bouton **Météo** permet une démonstration pluie/neige/soleil et **Auto** rétablit la météo réelle. Le moteur calcule les saisons à partir du calendrier local.
 
 **Limites à connaître :** premier capteur météo détecté automatiquement (choix explicite à développer), effets 2D superposés à la scène 3D et aucune commande d'appareil Home Assistant. Les animations météo et l'intégration complète n'ont pas encore été validées en conditions réelles sur une instance Home Assistant.
+
+## Dépannage installation
+
+**Après installation HACS**, redémarrez complètement Home Assistant avant de chercher « Maison 3D » dans **Paramètres → Appareils et services**. HACS installe une **Intégration**, pas une carte Lovelace. L'ajout de l'intégration crée l'entrée du panneau dans la barre latérale. Sur mobile, déployez la barre latérale si nécessaire.
+
+- **L'intégration n'apparaît pas** : vérifier dans **Paramètres → Système → Journaux** l'absence d'erreurs `maison3d`, puis vérifier que `/config/custom_components/maison3d/manifest.json` existe. Effectuer un redémarrage complet.
+- **La page Maison 3D est vide** : essayer d'ouvrir `/maison3d-assets/index.html` depuis **la même adresse Home Assistant**, puis vérifier l'accès Internet vers jsDelivr (Three.js). Une restriction réseau ou CSP peut empêcher le chargement du moteur 3D.
+- **Pas de météo réelle** : vérifier qu'au moins une entité `weather.*` affiche un état utilisable dans **Outils de développement → États**. L'intégration utilise la première entité météo disponible ; `sun.sun` fournit le jour et la nuit.
+- **La scène ne mémorise pas les modifications** : le navigateur doit autoriser le stockage local ; utilisez l'export JSON pour une sauvegarde portable entre navigateurs. Les données ne sont pas encore stockées dans Home Assistant.
+- **Après une mise à jour HACS** : redémarrer Home Assistant, puis forcer le rechargement de la page (Ctrl+F5 ou vider les fichiers du site en cache) si nécessaire.
+
+**Diagnostic rapide :** depuis un navigateur déjà connecté à Home Assistant, ouvrir `https://VOTRE-HOME-ASSISTANT/maison3d-assets/index.html`. L'URL doit afficher l'éditeur 3D. Tester également le panneau `/maison3d`. En cas d'échec, relever les erreurs du navigateur et les journaux Home Assistant.
+
+### Changements prévus pour v2.0.1
+
+- Enregistrement du panneau réentrant et déchargement prudent, sans redéclarer les chemins statiques lors des rechargements.
+- Transmission météo fiable après le chargement du panneau ; exclusion des entités météo `unavailable` et `unknown`.
+- Validation stricte des fichiers de scène JSON importés et sélection des objets sans injection HTML.
+- Message explicite si la sauvegarde navigateur est inaccessible.
+
+**Important :** les contrôles HACS/Hassfest et les tests de syntaxe ne remplacent pas une validation sur votre propre version de Home Assistant.
