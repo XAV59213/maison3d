@@ -26,6 +26,7 @@ jobs:
           node --check custom_components/maison3d/www/presentation.js
           node --check custom_components/maison3d/www/world-ambience.js
           node --check custom_components/maison3d/www/photo-view.js
+          node --check custom_components/maison3d/www/photo-cinematics.js
           node --check custom_components/maison3d/www/weather-effects.js
           python - <<'PY'
           import pathlib, re

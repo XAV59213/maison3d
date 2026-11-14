@@ -130,6 +130,22 @@ class TestMaison3D(unittest.TestCase):
         self.assertIn("ctx.lineTo(x,y)", photo)
         self.assertIn("moonPhase(live.moon)", photo)
 
+    def test_photo_weather_cinematics_and_import(self):
+        module = (COMPONENT / "www" / "photo-cinematics.js").read_text(encoding="utf-8")
+        photo = (COMPONENT / "www" / "photo-view.js").read_text(encoding="utf-8")
+        importer = (ROOT / "scripts" / "import_weather_images.py").read_text(encoding="utf-8")
+        self.assertIn("createPhotoCinematics", module)
+        self.assertIn('from "./photo-cinematics.js"', photo)
+        self.assertIn("cinematics.frame(time", photo)
+        for feature in ("clouds(", "sunshine(", "drizzleShine(",
+                        "snowAccumulation(", "autumnHaze(", "nightHaze("):
+            self.assertIn(feature, module)
+        self.assertIn('type="range"', photo)
+        self.assertIn("effect_intensity", photo)
+        for filename in ("day.jpg", "cloudy.jpg", "rain.jpg", "snow.jpg"):
+            self.assertIn(filename, importer)
+        self.assertIn("ZipFile", importer)
+
     def test_exact_approved_readme_image(self):
         self.assertTrue((ROOT / "assets" / "maison3d-reference.jpg").is_file())
         content = (ROOT / "README.md").read_text(encoding="utf-8")

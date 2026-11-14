@@ -61,6 +61,22 @@ Cette branche prépare une **vue vivante de la propriété** en s'appuyant sur [
 
 **Limites de fidélité** : les presets caméra sont des approximations géométriques de la perspective de l'image, et non une reconstruction photogrammétrique exacte. Les modèles, textures, véhicules et reliefs devront encore être affinés dans une instance Home Assistant réelle. Aucune prévision météo n'est générée par l'intégration.
 
+## Animations météorologiques renforcées
+
+La vue photo comporte désormais une couche d'animation atmosphérique supplémentaire au-dessus de l'image officielle. La météo actuelle peut activer **nuages mobiles, rayons de soleil, pluie avec éclats et reflets doux sur les surfaces, neige et voile hivernal, brume d'automne, feuilles emportées par le vent, éclairs visibles pendant les orages et éclairage de nuit**. La scène ne change pas de perspective et ces effets ne prétendent pas être des simulations physiques précises.
+
+Dans **Photo réelle → Images / météo**, régler le **curseur Intensité des animations** de 0 à 200 % et le bouton **Animations météo**. Le bouton de choix d'ambiance permet de prévisualiser chaque météo sans modifier les capteurs Home Assistant. Lorsque les préférences système demandent une réduction des animations, les mouvements atmosphériques sont réduits.
+
+### Import des quatre photos approuvées
+
+Le script `scripts/import_weather_images.py` importe les quatre photos JPG approuvées depuis l'archive `maison3d_images_meteo.zip` fournie lors de cette conversation :
+
+```sh
+python3 scripts/import_weather_images.py maison3d_images_meteo.zip
+```
+
+Il produit `custom_components/maison3d/www/images/day.jpg`, `cloudy.jpg`, `rain.jpg` et `snow.jpg`, qui pourront ensuite être versionnés dans le dépôt. **Ces fichiers binaires ne font pas encore partie de la PR tant que l'import n'a pas été exécuté depuis une copie de l'archive dans un environnement ayant accès au dépôt**. Il ne faut pas fusionner en supposant que les quatre JPEG ont été téléversés.
+
 ## Phases de lune, éclairs et fichiers d'images
 
 Le moteur utilise la valeur de ton capteur de **phase lunaire** pour afficher le bon symbole parmi les huit phases de lune (nouvelle lune, croissants, quartiers, gibbeuses et pleine lune). Tu peux maintenant définir une image spécifique pour chacune avec les clés `moon_new_moon`, `moon_waxing_crescent`, `moon_first_quarter`, `moon_waxing_gibbous`, `moon_full_moon`, `moon_waning_gibbous`, `moon_last_quarter` et `moon_waning_crescent`. Les images lunaires sont utilisées de nuit si une image correspondante existe et si aucun visuel météo spécifique n'a priorité.
