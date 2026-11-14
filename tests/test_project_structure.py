@@ -169,7 +169,7 @@ class TestMaison3D(unittest.TestCase):
         self.assertIn('dayBtn.addEventListener("click",()=>setQuickMode("day"))', photo)
         self.assertIn('autoBtn.addEventListener("click",()=>setQuickMode("auto"))', photo)
         self.assertIn('section.classList.toggle("photo-night",night)', photo)
-        self.assertIn('photo-night img{filter:brightness(', photo)
+        self.assertIn('photo-night:not(.effects-off) img{filter:brightness(', photo)
         self.assertIn('selectMode.value=mode', photo)
         self.assertIn('persist();update()', photo)
 
@@ -199,8 +199,8 @@ class TestMaison3D(unittest.TestCase):
     def test_fixed_photo_is_default_and_weather_only_changes_overlays(self):
         photo = (COMPONENT / "www" / "photo-view.js").read_text(encoding="utf-8")
         self.assertIn('use_weather_photos:false', photo)
-        self.assertIn('const path=state.use_weather_photos ?', photo)
-        self.assertIn(') : DEFAULT;', photo)
+        self.assertIn('const candidate=state.use_weather_photos ?', photo)
+        self.assertIn(') : mainPhoto;', photo)
         self.assertIn("tint.style.background=weatherTint", photo)
         self.assertIn('photoBtn.setAttribute("aria-pressed"', photo)
         self.assertNotIn('realBtn.setAttribute(', photo)
