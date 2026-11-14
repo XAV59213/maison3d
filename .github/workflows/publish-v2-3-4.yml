@@ -1,0 +1,65 @@
+name: Publish Maison 3D v2.3.4
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/publish-v2-3-4.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    if: github.repository == 'XAV59213/maison3d'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify fixed photo mode, original image and manifest
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          base=Path("custom_components/maison3d")
+          assert json.loads((base/"manifest.json").read_text())["version"] == "2.3.4"
+          js=(base/"www/photo-view.js").read_text()
+          assert "use_weather_photos:false" in js
+          assert "const path=state.use_weather_photos ?" in js
+          assert 'photoBtn.setAttribute("aria-pressed"' in js
+          assert 'realBtn.setAttribute(' not in js
+          assert 'skyMoon.draw(' in js
+          assert 'cinematics.frame(' in js
+          assert (base/"www/maison3d-reference.jpg").stat().st_size > 100000
+          for name in ("jour.jpg","nuageux.jpg","pluie.jpg","neige.jpg"):
+              assert (base/"www/images"/name).stat().st_size > 50000
+          PY
+          node --check custom_components/maison3d/www/photo-view.js
+          python3 -m unittest discover -s tests -q
+      - name: Publish official release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          if gh release view v2.3.4 >/dev/null 2>&1; then
+            echo "v2.3.4 already published"
+            exit 0
+          fi
+          cat >/tmp/notes.md <<'EOF'
+          ## Maison 3D v2.3.4 — La propriété reste vivante sans changer de photo
+
+          La photographie officielle de la propriété reste désormais **le fond fixe par défaut** : bâtiments, voitures, jardin et perspective ne changent plus au passage de la météo, du jour ou de la nuit.
+
+          ### Nouveautés
+          - Effets dynamiques superposés à l'image : soleil, éclairage nocturne, lune avec phases, pluie, neige, nuages, vent, orage et saisons.
+          - Synchronisation des effets avec les entités Home Assistant et mode test manuel disponible.
+          - **Photos météo alternatives facultatives**, désactivées par défaut : les 4 JPEG précédemment livrés restent disponibles avec la case « Utiliser les images météo alternatives » dans ⚙ Images / météo.
+          - Correction d'un bug JavaScript de référence de bouton inexistant (`realBtn` remplacé par `photoBtn`), susceptible d'empêcher le rafraîchissement.
+          - README mis à jour, tests de régression ajoutés.
+
+          ### Mise à jour
+          HACS → Maison 3D → **v2.3.4**, redémarrer Home Assistant puis recharger la carte (Ctrl + F5). Les réglages du panneau Photo sont propres au navigateur et les capteurs sont configurables dans l'intégration.
+
+          ### Vérification
+          HACS, Hassfest, Python/JavaScript : contrôles réussis sur PR #10. Le rendu visuel dans une instance Home Assistant doit encore être vérifié.
+          EOF
+          gh release create v2.3.4 --target "${GITHUB_SHA}" --title "Maison 3D v2.3.4 — Photo fixe, météo vivante" --notes-file /tmp/notes.md
