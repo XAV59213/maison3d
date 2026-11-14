@@ -147,6 +147,27 @@ class TestMaison3D(unittest.TestCase):
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
         self.assertIn("maison3d-assets/maison3d-card.js", readme)
 
+    def test_card_auto_loaded_in_card_picker(self):
+        """The card is loaded on every dashboard and listed in « Ajouter une carte »."""
+        init = (COMPONENT / "__init__.py").read_text(encoding="utf-8")
+        const = (COMPONENT / "const.py").read_text(encoding="utf-8")
+        manifest = json.loads((COMPONENT / "manifest.json").read_text(encoding="utf-8"))
+        self.assertIn("frontend", manifest["dependencies"])
+        self.assertIn('CARD_URL = f"{ASSETS_URL}/maison3d-card.js"', const)
+        self.assertIn('card_url = f"{CARD_URL}?v={integration.version}"', init)
+        self.assertIn("frontend.add_extra_js_url(hass, card_url)", init)
+        self.assertIn('getattr(frontend, "remove_extra_js_url", None)', init)
+        card = (COMPONENT / "www" / "maison3d-card.js").read_text(encoding="utf-8")
+        self.assertIn('if (!customElements.get("maison3d-card"))', card)
+        self.assertIn('window.customCards.some(card=>card.type==="maison3d-card")', card)
+        for text in ('type:"maison3d-card",name:"Maison 3D"', "preview:true", "documentationURL:"):
+            self.assertIn(text, card)
+        self.assertIn("return {};", card.split("static getStubConfig()")[1][:200])
+        editor = (COMPONENT / "www" / "maison3d-card-editor.js").read_text(encoding="utf-8")
+        self.assertIn('if(!customElements.get("maison3d-card-editor"))', editor)
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        self.assertIn("chargée automatiquement", readme)
+
     def test_architecture_module(self):
         architecture = (COMPONENT / "www" / "architecture.js").read_text(encoding="utf-8")
         page = (COMPONENT / "www" / "index.html").read_text(encoding="utf-8")

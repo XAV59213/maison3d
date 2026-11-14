@@ -8,8 +8,9 @@ from homeassistant.components import frontend, panel_custom
 from homeassistant.components.http import StaticPathConfig
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.loader import async_get_integration
 
-from .const import ASSETS_URL, DOMAIN, PANEL_PATH
+from .const import ASSETS_URL, CARD_URL, DOMAIN, PANEL_PATH
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -17,6 +18,7 @@ _LOGGER = logging.getLogger(__name__)
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Make the Maison 3D panel available after adding the integration."""
     state = hass.data.setdefault(DOMAIN, {"static_registered": False, "panel_registered": False})
+    state.setdefault("card_url", None)
 
     if not state["static_registered"]:
         assets = Path(__file__).parent / "www"
@@ -48,6 +50,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         state["panel_registered"] = True
         _LOGGER.info("Maison 3D panel registered at /%s", PANEL_PATH)
 
+    if not state["card_url"]:
+        # Load the Lovelace card on every dashboard so it shows up in
+        # « Ajouter une carte » without a manual resource. The version query
+        # refreshes browser caches after an update.
+        integration = await async_get_integration(hass, DOMAIN)
+        card_url = f"{CARD_URL}?v={integration.version}"
+        frontend.add_extra_js_url(hass, card_url)
+        state["card_url"] = card_url
+
     await hass.config_entries.async_forward_entry_setups(entry, ["sensor"])
     return True
 
@@ -58,6 +69,11 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if state and state.get("panel_registered"):
         frontend.async_remove_panel(hass, PANEL_PATH)
         state["panel_registered"] = False
+    if state and state.get("card_url"):
+        remove = getattr(frontend, "remove_extra_js_url", None)
+        if remove is not None:
+            remove(hass, state["card_url"])
+        state["card_url"] = None
 
     # Keep the static route marked as registered across reloads: aiohttp
     # static routes cannot safely be re-registered on the same HA process.

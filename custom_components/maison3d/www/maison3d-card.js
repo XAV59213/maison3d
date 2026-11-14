@@ -171,8 +171,9 @@ class Maison3DCard extends HTMLElement {
     return document.createElement("maison3d-card-editor");
   }
   static getStubConfig() {
-    // Zero configuration: everything is inherited from the integration options.
-    return {type:"custom:maison3d-card"};
+    // Zero configuration: Home Assistant adds the type, everything else is
+    // inherited from the integration options.
+    return {};
   }
 }
 if (!customElements.get("maison3d-card")) customElements.define("maison3d-card",Maison3DCard);
@@ -180,7 +181,8 @@ window.customCards=window.customCards||[];
 if (!window.customCards.some(card=>card.type==="maison3d-card")) {
   window.customCards.push({
     type:"maison3d-card",name:"Maison 3D",
-    description:"Carte 3D interactive pour Home Assistant, avec météo et jour/nuit",
-    preview:false
+    description:"Photo de la maison animée par la météo réelle (pluie, neige, orage, gel, jour/nuit), plan 2D et vue 3D. Aucun réglage nécessaire : tout vient de l’intégration Maison 3D.",
+    preview:true,
+    documentationURL:"https://github.com/XAV59213/maison3d#-carte-lovelace-prête-à-lemploi"
   });
 }
