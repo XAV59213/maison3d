@@ -61,6 +61,14 @@ Cette branche prépare une **vue vivante de la propriété** en s'appuyant sur [
 
 **Limites de fidélité** : les presets caméra sont des approximations géométriques de la perspective de l'image, et non une reconstruction photogrammétrique exacte. Les modèles, textures, véhicules et reliefs devront encore être affinés dans une instance Home Assistant réelle. Aucune prévision météo n'est générée par l'intégration.
 
+## Phases de lune, éclairs et fichiers d'images
+
+Le moteur utilise la valeur de ton capteur de **phase lunaire** pour afficher le bon symbole parmi les huit phases de lune (nouvelle lune, croissants, quartiers, gibbeuses et pleine lune). Tu peux maintenant définir une image spécifique pour chacune avec les clés `moon_new_moon`, `moon_waxing_crescent`, `moon_first_quarter`, `moon_waxing_gibbous`, `moon_full_moon`, `moon_waning_gibbous`, `moon_last_quarter` et `moon_waning_crescent`. Les images lunaires sont utilisées de nuit si une image correspondante existe et si aucun visuel météo spécifique n'a priorité.
+
+Les orages déclenchent **pluie et éclairs animés** sur la vue photo lorsque l'entité météo signale un orage. Les éclairs sont une animation Canvas, pas un effet réellement photographié. Ils ne doivent pas provoquer un changement intempestif de l'état des capteurs.
+
+**Images incluses dans le dépôt :** l'unique photo officielle `/maison3d-assets/maison3d-reference.jpg` sert d'image de secours. Les **19 emplacements** de photos personnalisées (11 météo/saisons et 8 phases lunaires) sont disponibles mais **les autres JPG/PNG ne sont pas tous livrés dans l'intégration**. Tu peux fournir tes propres variantes météo via `/config/www/maison3d/` et les choisir dans l'éditeur de carte ou les réglages Photo. Pour une scène vraiment différente lors de la neige, il faut une image enneigée propre à cet état ; l'effet animé seul ne blanchit pas le jardin ou les toits.
+
 ## Configuration des capteurs dans l'intégration Home Assistant
 
 La configuration des capteurs n'est **pas limitée à la carte Lovelace**.
