@@ -180,7 +180,7 @@ class TestMaison3D(unittest.TestCase):
         self.assertIn('from "./moon-effects.js"', photo)
         self.assertIn("createMoonOverlay({container:section})", photo)
         self.assertIn("skyMoon.draw(", photo)
-        self.assertIn('id="maison3d-photo-seasons"', photo)
+        self.assertIn('seasonalNav.id="maison3d-photo-seasons"', photo)
         self.assertIn("seasonButtons.set(key,btn)", photo)
         self.assertIn("state.season=key", photo)
         self.assertIn("moon_preview", photo)
