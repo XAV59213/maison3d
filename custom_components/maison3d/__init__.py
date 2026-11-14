@@ -48,6 +48,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         state["panel_registered"] = True
         _LOGGER.info("Maison 3D panel registered at /%s", PANEL_PATH)
 
+    await hass.config_entries.async_forward_entry_setups(entry, ["sensor"])
     return True
 
 
@@ -60,4 +61,4 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     # Keep the static route marked as registered across reloads: aiohttp
     # static routes cannot safely be re-registered on the same HA process.
-    return True
+    return await hass.config_entries.async_unload_platforms(entry, ["sensor"])
