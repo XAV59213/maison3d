@@ -65,6 +65,60 @@ class TestMaison3D(unittest.TestCase):
         self.assertIn('type:"maison3d:visibility"', card)
         self.assertIn("this._observer?.disconnect()", card)
 
+    def test_frost_effect_wiring(self):
+        """Frost overlay: option flow, diagnostics, card/panel bridge and photo toggle."""
+        www = COMPONENT / "www"
+        config = (COMPONENT / "config_flow.py").read_text(encoding="utf-8")
+        sensor = (COMPONENT / "sensor.py").read_text(encoding="utf-8")
+        card = (www / "maison3d-card.js").read_text(encoding="utf-8")
+        panel = (www / "maison3d-panel.js").read_text(encoding="utf-8")
+        editor = (www / "maison3d-card-editor.js").read_text(encoding="utf-8")
+        photo = (www / "photo-view.js").read_text(encoding="utf-8")
+        frost = (www / "frost-effects.js").read_text(encoding="utf-8")
+        self.assertIn('vol.Optional("frost_enabled"', config)
+        self.assertIn('"frost_enabled":', sensor)
+        self.assertIn("frost_enabled:this._config.frost_enabled??", card)
+        self.assertIn("frost_enabled: diagnostic?.attributes?.frost_enabled !== false", panel)
+        self.assertIn('toggle("frost_enabled"', editor)
+        self.assertIn('from "./frost-effects.js"', photo)
+        # Frost is controlled from the settings menu only: no extra button on the photo.
+        self.assertIn('frostInput.addEventListener("change"', photo)
+        self.assertNotIn("frostBtn", photo)
+        self.assertIn("nav.append(photoBtn,planBtn,modelBtn,nightBtn,dayBtn,autoBtn,effectsBtn,optionsBtn)", photo)
+        self.assertIn("frost.frame(time,frostTarget())", photo)
+        self.assertIn("frost.frame(time,0)", photo)
+        self.assertIn("prefers-reduced-motion", frost)
+        for key in ("temperature_entity", "wind_entity", "rain_entity", "snow_entity", "cloud_entity"):
+            self.assertIn(key + ':""', panel)
+        self.assertIn("for(const key of Object.keys(this._choices))", panel)
+        for language in ("fr", "en"):
+            tr = json.loads((COMPONENT / "translations" / f"{language}.json").read_text(encoding="utf-8"))
+            self.assertIn("frost_enabled", tr["options"]["step"]["init"]["data"])
+        strings = json.loads((COMPONENT / "strings.json").read_text(encoding="utf-8"))
+        self.assertIn("frost_enabled", strings["options"]["step"]["init"]["data"])
+
+    def test_clean_photos_and_right_menu_layout(self):
+        """Bundled photos carry no drawn interface; the seasons menu never covers the status or bottom bar."""
+        def jpeg_size(path):
+            data = path.read_bytes()
+            i = 2
+            while i < len(data):
+                marker, length = data[i + 1], int.from_bytes(data[i + 2:i + 4], "big")
+                if marker in (0xC0, 0xC1, 0xC2):
+                    return int.from_bytes(data[i + 7:i + 9], "big"), int.from_bytes(data[i + 5:i + 7], "big")
+                i += 2 + length
+            raise AssertionError(path.name)
+
+        www = COMPONENT / "www"
+        for path in [www / "maison3d-reference.jpg", *sorted((www / "images").glob("*.jpg"))]:
+            self.assertEqual(jpeg_size(path), (1286, 914), path.name)
+        photo = (www / "photo-view.js").read_text(encoding="utf-8")
+        self.assertIn("function placeSeasons(){", photo)
+        self.assertIn("const top=Math.max(st.bottom+8,innerHeight*.12);", photo)
+        self.assertIn('seasonalNav.classList.toggle("compact",bottom-top<215);', photo)
+        panel = (www / "maison3d-panel.js").read_text(encoding="utf-8")
+        self.assertIn("min-height:240px", panel)
+
     def test_panel_bridge(self):
         panel = (COMPONENT / "www" / "maison3d-panel.js").read_text(encoding="utf-8")
         self.assertIn("postMessage", panel)
@@ -294,7 +348,8 @@ class TestMaison3D(unittest.TestCase):
         self.assertIn('base_image_url: typeof diagnostic?.attributes?.base_image_url', panel)
         self.assertIn('effects_enabled: diagnostic?.attributes?.effects_enabled !== false', panel)
         self.assertIn('this._changed("base_image_url"', editor)
-        self.assertIn('effectsSelect.addEventListener("change"', editor)
+        self.assertIn('select.addEventListener("change"', editor)
+        self.assertIn('toggle("effects_enabled"', editor)
         self.assertIn("resolveMainPhoto({", photo)
         self.assertIn("previewBtn.addEventListener", photo)
         self.assertIn('effectsBtn.addEventListener("click"', photo)

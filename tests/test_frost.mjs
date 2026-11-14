@@ -1,0 +1,18 @@
+import assert from "node:assert/strict";
+import {readFileSync} from "node:fs";
+const text=readFileSync("custom_components/maison3d/www/frost-effects.js","utf8");
+const {frostLevel,toCelsius,FROST_FULL_AT}=await import("data:text/javascript;base64,"+Buffer.from(text).toString("base64"));
+assert.equal(FROST_FULL_AT,-5);
+assert.equal(frostLevel(5),0);
+assert.equal(frostLevel(0.1),0);
+assert.equal(frostLevel(0),.35);
+assert.ok(frostLevel(-3)>frostLevel(-1)&&frostLevel(-3)<1);
+assert.equal(frostLevel(-5),1);
+assert.equal(frostLevel(-20),1);
+assert.equal(frostLevel(null),0);
+assert.equal(frostLevel(NaN),0);
+assert.equal(toCelsius(-3,"°C"),-3);
+assert.equal(toCelsius(32,"°F"),0);
+assert.ok(frostLevel(toCelsius(23,"°F"))===1);
+assert.equal(toCelsius(null,"°C"),null);
+console.log("Frost threshold, intensity and °F conversion OK");

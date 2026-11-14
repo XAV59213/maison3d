@@ -72,7 +72,16 @@ title: Ma maison
 height: 600
 base_image_url: /local/maison3d/ma-maison.jpg
 effects_enabled: true
+frost_enabled: true
 ```
+
+### ❄ Effet gel
+
+Quand le **capteur de température extérieure** passe à **0 °C ou moins**, du givre gagne les bords de la photo, et quelques cristaux de glace scintillent. Plus il fait froid, plus le givre avance : il est léger à 0 °C et couvre le maximum de surface à −5 °C et en dessous. Les capteurs en °F sont convertis. L'effet est entièrement procédural (aucune image en plus) ; il apparaît et disparaît en fondu, respecte « réduire les animations » du système et s'arrête avec le reste du rendu quand la page ou la carte n'est pas visible.
+
+- **Intégration :** option **Activer l'effet gel quand la température est inférieure ou égale à 0 °C** (activée par défaut). Elle nécessite un capteur de température, ou une entité météo qui fournit une température.
+- **Carte Lovelace :** `frost_enabled: true` / `false`, ou « Hériter de l'intégration » dans l'éditeur visuel.
+- **Vue photo :** case **Effet gel** dans le menu **⚙ Images / météo** (aucun bouton ajouté sur la photo) ; dans ce même menu, **🧊 Tester le gel** le force sans changer la température. Le gel suit aussi l'interrupteur général des effets : avec **○ Effets OFF**, il n'y a pas de gel.
 
 ## 🏡 Une photographie unique, une maison vivante
 
