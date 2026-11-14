@@ -162,7 +162,7 @@ export function createPhotoView() {
   ].join("");
   document.head.append(style);
   document.body.append(section,nav,settings);
-  let live={weather:null,sun:null,temperature:null,windSpeed:0,moon:null};
+  let live={weather:null,sun:null,temperature:null,windSpeed:0,moon:null,rain:null,snow:null,cloud:null};
   let currentSrc="",active="day",lastFrame=0;
   let particles=[];
   const seasonNow=()=>{
@@ -180,10 +180,14 @@ export function createPhotoView() {
     if(state.mode!=="auto")return state.mode;
     const w=String(live.weather||"").toLowerCase();
     if(/lightning|storm|thunder/.test(w))return "storm";
+    if(Number(live.snow)>0)return "snow";
+    if(Number(live.rain)>0)return "rain";
     if(/snow|hail/.test(w))return "snow";
     if(/rain|pouring/.test(w))return "rain";
     if(/wind/.test(w))return "wind";
     if(/cloud|fog/.test(w))return "cloudy";
+    if(Number(live.cloud)>=60)return "cloudy";
+    if(Number(live.windSpeed)>=25)return "wind";
     if(nighttime())return "night";
     const s=seasonNow();return state.images[s]?s:"day";
   }
@@ -246,7 +250,10 @@ export function createPhotoView() {
       sun:typeof event.data.sun==="string"?event.data.sun:null,
       temperature:Number.isFinite(event.data.temperature)?event.data.temperature:null,
       windSpeed:Number.isFinite(event.data.windSpeed)?event.data.windSpeed:0,
-      moon:typeof event.data.moon==="string"?event.data.moon:null
+      moon:typeof event.data.moon==="string"?event.data.moon:null,
+      rain:Number.isFinite(event.data.rain)?event.data.rain:null,
+      snow:Number.isFinite(event.data.snow)?event.data.snow:null,
+      cloud:Number.isFinite(event.data.cloud)?event.data.cloud:null
     };
     update();
   });
