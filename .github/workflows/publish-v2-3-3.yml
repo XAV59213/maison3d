@@ -1,0 +1,80 @@
+name: Publish Maison 3D v2.3.3
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/publish-v2-3-3.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    if: github.repository == 'XAV59213/maison3d'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify v2.3.3 and all new weather preview controls
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path("custom_components/maison3d")
+          manifest=json.loads((root/"manifest.json").read_text())
+          assert manifest["version"]=="2.3.3"
+          view=(root/"www/photo-view.js").read_text()
+          moon=(root/"www/moon-effects.js").read_text()
+          readme=Path("README.md").read_text()
+          assert 'from "./moon-effects.js"' in view
+          assert "skyMoon.draw(" in view
+          assert 'seasonalNav.id="maison3d-photo-seasons"' in view
+          assert "testButtons.set(key,btn)" in view
+          assert "moon_preview" in view
+          for phase in ("new_moon","waxing_crescent","first_quarter","waxing_gibbous","full_moon","waning_gibbous","last_quarter","waning_crescent"):
+              assert phase in moon
+          for name in ("jour.jpg","nuageux.jpg","pluie.jpg","neige.jpg"):
+              file=root/"www/images"/name
+              assert file.is_file() and file.stat().st_size>50000
+              assert ('src="custom_components/maison3d/www/images/'+name+'"') in readme
+          PY
+          node --check custom_components/maison3d/www/photo-view.js
+          node --check custom_components/maison3d/www/moon-effects.js
+          python3 -m unittest discover -s tests -q
+      - name: Publish GitHub release v2.3.3
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          if gh release view v2.3.3 >/dev/null 2>&1; then
+            echo "Release already exists"
+            exit 0
+          fi
+          cat > /tmp/notes.md <<'EOF'
+          ## Maison 3D v2.3.3 — Lune et saisons animées, mode test complet
+
+          Cette version ajoute les nouveautés de la PR #9.
+
+          ### Corrections et nouveautés
+          - **Lune dessinée directement sur la photo** avec ses 8 phases, y compris en journée si une phase lunaire est disponible depuis Home Assistant.
+          - **Sélecteur de phase lunaire** pour prévisualiser manuellement les 8 phases, sans changer les entités.
+          - **Saisons à droite** : boutons Printemps, Été, Automne, Hiver, Auto corrigés et cliquables.
+          - **Panneau Tester chaque état** : Jour, Nuit, Nuages, Pluie, Neige, Vent, Orage et les 4 saisons.
+          - **Animations enrichies** : pétales de printemps, rafales de vent et neige hivernale ; pluie et éclairs conservés.
+          - **Retour Auto** pour reprendre les données Home Assistant.
+          - **README illustré** avec la photo officielle et les 4 véritables JPEG météo inclus.
+
+          ### Images fournies dans HACS
+          - `/maison3d-assets/images/jour.jpg`
+          - `/maison3d-assets/images/nuageux.jpg`
+          - `/maison3d-assets/images/pluie.jpg`
+          - `/maison3d-assets/images/neige.jpg`
+
+          Aucun autre visuel JPEG spécifique (nuit, orage, vent, saisons ou phases de lune) n'est livré ; ces états utilisent les effets graphiques et les images personnalisables.
+
+          ### Mise à jour
+          HACS → Maison 3D → Mettre à jour vers **v2.3.3**, puis redémarrer Home Assistant et forcer une actualisation du navigateur. Ouvrir la carte → ⚙ Images / météo pour tester chaque ambiance.
+
+          Les tests HACS, Hassfest et Python/JavaScript ont réussi. Le rendu exact reste à vérifier sur une installation Home Assistant réelle.
+          EOF
+          gh release create v2.3.3 --target "${GITHUB_SHA}" --title "Maison 3D v2.3.3 — Lune, saisons et météo animée" --notes-file /tmp/notes.md
