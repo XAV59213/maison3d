@@ -208,6 +208,20 @@ class TestMaison3D(unittest.TestCase):
         self.assertIn('skyMoon.draw(', photo)
         self.assertIn('cinematics.frame(', photo)
 
+    def test_2d_plan_accessible_from_photo_and_restores_mode(self):
+        photo = (COMPONENT / "www" / "photo-view.js").read_text(encoding="utf-8")
+        app = (COMPONENT / "www" / "index.html").read_text(encoding="utf-8")
+        self.assertIn('planBtn.textContent="▤ Plan 2D"', photo)
+        self.assertIn('nav.append(photoBtn,planBtn,modelBtn', photo)
+        self.assertIn('planBtn.addEventListener("click",()=>setModelView("2d"))', photo)
+        self.assertIn('modelBtn.addEventListener("click",()=>setModelView("3d"))', photo)
+        self.assertIn('document.getElementById(view==="2d"?"topview":"tab3d")?.click()', photo)
+        self.assertIn('planBtn.setAttribute("aria-pressed"', photo)
+        self.assertIn('saved.model_view==="2d"', photo)
+        self.assertIn('id="topview"', app)
+        self.assertIn('id="tab3d"', app)
+        self.assertIn('state.enabled=false;state.model_view=view', photo)
+
     def test_exact_approved_readme_image(self):
         self.assertTrue((ROOT / "assets" / "maison3d-reference.jpg").is_file())
         content = (ROOT / "README.md").read_text(encoding="utf-8")
