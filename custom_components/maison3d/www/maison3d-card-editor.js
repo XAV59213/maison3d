@@ -109,7 +109,11 @@ class Maison3DCardEditor extends HTMLElement {
     const keys=[
       ["day","Jour"],["night","Nuit"],["cloudy","Nuageux"],["rain","Pluie"],
       ["snow","Neige"],["wind","Vent"],["storm","Orage"],
-      ["spring","Printemps"],["summer","Été"],["autumn","Automne"],["winter","Hiver"]
+      ["spring","Printemps"],["summer","Été"],["autumn","Automne"],["winter","Hiver"],
+      ["moon_new_moon","Nouvelle lune"],["moon_waxing_crescent","Premier croissant"],
+      ["moon_first_quarter","Premier quartier"],["moon_waxing_gibbous","Gibbeuse croissante"],
+      ["moon_full_moon","Pleine lune"],["moon_waning_gibbous","Gibbeuse décroissante"],
+      ["moon_last_quarter","Dernier quartier"],["moon_waning_crescent","Dernier croissant"]
     ];
     for(const [key,name] of keys){
       const label=document.createElement("label");label.textContent=name;
