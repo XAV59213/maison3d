@@ -120,6 +120,28 @@ class Maison3DCardEditor extends HTMLElement {
       probe.src=value;
     });
     photoSection.append(photoLabel,photoInput,button,status,preview);
+    const effects=section("Animations et effets",
+      "Laissez le réglage hérité de l’intégration, ou forcez les effets pour cette carte.");
+    const effectsLabel=document.createElement("label");
+    effectsLabel.textContent="Effets météo, saisons, lune et éclairages";
+    const effectsSelect=document.createElement("select");
+    for(const [value,text] of [["inherit","Hériter de l’intégration"],["on","Activer les effets"],["off","Désactiver les effets"]]){
+      const option=document.createElement("option");option.value=value;option.textContent=text;
+      effectsSelect.append(option);
+    }
+    effectsSelect.value=this._config.effects_enabled===true?"on":
+      this._config.effects_enabled===false?"off":"inherit";
+    effectsSelect.addEventListener("change",()=>{
+      const value=effectsSelect.value;
+      const next={...this._config,images:{...(this._config.images||{})}};
+      if(value==="inherit")delete next.effects_enabled;
+      else next.effects_enabled=value==="on";
+      this._config=next;
+      this.dispatchEvent(new CustomEvent("config-changed",{
+        detail:{config:next},bubbles:true,composed:true
+      }));
+    });
+    effects.append(effectsLabel,effectsSelect);
 
     const pickers=section("Capteurs Home Assistant",
       "Choisis tes propres entités. Laisse les champs complémentaires vides pour utiliser automatiquement les données de weather.*.");
