@@ -228,6 +228,23 @@ Pour utiliser une photo personnelle :
 
 Les quatre photos météo installées avec HACS restent disponibles en activant l'option facultative d'images alternatives. La photo officielle reste affichée par défaut. Les réglages du panneau Photo sont enregistrés dans le **navigateur local** ; pour reproduire une configuration sur plusieurs appareils, préférer les options de l'intégration et la configuration YAML de la carte.
 
+## 🍂 Module des quatre saisons — calendrier Home Assistant
+
+Les quatre saisons suivent **la date locale et le fuseau horaire configurés dans Home Assistant** (champ `time_zone`, par exemple `Europe/Paris`). La photo officielle de la propriété reste fixe ; le module `season-effects.js` superpose des animations propres à la saison.
+
+| Saison | Période météorologique (France) | Animation |
+|---|---|---|
+| 🌸 Printemps | 1er mars – 31 mai | Pétales, teintes printanières |
+| ☀️ Été | 1er juin – 31 août | Soleil chaleureux, points lumineux de nuit |
+| 🍂 Automne | 1er septembre – 30 novembre | Feuilles en mouvement, tonalité ambrée |
+| ❄️ Hiver | 1er décembre – 28/29 février | Flocons, voile hivernal |
+
+**Mode automatique :** la date est vérifiée pendant le fonctionnement de la vue, ce qui permet de changer de saison au passage de minuit, même sans changement de capteur météo. Les conditions météo (pluie, orage, vent, etc.) restent indépendantes et peuvent s'ajouter à l'effet saisonnier.
+
+**Mode manuel :** les cinq boutons fixes à droite permettent de tester Printemps, Été, Automne, Hiver et Auto. Le bouton **◉ Saisons auto** rétablit le calendrier de Home Assistant.
+
+Les saisons météorologiques ne coïncident pas exactement avec les dates astronomiques des équinoxes et solstices.
+
 ## 🗺️ Accès rapide aux trois vues — v2.3.5
 
 Les commandes **▣ Photo réelle**, **▤ Plan 2D** et **⬡ 3D éditable** restent accessibles depuis la barre au-dessus de l'image, même lorsque la vue photo est active.
