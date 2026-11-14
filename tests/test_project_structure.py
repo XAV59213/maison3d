@@ -48,6 +48,23 @@ class TestMaison3D(unittest.TestCase):
             text = module.read_text(encoding="utf-8")
             self.assertNotIn("cdn.jsdelivr.net", text, module.name)
 
+    def test_webgl_memory_and_render_pause(self):
+        """Removed 3D groups free GPU memory; rendering pauses when not visible."""
+        www = COMPONENT / "www"
+        page = (www / "index.html").read_text(encoding="utf-8")
+        card = (www / "maison3d-card.js").read_text(encoding="utf-8")
+        self.assertIn("function disposeUnused(groups)", page)
+        self.assertIn("o.geometry.dispose()", page)
+        self.assertIn("if(!used.has(m))m.dispose()", page)
+        self.assertIn("disposeUnused(old)", page)
+        self.assertIn("if(document.hidden||offscreen)return", page)
+        self.assertIn('classList.contains("photo-active")', page)
+        self.assertIn('e.data?.type!=="maison3d:visibility"', page)
+        self.assertIn("e.source!==window.parent||e.origin!==location.origin", page)
+        self.assertIn("new IntersectionObserver", card)
+        self.assertIn('type:"maison3d:visibility"', card)
+        self.assertIn("this._observer?.disconnect()", card)
+
     def test_panel_bridge(self):
         panel = (COMPONENT / "www" / "maison3d-panel.js").read_text(encoding="utf-8")
         self.assertIn("postMessage", panel)

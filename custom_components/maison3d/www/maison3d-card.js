@@ -42,10 +42,28 @@ class Maison3DCard extends HTMLElement {
 
   connectedCallback() {
     if (this._config) this._renderCard();
+    // Pause the iframe rendering loop while the card is scrolled off-screen.
+    if (!this._observer && "IntersectionObserver" in window) {
+      this._observer = new IntersectionObserver(entries => {
+        this._visible = entries.some(entry => entry.isIntersecting);
+        this._sendVisibility();
+      });
+      this._observer.observe(this);
+    }
   }
 
   disconnectedCallback() {
     this._loaded = false;
+    this._observer?.disconnect();
+    this._observer = null;
+  }
+
+  _sendVisibility() {
+    if (!this._loaded || !this._frame?.contentWindow) return;
+    this._frame.contentWindow.postMessage(
+      {type:"maison3d:visibility", visible:this._visible !== false},
+      window.location.origin
+    );
   }
 
   _renderCard() {
@@ -78,6 +96,7 @@ class Maison3DCard extends HTMLElement {
     frame.addEventListener("load",()=>{
       this._loaded=true;
       this._updateStates(true);
+      this._sendVisibility();
     });
     const footer=document.createElement("div");
     footer.className="footer";

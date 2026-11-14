@@ -93,7 +93,9 @@ else if(o.type==="pool"){box(g,w,.25,d,gray,0,.1,0);box(g,w*.94,.03,d*.9,mat(0x3
 else if(o.type==="tree"){const trunk=cyl(g,w*.08,w*.11,h*.6,wood,0,h*.3,0);const leaves=new THREE.Mesh(new THREE.SphereGeometry(w*.55,12,10),mat(0x385e31));leaves.scale.y=h/w*.58;leaves.position.y=h*.73;leaves.castShadow=true;g.add(leaves)}
 else if(o.type==="swing"){for(let s of [-1,1]){let l=box(g,.12,h,.12,wood,s*w*.44,h/2,0);l.rotation.z=s*.22}box(g,w,.12,.12,wood,0,h,0);for(let s of [-1,1]){box(g,.025,h*.65,.025,gray,s*w*.19,h*.65,0)}box(g,w*.52,.1,.5,wood,0,h*.33,0)}
 else{box(g,w,h,d,wood,0,h/2,0)}scene.add(g);meshes.set(o.id,g)}
-function redraw(){if(outline){scene.remove(outline);outline.geometry.dispose();outline.material.dispose();outline=null}for(const g of meshes.values())scene.remove(g);meshes.clear();data.forEach(build);refreshSelect();if(selected)choose(selected.id)}
+// Free GPU memory of removed groups, but keep anything still used by the scene (shared materials).
+function disposeUnused(groups){const used=new Set();scene.traverse(o=>{if(o.geometry)used.add(o.geometry);for(const m of [].concat(o.material||[]))used.add(m)});for(const g of groups)g.traverse(o=>{if(o.geometry&&!used.has(o.geometry))o.geometry.dispose();for(const m of [].concat(o.material||[]))if(!used.has(m))m.dispose()})}
+function redraw(){if(outline){scene.remove(outline);outline.geometry.dispose();outline.material.dispose();outline=null}const old=[...meshes.values()];for(const g of old)scene.remove(g);meshes.clear();data.forEach(build);disposeUnused(old);refreshSelect();if(selected)choose(selected.id)}
 const select=document.getElementById("objects"),ids=["x","z","w","d","h","r"];function refreshSelect(){select.replaceChildren(...data.map(o=>{const opt=document.createElement("option");opt.value=o.id;opt.textContent=o.name||o.id;return opt}));if(data.length){selected=data.find(o=>o.id===selected?.id)||data[0];select.value=selected.id;ids.forEach(k=>document.getElementById(k).value=selected[k])}else selected=null}
 function choose(id){selected=data.find(o=>o.id===id);refreshSelect();if(outline){scene.remove(outline);outline.geometry.dispose();outline.material.dispose();outline=null}if(selected&&meshes.get(id)){outline=new THREE.BoxHelper(meshes.get(id),0x00d8ff);scene.add(outline)}}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(data));document.getElementById("save").textContent="Sauvegardé à "+new Date().toLocaleTimeString("fr-FR")}catch(err){document.getElementById("save").textContent="Sauvegarde locale impossible — exportez en JSON";console.warn("Maison 3D: storage unavailable",err)}}
@@ -118,5 +120,10 @@ const photoView=createPhotoView();
 const presentation=createPresentation({THREE,camera,controls});
 const worldAmbience=createWorldAmbience({THREE,scene,sun});
 atmosphere.update();
-redraw();if(selected)choose(selected.id);addEventListener("resize",()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});renderer.setAnimationLoop((time)=>{presentation.frame();controls.update();worldAmbience.frame(time);renderer.render(scene,camera);atmosphere.frame(time);photoView.frame(time)});
+redraw();if(selected)choose(selected.id);addEventListener("resize",()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});// Pause everything when the page is hidden or the Lovelace card is off-screen;
+// skip the WebGL render when the opaque photo view covers the 3D scene.
+let offscreen=false;
+addEventListener("message",e=>{if(e.source!==window.parent||e.origin!==location.origin||e.data?.type!=="maison3d:visibility")return;offscreen=e.data.visible===false});
+const sceneVisible=()=>!document.documentElement.classList.contains("photo-active");
+renderer.setAnimationLoop((time)=>{if(document.hidden||offscreen)return;if(sceneVisible()){presentation.frame();controls.update();worldAmbience.frame(time);renderer.render(scene,camera)}atmosphere.frame(time);photoView.frame(time)});
 </script></body></html>
