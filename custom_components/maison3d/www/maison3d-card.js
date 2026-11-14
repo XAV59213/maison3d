@@ -1,0 +1,116 @@
+/**
+ * Maison 3D interactive Lovelace card.
+ * Load as a JavaScript module resource: /maison3d-assets/maison3d-card.js
+ */
+class Maison3DCard extends HTMLElement {
+  setConfig(config) {
+    if (!config || (config.type && config.type !== "custom:maison3d-card")) {
+      throw new Error("Maison 3D: type must be custom:maison3d-card");
+    }
+    const height = Number(config.height ?? 440);
+    if (!Number.isFinite(height) || height < 240 || height > 1400) {
+      throw new Error("Maison 3D: height must be between 240 and 1400 pixels");
+    }
+    this._config = {
+      title: String(config.title ?? "Maison 3D"),
+      height,
+      weather_entity: String(config.weather_entity ?? ""),
+      sun_entity: String(config.sun_entity ?? "sun.sun")
+    };
+    this._renderCard();
+  }
+
+  set hass(value) {
+    this._hass = value;
+    this._updateStates();
+  }
+
+  connectedCallback() {
+    if (this._config) this._renderCard();
+  }
+
+  disconnectedCallback() {
+    this._loaded = false;
+  }
+
+  _renderCard() {
+    if (!this.isConnected || !this._config) return;
+    if (!this.shadowRoot) this.attachShadow({mode:"open"});
+    if (this._frame) {
+      const title = this.shadowRoot.querySelector(".card-title");
+      if (title) title.textContent = this._config.title;
+      this._frame.style.height = this._config.height + "px";
+      return;
+    }
+    const style = document.createElement("style");
+    style.textContent = `
+      :host{display:block;min-width:0}
+      ha-card{display:block;overflow:hidden}
+      .card-title{padding:14px 16px 8px;font-size:18px;font-weight:500}
+      iframe{display:block;width:100%;border:0;background:#111c2d}
+      .footer{font-size:11px;color:var(--secondary-text-color,#889);
+        padding:7px 13px;text-align:right}
+    `;
+    const card = document.createElement("ha-card");
+    const heading = document.createElement("div");
+    heading.className="card-title";
+    heading.textContent=this._config.title;
+    const frame=document.createElement("iframe");
+    frame.title="Maison 3D interactive";
+    frame.loading="lazy";
+    frame.src="/maison3d-assets/index.html?mode=card";
+    frame.style.height=this._config.height+"px";
+    frame.addEventListener("load",()=>{
+      this._loaded=true;
+      this._updateStates(true);
+    });
+    const footer=document.createElement("div");
+    footer.className="footer";
+    footer.textContent="Vue 3D interactive · Ouvrir le panneau Maison 3D pour modifier les objets";
+    card.append(heading,frame,footer);
+    this.shadowRoot.replaceChildren(style,card);
+    this._frame=frame;
+    this._loaded=false;
+  }
+
+  _updateStates(force=false) {
+    if (!this._loaded || !this._frame?.contentWindow || !this._hass) return;
+    const states=this._hass.states||{};
+    const weather=(this._config.weather_entity && states[this._config.weather_entity]) ||
+      Object.values(states).find(s=>s.entity_id?.startsWith("weather.") &&
+        s.state!=="unknown" && s.state!=="unavailable");
+    const sun=states[this._config.sun_entity];
+    const attrs=weather?.attributes||{};
+    const payload={
+      type:"maison3d:conditions",
+      weather:weather?.state??null,
+      temperature:typeof attrs.temperature==="number"?attrs.temperature:null,
+      windSpeed:typeof attrs.wind_speed==="number"?attrs.wind_speed:null,
+      windSpeedUnit:attrs.wind_speed_unit??"",
+      sun:sun?.state??null
+    };
+    const serialized=JSON.stringify(payload);
+    if (!force && serialized===this._lastState) return;
+    this._lastState=serialized;
+    this._frame.contentWindow.postMessage(payload,window.location.origin);
+  }
+
+  getCardSize() {
+    return Math.max(4,Math.ceil((this._config?.height??440)/50)+1);
+  }
+  getGridOptions() {
+    return {columns:12, rows:Math.max(5,Math.ceil((this._config?.height??440)/56)),min_columns:4};
+  }
+  static getStubConfig() {
+    return {type:"custom:maison3d-card",title:"Maison 3D",height:440};
+  }
+}
+if (!customElements.get("maison3d-card")) customElements.define("maison3d-card",Maison3DCard);
+window.customCards=window.customCards||[];
+if (!window.customCards.some(card=>card.type==="maison3d-card")) {
+  window.customCards.push({
+    type:"maison3d-card",name:"Maison 3D",
+    description:"Carte 3D interactive pour Home Assistant, avec météo et jour/nuit",
+    preview:false
+  });
+}
