@@ -9,5 +9,23 @@
     "abort": {
       "already_configured": "Déjà configuré"
     }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Configurer les capteurs Maison 3D",
+        "description": "Choisissez vos capteurs Home Assistant. Les capteurs complémentaires sont facultatifs.",
+        "data": {
+          "weather_entity": "Entité météo",
+          "sun_entity": "Entité soleil",
+          "moon_entity": "Capteur phase lunaire",
+          "temperature_entity": "Température extérieure",
+          "wind_entity": "Vitesse du vent",
+          "rain_entity": "Capteur pluie",
+          "snow_entity": "Capteur neige",
+          "cloud_entity": "Couverture nuageuse"
+        }
+      }
+    }
   }
 }
