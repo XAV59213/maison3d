@@ -1,0 +1,103 @@
+name: Publish Maison 3D v2.3.9
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/publish-v2-3-9.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    if: github.repository == 'XAV59213/maison3d'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Verify frost, day/night photos, test mode, card auto-load and version
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path("custom_components/maison3d")
+          manifest=json.loads((root/"manifest.json").read_text())
+          assert manifest["version"]=="2.3.9"
+          assert "frontend" in manifest["dependencies"]
+          www=root/"www"
+          assert (www/"frost-effects.js").is_file()
+          for name in ("clair","nuageux","pluie","orage","neige","vent","brouillard"):
+              for tod in ("jour","nuit"):
+                  assert (www/"images"/f"{name}-{tod}.jpg").is_file(), (name, tod)
+          init=(root/"__init__.py").read_text()
+          assert "frontend.add_extra_js_url(hass, card_url)" in init
+          assert "remove_extra_js_url" in init
+          photo=(www/"photo-view.js").read_text()
+          assert 'const test={weather:"auto",time:"auto"};' in photo
+          assert "function placeSeasons(){" in photo
+          card=(www/"maison3d-card.js").read_text()
+          assert "preview:true" in card
+          assert 'if (!customElements.get("maison3d-card"))' in card
+          PY
+          for f in maison3d-card.js maison3d-card-editor.js maison3d-panel.js photo-view.js photo-source.js frost-effects.js photo-cinematics.js; do
+            node --check "custom_components/maison3d/www/$f"
+          done
+          node tests/test_main_photo.mjs
+          node tests/test_weather_photos.mjs
+          node tests/test_seasons.mjs
+          node tests/test_frost.mjs
+          python3 -m unittest discover -s tests -q
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          if gh release view v2.3.9 >/dev/null 2>&1; then
+            echo "v2.3.9 already exists"
+            exit 0
+          fi
+          cat >/tmp/notes.md <<'NOTES'
+          ## Maison 3D v2.3.9 — Effet gel, photos jour/nuit, mode test et carte dans le sélecteur
+
+          ### ❄ Effet gel
+          - Givre sur les bords de la photo quand la température extérieure est ≤ 0 °C, plus marqué quand il fait plus froid, avec une apparition progressive.
+          - Activable ou désactivable dans l'intégration, la carte ou le menu ⚙ Images / météo. Aucun bouton ajouté sur la photo.
+
+          ### 🌗 Photos jour / nuit par météo
+          - 14 photos livrées : clair, nuageux, pluie, orage, neige, vent et brouillard, chacune de jour et de nuit (≈ 2,9 Mo au total).
+          - Désactivées par défaut. Option « Photos météo jour/nuit » dans l'intégration, la carte (`weather_photos`) ou le menu ⚙.
+          - 32 emplacements d'images personnalisables (`snow_night`, `rain_day`…), avec les noms de fichiers conseillés et l'ordre de repli dans le README.
+          - Nouvel effet de bancs de brouillard animés.
+
+          ### 🧪 Mode test
+          - Dans le menu ⚙ (panneau et carte) : forcer clair, nuageux, pluie, orage avec éclairs, neige, vent, brouillard ou gel, de jour ou de nuit.
+          - Rien n'est enregistré : un rechargement ou « Revenir à la météo réelle » rend la main à Home Assistant.
+
+          ### 🖥️ Carte zéro config, chargée automatiquement
+          - La carte est chargée automatiquement par l'intégration et apparaît dans **Ajouter une carte → Par carte** (recherche « Maison 3D »), avec un aperçu.
+          - Une carte ajoutée = `type: custom:maison3d-card` seul : tout est hérité de l'intégration, à chaud.
+          - Éditeur visuel : toutes les options sont facultatives (vide = hériter de l'intégration).
+
+          ### 📱 Corrections
+          - Menu des saisons sur mobile : il se place sous la bulle d'état et passe en 2 colonnes sur les écrans bas. Plus de chevauchement.
+          - Photo de référence et anciennes photos recadrées : la fausse interface dessinée dessus a disparu (barres d'icônes, menu « Jour/Soir/Nuit/Météo/Saisons/Soleil »).
+          - Vue du dessus et vue 3D ne sont plus écrasées par l'animation de caméra en cours.
+          - L'ancienne option photos météo ne se réactive plus toute seule.
+          - Les images d'une carte ne sont plus recopiées dans le navigateur.
+          - Hauteur de carte vide acceptée (440 px). Panneau utilisable sur un téléphone à l'horizontale.
+          - Bulle d'état sans doublon (« Été · Été »).
+          - Noms corrigés dans le script d'import des images.
+
+          ### Installer
+          Dans HACS, mettre à jour **Maison 3D vers v2.3.9**, redémarrer Home Assistant puis actualiser le navigateur (Ctrl + F5).
+
+          > La ressource Lovelace manuelle `/maison3d-assets/maison3d-card.js` est désormais **facultative**. Si vous l'aviez ajoutée, vous pouvez la supprimer (Paramètres → Tableaux de bord → Ressources) pour éviter un double chargement. La garder ne casse rien.
+
+          ### Contrôles
+          Les PR #15, #16 et #17 ont passé les tests Python/JavaScript, HACS et Hassfest. Elles ont aussi été testées dans Chrome headless avec un Home Assistant simulé : tous les boutons de la vue photo, du menu, du mode test, de la 3D, de la carte et de l'éditeur, plus les tailles d'écran mobiles. Le rendu réel sur votre Home Assistant et votre téléphone devra être vérifié.
+          NOTES
+          sed -i 's/^          //' /tmp/notes.md
+          gh release create v2.3.9 --target "${GITHUB_SHA}" --latest --title "Maison 3D v2.3.9 — Effet gel, photos jour/nuit, mode test et carte dans le sélecteur" --notes-file /tmp/notes.md
