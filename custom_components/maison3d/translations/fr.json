@@ -24,7 +24,8 @@
           "rain_entity": "Capteur pluie",
           "snow_entity": "Capteur neige",
           "cloud_entity": "Couverture nuageuse",
-          "base_image_url": "Image principale (URL /local/… ou HTTPS)"
+          "base_image_url": "Image principale (URL /local/… ou HTTPS)",
+          "effects_enabled": "Activer les effets météo, lumineux et saisonniers"
         }
       }
     },
