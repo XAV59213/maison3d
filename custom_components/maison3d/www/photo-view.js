@@ -18,10 +18,10 @@ export function createPhotoView() {
     moon_last_quarter:"Dernier quartier",moon_waning_crescent:"Dernier croissant"};
   const DEFAULT="/maison3d-assets/maison3d-reference.jpg";
   const BUNDLED={
-    day:"/maison3d-assets/images/day.jpg",
-    cloudy:"/maison3d-assets/images/cloudy.jpg",
-    rain:"/maison3d-assets/images/rain.jpg",
-    snow:"/maison3d-assets/images/snow.jpg"
+    day:"/maison3d-assets/images/jour.jpg",
+    cloudy:"/maison3d-assets/images/nuageux.jpg",
+    rain:"/maison3d-assets/images/pluie.jpg",
+    snow:"/maison3d-assets/images/neige.jpg"
   };
   const STORAGE="maison3d:photo-settings:v1";
   const allowedUrl=(url)=>typeof url==="string" && (
