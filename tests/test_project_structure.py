@@ -162,6 +162,17 @@ class TestMaison3D(unittest.TestCase):
             self.assertIn(filename, importer)
         self.assertIn("ZipFile", importer)
 
+    def test_photo_night_day_auto_buttons_and_visible_night_filter(self):
+        photo = (COMPONENT / "www" / "photo-view.js").read_text(encoding="utf-8")
+        self.assertIn('nightBtn.textContent="☾ Nuit réelle"', photo)
+        self.assertIn('nightBtn.addEventListener("click",()=>setQuickMode("night"))', photo)
+        self.assertIn('dayBtn.addEventListener("click",()=>setQuickMode("day"))', photo)
+        self.assertIn('autoBtn.addEventListener("click",()=>setQuickMode("auto"))', photo)
+        self.assertIn('section.classList.toggle("photo-night",night)', photo)
+        self.assertIn('photo-night img{filter:brightness(', photo)
+        self.assertIn('selectMode.value=mode', photo)
+        self.assertIn('persist();update()', photo)
+
     def test_exact_approved_readme_image(self):
         self.assertTrue((ROOT / "assets" / "maison3d-reference.jpg").is_file())
         content = (ROOT / "README.md").read_text(encoding="utf-8")
