@@ -3,7 +3,8 @@ export const DEFAULT_MAIN_PHOTO="/maison3d-assets/maison3d-reference.jpg";
 
 export function allowedPhotoUrl(value){
   if(typeof value!=="string"||value.length>500||/[\u0000-\u001f]/.test(value))return false;
-  if(value.startsWith("/local/")||value.startsWith("/maison3d-assets/")||value.startsWith("/api/")){
+  // /maison3d-media/ = photos uploaded from Home Assistant, /media/ = signed URL of a HA media.
+  if(["/local/","/maison3d-assets/","/maison3d-media/","/media/","/api/"].some(prefix=>value.startsWith(prefix))){
     return !value.includes("\\")&&!value.startsWith("//");
   }
   if(!value.startsWith("https://"))return false;

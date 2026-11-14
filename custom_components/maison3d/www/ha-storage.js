@@ -6,7 +6,8 @@
  */
 const inFrame=window.parent!==window;
 const listeners=new Set(),savedListeners=new Set();
-let haData=null,canSave=false,connected=false,requested=false;
+let haData=null,canSave=false,connected=false,requested=false,uploadId=0;
+const uploads=new Map();
 window.addEventListener("message",event=>{
   if(event.source!==window.parent||event.origin!==window.location.origin)return;
   const type=event.data?.type;
@@ -15,6 +16,9 @@ window.addEventListener("message",event=>{
     canSave=connected&&event.data.can_save===true;
     haData=connected?event.data.data:null;
     for(const fn of listeners)fn(haData,{canSave,connected,error:event.data.error||""});
+  }else if(type==="maison3d:upload-result"){
+    const done=uploads.get(event.data.id);uploads.delete(event.data.id);
+    done?.({ok:event.data.ok===true,url:String(event.data.url||""),error:String(event.data.error||"")});
   }else if(type==="maison3d:storage-saved"){
     for(const fn of savedListeners)fn({ok:event.data.ok===true,error:String(event.data.error||"")});
   }
@@ -33,3 +37,13 @@ export function saveToHa(patch){
   return true;
 }
 export const haStorageStatus=()=>({inFrame,connected,canSave});
+/** Upload a photo through the parent (saved in /config/www/maison3d/); resolves {ok,url,error}. */
+export function uploadToHa(file,name){
+  if(!inFrame||!canSave)return Promise.resolve({ok:false,url:"",error:"administrateur Home Assistant requis"});
+  const id=++uploadId;
+  return new Promise(resolve=>{
+    uploads.set(id,resolve);
+    setTimeout(()=>{if(uploads.delete(id))resolve({ok:false,url:"",error:"délai dépassé"})},120000);
+    window.parent.postMessage({type:"maison3d:upload",id,file,name},window.location.origin);
+  });
+}

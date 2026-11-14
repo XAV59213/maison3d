@@ -1,5 +1,6 @@
 /** Home Assistant custom panel wrapper for the Maison 3D editor. */
 import {createStorageBridge} from "./storage-bridge.js";
+import {createMediaResolver} from "./media-resolver.js";
 class Maison3DPanel extends HTMLElement {
   constructor() {
     super();
@@ -10,6 +11,7 @@ class Maison3DPanel extends HTMLElement {
     // Project (3D layout, photo settings, view) saved in Home Assistant for the iframe.
     this._storage = createStorageBridge({getFrame:()=>this._frame,getHass:()=>this._hass});
     this._onStorageMessage = event => this._storage.onMessage(event);
+    this._media = createMediaResolver({getHass:()=>this._hass,onResolved:()=>this.sendCurrentConditions(true)});
     this._onFrameMessage = event => {
       if(event.origin!==window.location.origin || event.source!==this._frame?.contentWindow)return;
       if(event.data?.type!=="maison3d:entity-selection")return;
@@ -83,7 +85,7 @@ class Maison3DPanel extends HTMLElement {
     };
     const payload = {
       type: "maison3d:conditions",
-      base_image_url: typeof diagnostic?.attributes?.base_image_url === "string" ? diagnostic.attributes.base_image_url : "",
+      base_image_url: this._media.url(typeof diagnostic?.attributes?.base_image_url === "string" ? diagnostic.attributes.base_image_url : ""),
       effects_enabled: diagnostic?.attributes?.effects_enabled !== false,
       frost_enabled: diagnostic?.attributes?.frost_enabled !== false,
       weather_photos: diagnostic?.attributes?.weather_photos_enabled === true,

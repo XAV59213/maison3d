@@ -56,7 +56,8 @@ Chaque utilisateur peut désormais utiliser **sa propre photographie de maison**
 - **Configuration par carte Lovelace :** éditeur visuel de la carte → **Image principale de la propriété** → URL personnalisée et **Vérifier et prévisualiser**. La carte a priorité sur la configuration globale.
 - **Panneau photo :** bouton **⚙ Images / météo** → **Image principale personnalisée**, avec bouton de contrôle et aperçu. Ce choix local au navigateur peut remplacer la valeur globale dans le panneau complet.
 - **Priorité en mode carte :** URL de la carte → URL de l'intégration → photo officielle. **Priorité dans le panneau :** URL locale facultative → URL de l'intégration → photo officielle.
-- **Formats :** URL `/local/...`, `/maison3d-assets/...`, `/api/...` ou HTTPS. Une image accessible depuis le navigateur est nécessaire. Les URLs non valides sont refusées.
+- **Formats :** URL `/local/...`, `/maison3d-media/...`, `/maison3d-assets/...`, `/api/...`, HTTPS, ou un média Home Assistant `media-source://...`. Une image accessible depuis le navigateur est nécessaire. Les URLs non valides sont refusées.
+- **Sans passer par les fichiers :** la photo peut aussi être envoyée directement depuis Home Assistant, voir [Envoyer ses photos depuis Home Assistant](#-envoyer-ses-photos-depuis-home-assistant).
 
 ### ✦ Activer ou désactiver les effets
 
@@ -314,6 +315,21 @@ La scène Three.js distincte propose les vues **Façade, Aérienne, Jardin et Ga
 **Three.js embarqué :** Three.js r170 (`0.170.0`) et `OrbitControls` sont fournis localement dans `custom_components/maison3d/www/vendor/three/` (licence MIT incluse). Aucun CDN n'est appelé : la vue 3D fonctionne hors-ligne, même si jsDelivr est lent ou bloqué.
 
 La géométrie 3D est approximative et ne doit pas être présentée comme la vraie photographie en volume. La scène est enregistrée dans Home Assistant (copie de secours dans le navigateur) ; l'export JSON reste utile pour garder une version.
+
+## 📤 Envoyer ses photos depuis Home Assistant
+
+Plus besoin de copier les fichiers à la main dans `/config/www/` : la photo principale et les photos météo peuvent être envoyées depuis l'interface Home Assistant (ordinateur ou téléphone).
+
+- **Vue photo :** **⚙ Images / météo** → **📤 Envoyer une photo depuis cet appareil**. Choisissez l'emplacement (photo principale, ou une photo météo comme *Neige · nuit*), puis **Choisir et envoyer…**. La photo est enregistrée, appliquée tout de suite et retenue dans la sauvegarde Home Assistant. Pour une photo météo, l'option **Photos météo** est activée automatiquement.
+- **Éditeur de la carte Lovelace :** bouton **📤 Envoyer une photo…** sous l'image principale et dans la section des images météo (choisissez d'abord l'emplacement). Le chemin obtenu est écrit dans la configuration de la carte.
+- **Médiathèque Home Assistant :** dans l'éditeur de la carte, le sélecteur **Médias** permet de choisir une image déjà présente dans *Médias → Médias locaux*. La valeur `media-source://...` est enregistrée dans la carte et convertie en adresse signée au moment de l'affichage (renouvelée automatiquement). Une valeur `media-source://...` est aussi acceptée dans **Configurer → Image principale**.
+
+Détails :
+
+- Les fichiers sont rangés dans `/config/www/maison3d/` et servis par l'intégration à l'adresse `/maison3d-media/<fichier>` (cela fonctionne même si le dossier `/config/www` n'existait pas au démarrage ; après un redémarrage, `/local/maison3d/<fichier>` fonctionne aussi).
+- **Administrateur requis** pour envoyer une photo ; les autres comptes gardent l'affichage.
+- Formats acceptés : **JPEG, PNG ou WebP**, **10 Mo maximum**. Le type du fichier est vérifié (extension, type et contenu réel). Le nom est nettoyé (`neige-nuit.jpg`, `ma-maison.jpg`…) ; un envoi au même emplacement remplace le fichier précédent.
+- Les chemins configurés à la main (`/local/maison3d/...`, HTTPS, etc.) continuent de fonctionner comme avant.
 
 ## 💾 Sauvegarde dans Home Assistant
 

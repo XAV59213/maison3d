@@ -130,6 +130,33 @@ class TestMaison3D(unittest.TestCase):
         panel = (www / "maison3d-panel.js").read_text(encoding="utf-8")
         self.assertIn("min-height:240px", panel)
 
+    def test_photo_upload_from_home_assistant(self):
+        """Photos sent from the HA UI: admin-only view, own static folder, media-source ids."""
+        www = COMPONENT / "www"
+        upload = (COMPONENT / "upload.py").read_text(encoding="utf-8")
+        init = (COMPONENT / "__init__.py").read_text(encoding="utf-8")
+        self.assertIn('UPLOAD_URL = "/api/maison3d/upload"', upload)
+        self.assertIn('MEDIA_URL = "/maison3d-media"', upload)
+        self.assertIn("MAX_BYTES = 10 * 1024 * 1024", upload)
+        self.assertIn("await async_register_upload(hass)", init)
+        bridge = (www / "storage-bridge.js").read_text(encoding="utf-8")
+        self.assertIn('type==="maison3d:upload"', bridge)
+        self.assertIn("fetchWithAuth", bridge)
+        view = (www / "photo-view.js").read_text(encoding="utf-8")
+        self.assertIn("uploadToHa(file", view)
+        self.assertIn("maison3d-upload", view)
+        editor = (www / "maison3d-card-editor.js").read_text(encoding="utf-8")
+        self.assertIn("uploadPhoto(this._hass", editor)
+        self.assertIn('customElements.get("ha-selector")', editor)
+        for name in ("maison3d-card.js", "maison3d-panel.js"):
+            self.assertIn("createMediaResolver", (www / name).read_text(encoding="utf-8"))
+        source = (www / "photo-source.js").read_text(encoding="utf-8")
+        self.assertIn("/maison3d-media/", source)
+        flow = (COMPONENT / "config_flow.py").read_text(encoding="utf-8")
+        self.assertIn("media-source://", flow)
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        self.assertIn("## 📤 Envoyer ses photos depuis Home Assistant", readme)
+
     def test_project_saved_in_home_assistant(self):
         """3D layout, photo settings and view saved in HA through the parent bridge."""
         www = COMPONENT / "www"
@@ -229,7 +256,7 @@ class TestMaison3D(unittest.TestCase):
         self.assertIn("maison3d:entity-selection", photo)
         self.assertIn("moon_entity", photo)
         self.assertIn("moon_entity", panel)
-        self.assertIn("images:this._config.images", card)
+        self.assertIn("images:this._media.images(this._config.images)", card)
         self.assertIn("weather_entity:", card)
 
     def test_homeassistant_integration_options_and_diagnostics(self):
@@ -407,10 +434,10 @@ class TestMaison3D(unittest.TestCase):
         self.assertIn('vol.Optional("effects_enabled"', config)
         self.assertIn('"base_image_url":', sensor)
         self.assertIn('"effects_enabled":', sensor)
-        self.assertIn("base_image_url:this._config.base_image_url||", card)
+        self.assertIn("base_image_url:this._media.url(this._config.base_image_url||", card)
         self.assertIn("effects_enabled:this._config.effects_enabled??", card)
         self.assertIn('this._updateStates(true)', card)
-        self.assertIn('base_image_url: typeof diagnostic?.attributes?.base_image_url', panel)
+        self.assertIn('base_image_url: this._media.url(typeof diagnostic?.attributes?.base_image_url', panel)
         self.assertIn('effects_enabled: diagnostic?.attributes?.effects_enabled !== false', panel)
         self.assertIn('this._changed("base_image_url"', editor)
         self.assertIn('select.addEventListener("change"', editor)

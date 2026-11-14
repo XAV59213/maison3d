@@ -29,7 +29,10 @@ def validate_image_url(value: str) -> str:
         return ""
     if len(value) > 500 or any(ord(char) < 32 for char in value):
         raise vol.Invalid("invalid_image_url")
-    if value.startswith(("/local/", "/maison3d-assets/", "/api/")):
+    if value.startswith("media-source://"):
+        # Image chosen in Home Assistant « Médias », resolved to a signed URL by the panel/card.
+        return value
+    if value.startswith(("/local/", "/maison3d-assets/", "/maison3d-media/", "/api/")):
         if "\\" in value or value.startswith("//"):
             raise vol.Invalid("invalid_image_url")
         return value

@@ -24,7 +24,7 @@
           "rain_entity": "Capteur pluie",
           "snow_entity": "Capteur neige",
           "cloud_entity": "Couverture nuageuse",
-          "base_image_url": "Image principale (URL /local/… ou HTTPS)",
+          "base_image_url": "Image principale (/local/…, /maison3d-media/…, HTTPS ou media-source://…)",
           "effects_enabled": "Activer les effets météo, lumineux et saisonniers",
           "frost_enabled": "Activer l'effet gel quand la température est inférieure ou égale à 0 °C",
           "weather_photos_enabled": "Utiliser les photos météo jour/nuit (fournies ou personnalisées)"

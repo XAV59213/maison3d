@@ -4,6 +4,23 @@
  * saves (debounced) to the maison3d/save websocket command (admin only).
  */
 export const SAVE_DELAY=800;
+export const UPLOAD_MAX=10*1024*1024;
+/** Send one image to /api/maison3d/upload (admin); resolves with {url,file,size}. */
+export async function uploadPhoto(hass,file,name=""){
+  if(!(file instanceof Blob))throw new Error("aucun fichier");
+  if(file.size>UPLOAD_MAX)throw new Error("fichier trop gros (10 Mo max)");
+  if(!/^image\/(jpeg|png|webp)$/.test(file.type))throw new Error("format refusé (jpg, png ou webp)");
+  const form=new FormData();
+  form.append("name",String(name).slice(0,80));
+  form.append("file",file,file.name||"photo.jpg");
+  const init={method:"POST",body:form};
+  const response=typeof hass?.fetchWithAuth==="function"
+    ?await hass.fetchWithAuth("/api/maison3d/upload",init)
+    :await fetch("/api/maison3d/upload",{...init,headers:{Authorization:"Bearer "+(hass?.auth?.data?.access_token||"")}});
+  const body=await response.json().catch(()=>({}));
+  if(!response.ok)throw new Error(body.message||("erreur HTTP "+response.status));
+  return body;
+}
 export function createStorageBridge({getFrame,getHass,delay=SAVE_DELAY}){
   let pending={},timer=null;
   const send=message=>getFrame()?.contentWindow?.postMessage(message,window.location.origin);
@@ -31,11 +48,18 @@ export function createStorageBridge({getFrame,getHass,delay=SAVE_DELAY}){
       send({type:"maison3d:storage-saved",ok:false,error:String(err?.message||err?.code||err)});
     }
   }
+  async function upload({id,file,name}){
+    const reply=result=>send({type:"maison3d:upload-result",id,...result});
+    if(!isAdmin()){reply({ok:false,error:"administrateur requis"});return}
+    try{const result=await uploadPhoto(getHass(),file,name);reply({ok:true,url:result.url})}
+    catch(err){reply({ok:false,error:String(err?.message||err)})}
+  }
   function onMessage(event){
     const frame=getFrame();
     if(!frame||event.source!==frame.contentWindow||event.origin!==window.location.origin)return;
     const type=event.data?.type;
     if(type==="maison3d:storage-load"){load();return}
+    if(type==="maison3d:upload"){upload(event.data);return}
     if(type!=="maison3d:storage-save")return;
     const patch=event.data.patch;
     if(!patch||typeof patch!=="object")return;

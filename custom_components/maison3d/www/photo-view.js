@@ -9,7 +9,7 @@ import {createMoonOverlay} from "./moon-effects.js";
 import {automaticSeason,SEASON_LABELS,createSeasonEffects} from "./season-effects.js";
 import {DEFAULT_MAIN_PHOTO,allowedPhotoUrl,resolveMainPhoto,IMAGE_SLOTS,IMAGE_KEYS,pickWeatherPhoto,suggestedFileName} from "./photo-source.js";
 import {createFrostEffects,frostLevel,toCelsius} from "./frost-effects.js";
-import {onHaData,saveToHa} from "./ha-storage.js";
+import {onHaData,saveToHa,uploadToHa} from "./ha-storage.js";
 export function createPhotoView() {
   const KEYS=IMAGE_KEYS;
   const LABELS={...Object.fromEntries(IMAGE_SLOTS),fog:"Brouillard",clear:"Clair",frost:"Gel"};
@@ -214,6 +214,41 @@ export function createPhotoView() {
   });
   previewRow.append(previewBtn,imageCheck,previewThumbnail);
   settings.append(previewRow);
+  // Upload a photo from this device into /config/www/maison3d/ (administrators).
+  const uploadBox=document.createElement("fieldset");uploadBox.className="maison3d-upload";
+  const uploadLegend=document.createElement("legend");uploadLegend.textContent="📤 Envoyer une photo depuis cet appareil";
+  const uploadSlot=document.createElement("select");uploadSlot.setAttribute("aria-label","Photo à remplacer");
+  for(const [key,name] of [["main","Image principale"],...IMAGE_SLOTS]){
+    const option=document.createElement("option");option.value=key;option.textContent=name;uploadSlot.append(option);
+  }
+  const uploadFile=document.createElement("input");uploadFile.type="file";uploadFile.accept="image/jpeg,image/png,image/webp";uploadFile.hidden=true;
+  const uploadBtn=document.createElement("button");uploadBtn.type="button";uploadBtn.textContent="Choisir et envoyer…";uploadBtn.disabled=true;
+  const uploadStatus=document.createElement("span");uploadStatus.setAttribute("role","status");
+  uploadStatus.textContent="Disponible dans Home Assistant pour les administrateurs.";
+  uploadBtn.addEventListener("click",()=>uploadFile.click());
+  uploadFile.addEventListener("change",async()=>{
+    const file=uploadFile.files?.[0];uploadFile.value="";
+    if(!file)return;
+    if(!/^image\/(jpeg|png|webp)$/.test(file.type)){uploadStatus.textContent="Format refusé : jpg, png ou webp.";return}
+    if(file.size>10*1024*1024){uploadStatus.textContent="Fichier trop gros (10 Mo max).";return}
+    const slot=uploadSlot.value;
+    uploadStatus.textContent="Envoi de "+file.name+"…";uploadBtn.disabled=true;
+    const result=await uploadToHa(file,slot==="main"?"ma-maison":suggestedFileName(slot).replace(/\.jpg$/,""));
+    uploadBtn.disabled=false;
+    if(!result.ok||!allowedUrl(result.url)){uploadStatus.textContent="Échec de l'envoi : "+(result.error||"réponse invalide");return}
+    if(slot==="main"){state.base_image_url=result.url;failedImages.delete(result.url)}
+    else{state.images[slot]=result.url;state.use_weather_photos=true;state.weather_photos_override=true;swapPhotos.checked=true}
+    for(const refresh of refreshers)refresh();
+    persist();update();
+    uploadStatus.textContent="Photo envoyée : "+result.url.split("?")[0];
+  });
+  uploadBox.append(uploadLegend,uploadSlot,uploadBtn,uploadFile,uploadStatus);
+  settings.append(uploadBox);
+  onHaData((ha,{canSave})=>{
+    uploadBtn.disabled=!canSave;
+    uploadStatus.textContent=canSave?"La photo est enregistrée dans /config/www/maison3d/ (jpg, png, webp · 10 Mo max).":
+      "Envoi de photos : administrateur Home Assistant requis.";
+  });
   bind(makeField("Entité météo",state.weather_entity,v=>{state.weather_entity=v;persist();requestEntities()},
     "weather.ma_maison (vide = première disponible)"),()=>state.weather_entity);
   bind(makeField("Entité soleil",state.sun_entity,v=>{state.sun_entity=v||"sun.sun";persist();requestEntities()},"sun.sun"),()=>state.sun_entity);
@@ -402,6 +437,8 @@ export function createPhotoView() {
     "#maison3d-photo-seasons.compact button{padding:5px 7px;font-size:11px}",
     "#maison3d-photo-seasons.compact button:last-child{grid-column:1/-1}",
     ".maison3d-test-states{border:1px solid #66778c;border-radius:8px;margin-top:12px}",
+    ".maison3d-upload{border:1px solid #66778c;border-radius:8px;margin-top:12px;display:grid;gap:6px}",
+    ".maison3d-upload legend{font-size:13px;font-weight:bold}.maison3d-upload span{font-size:12px;opacity:.85}",
     ".maison3d-test-states legend{font-size:13px;font-weight:bold}",
     ".maison3d-test-states .test-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}",
     ".maison3d-test-states button{padding:8px;border-radius:6px}",

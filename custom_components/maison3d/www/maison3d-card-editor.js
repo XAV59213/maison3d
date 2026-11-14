@@ -1,4 +1,7 @@
 import {allowedPhotoUrl,DEFAULT_MAIN_PHOTO,IMAGE_SLOTS,suggestedFileName} from "./photo-source.js";
+import {uploadPhoto} from "./storage-bridge.js";
+import {MEDIA_PREFIX} from "./media-resolver.js";
+const editorUrl=value=>allowedPhotoUrl(value)||(typeof value==="string"&&value.startsWith(MEDIA_PREFIX)&&value.length<500&&!/[\u0000-\u001f]/.test(value));
 /**
  * Visual configuration editor for the custom Maison 3D Lovelace card.
  * Lets users choose their actual Home Assistant entities without knowing IDs.
@@ -16,6 +19,8 @@ class Maison3DCardEditor extends HTMLElement {
   set hass(hass) {
     this._hass=hass;
     this.shadowRoot.querySelectorAll("ha-entity-picker").forEach(picker => picker.hass=hass);
+    this.shadowRoot.querySelectorAll(".tools ha-selector").forEach(picker => picker.hass=hass);
+    this.shadowRoot.querySelectorAll(".tools > button").forEach(button => {button.disabled=hass?.user?.is_admin!==true});
   }
   connectedCallback() {
     if(this._config)this._render();
@@ -51,7 +56,8 @@ class Maison3DCardEditor extends HTMLElement {
       "p{color:var(--secondary-text-color,#777);font-size:12px;line-height:1.5}",
       ".help{font-size:11px;color:var(--secondary-text-color)}",
       ".row{display:flex;align-items:center;gap:10px}",
-      ".row input{width:auto;min-height:auto}"
+      ".row input{width:auto;min-height:auto}",
+      ".tools{flex-wrap:wrap;margin-top:8px}.tools button{padding:7px 10px;border-radius:7px;cursor:pointer}"
     ].join("");
     root.replaceChildren(css);
     const section=(heading,help)=>{
@@ -99,7 +105,7 @@ class Maison3DCardEditor extends HTMLElement {
     button.type="button";button.textContent="Vérifier et prévisualiser";
     const check=()=>{
       const value=photoInput.value.trim();
-      if(value&&!allowedPhotoUrl(value)){
+      if(value&&!editorUrl(value)){
         photoInput.setCustomValidity("URL invalide : /local/, /maison3d-assets/, /api/ ou HTTPS.");
         photoInput.reportValidity();
         status.textContent="URL invalide";
@@ -114,6 +120,7 @@ class Maison3DCardEditor extends HTMLElement {
     button.addEventListener("click",()=>{
       if(!check())return;
       const value=photoInput.value.trim()||DEFAULT_MAIN_PHOTO;
+      if(value.startsWith(MEDIA_PREFIX)){status.textContent="Média Home Assistant : aperçu dans la carte";return}
       status.textContent="Vérification…";preview.hidden=true;
       const probe=new Image();
       probe.onload=()=>{preview.src=value;preview.hidden=false;status.textContent="Image trouvée";};
@@ -121,6 +128,9 @@ class Maison3DCardEditor extends HTMLElement {
       probe.src=value;
     });
     photoSection.append(photoLabel,photoInput,button,status,preview);
+    // Upload from this device or pick an image in « Médias » (no file copy needed).
+    const setMain=value=>{photoInput.value=value;this._changed("base_image_url",value);status.textContent="Image enregistrée";};
+    photoSection.append(this._photoTools(value=>setMain(value),"ma-maison"));
     const effects=section("Animations et effets",
       "Laissez le réglage hérité de l’intégration, ou forcez les effets pour cette carte.");
     // Same three-state choice (inherit / on / off) for every effect toggle.
@@ -180,16 +190,61 @@ class Maison3DCardEditor extends HTMLElement {
     const images=section("Images personnalisées (facultatif)",
       "Utilisées quand les photos météo jour/nuit sont activées. Chaque URL est modifiable. Place les photos dans /config/www/maison3d/ puis renseigne par exemple /local/maison3d/neige-nuit.jpg. Ordre : image jour/nuit de la météo → image de la météo → image Jour ou Nuit → photo principale.");
     const keys=IMAGE_SLOTS;
+    const inputs=new Map();
+    const slotLabel=document.createElement("label");slotLabel.textContent="Envoyer ou choisir une image pour :";
+    const slot=document.createElement("select");
+    for(const [key,name] of keys){const option=document.createElement("option");option.value=key;option.textContent=name;slot.append(option)}
+    images.append(slotLabel,slot,this._photoTools(value=>{
+      const input=inputs.get(slot.value);if(input)input.value=value;
+      this._changed(slot.value,value,true);
+    },()=>suggestedFileName(slot.value).replace(/\.jpg$/,"")));
     for(const [key,name] of keys){
       const label=document.createElement("label");label.textContent=name;
       const input=document.createElement("input");
       input.type="text";input.placeholder="/local/maison3d/"+suggestedFileName(key);
       input.value=this._config.images?.[key]||"";
-      input.addEventListener("change",()=>this._changed(key,input.value.trim(),true));
+      input.addEventListener("change",()=>{
+        const value=input.value.trim();
+        if(value&&!editorUrl(value)){input.setCustomValidity("URL invalide");input.reportValidity();return}
+        input.setCustomValidity("");this._changed(key,value,true);
+      });
+      inputs.set(key,input);
       images.append(label,input);
     }
   }
 }
+Maison3DCardEditor.prototype._photoTools=function(apply,name){
+  const row=document.createElement("div");row.className="row tools";
+  const file=document.createElement("input");file.type="file";file.accept="image/jpeg,image/png,image/webp";file.hidden=true;
+  const upload=document.createElement("button");upload.type="button";upload.textContent="📤 Envoyer une photo…";
+  const info=document.createElement("span");info.className="help";info.setAttribute("role","status");
+  const admin=this._hass?.user?.is_admin===true;
+  upload.disabled=!admin;
+  info.textContent=admin?"Enregistrée dans /config/www/maison3d/":"Envoi : administrateur requis";
+  upload.addEventListener("click",()=>file.click());
+  file.addEventListener("change",async()=>{
+    const chosen=file.files?.[0];file.value="";if(!chosen)return;
+    info.textContent="Envoi…";upload.disabled=true;
+    try{
+      const result=await uploadPhoto(this._hass,chosen,typeof name==="function"?name():name);
+      apply(result.url);info.textContent="Envoyée : "+String(result.url).split("?")[0];
+    }catch(err){info.textContent="Échec : "+(err?.message||err)}
+    upload.disabled=false;
+  });
+  row.append(upload,file);
+  // Home Assistant media picker, when the frontend provides it.
+  if(customElements.get("ha-selector")){
+    const picker=document.createElement("ha-selector");
+    picker.hass=this._hass;picker.selector={media:{accept:["image/*"]}};picker.label="Choisir dans Médias";
+    picker.addEventListener("value-changed",event=>{
+      const id=event.detail?.value?.media_content_id;
+      if(typeof id==="string"&&id.startsWith(MEDIA_PREFIX)){apply(id);info.textContent="Média choisi";}
+    });
+    row.append(picker);
+  }
+  row.append(info);
+  return row;
+};
 if(!customElements.get("maison3d-card-editor")) {
   customElements.define("maison3d-card-editor",Maison3DCardEditor);
 }
