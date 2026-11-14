@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import argparse
 from pathlib import Path
-from zipfile import ZipFile, BadZipFile
+from zipfile import ZipFile
 
 ROOT = Path(__file__).resolve().parents[1]
 DESTINATION = ROOT / "custom_components" / "maison3d" / "www" / "images"
@@ -36,7 +36,7 @@ def import_archive(source: Path, output: Path = DESTINATION) -> dict[str, int]:
             if info.file_size > 12_000_000:
                 raise ValueError(f"Image too large: {member}")
             data = archive.read(info)
-            if not data.startswith(b"\\xff\\xd8\\xff") and not data.startswith(bytes.fromhex("ffd8ff")):
+            if not data.startswith(bytes.fromhex("ffd8ff")):
                 raise ValueError(f"Invalid JPEG header: {member}")
             if not data.endswith(bytes.fromhex("ffd9")):
                 raise ValueError(f"Invalid JPEG end marker: {member}")
