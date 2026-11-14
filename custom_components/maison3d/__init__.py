@@ -11,6 +11,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.loader import async_get_integration
 
 from .const import ASSETS_URL, CARD_URL, DOMAIN, PANEL_PATH
+from .store import async_register_websocket
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -18,7 +19,10 @@ _LOGGER = logging.getLogger(__name__)
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Make the Maison 3D panel available after adding the integration."""
     state = hass.data.setdefault(DOMAIN, {"static_registered": False, "panel_registered": False})
+    state.setdefault("static_registered", False)
+    state.setdefault("panel_registered", False)
     state.setdefault("card_url", None)
+    async_register_websocket(hass)
 
     if not state["static_registered"]:
         assets = Path(__file__).parent / "www"

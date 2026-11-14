@@ -15,6 +15,7 @@ jobs:
           node-version: "22"
       - name: Validate Python and JSON
         run: |
+          python -m pip install --quiet voluptuous
           python -m compileall -q custom_components/maison3d
           python -m unittest discover -s tests -v
       - name: Validate JavaScript syntax
@@ -29,6 +30,9 @@ jobs:
           node --check custom_components/maison3d/www/photo-source.js
           node tests/test_main_photo.mjs
           node tests/test_weather_photos.mjs
+          node --check custom_components/maison3d/www/ha-storage.js
+          node --check custom_components/maison3d/www/storage-bridge.js
+          node tests/test_storage_bridge.mjs
           node --check custom_components/maison3d/www/moon-effects.js
           node --check custom_components/maison3d/www/season-effects.js
           node tests/test_seasons.mjs

@@ -1,5 +1,6 @@
 import "./maison3d-card-editor.js";
 import {IMAGE_KEYS} from "./photo-source.js";
+import {createStorageBridge} from "./storage-bridge.js";
 /**
  * Maison 3D interactive Lovelace card.
  * Load as a JavaScript module resource: /maison3d-assets/maison3d-card.js
@@ -42,6 +43,13 @@ class Maison3DCard extends HTMLElement {
   }
 
   connectedCallback() {
+    // Shared project (3D layout, photo settings) saved in Home Assistant; card
+    // overrides stay in the card configuration.
+    if (!this._storage) {
+      this._storage = createStorageBridge({getFrame:()=>this._frame,getHass:()=>this._hass});
+      this._onStorageMessage = event => this._storage.onMessage(event);
+    }
+    window.addEventListener("message", this._onStorageMessage);
     if (this._config) this._renderCard();
     // Pause the iframe rendering loop while the card is scrolled off-screen.
     if (!this._observer && "IntersectionObserver" in window) {
@@ -55,6 +63,8 @@ class Maison3DCard extends HTMLElement {
 
   disconnectedCallback() {
     this._loaded = false;
+    window.removeEventListener("message", this._onStorageMessage);
+    this._storage?.flush();
     this._observer?.disconnect();
     this._observer = null;
   }
