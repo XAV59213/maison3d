@@ -196,6 +196,18 @@ class TestMaison3D(unittest.TestCase):
         for img in ("jour.jpg","nuageux.jpg","pluie.jpg","neige.jpg"):
             self.assertIn('src="custom_components/maison3d/www/images/'+img+'"', readme)
 
+    def test_fixed_photo_is_default_and_weather_only_changes_overlays(self):
+        photo = (COMPONENT / "www" / "photo-view.js").read_text(encoding="utf-8")
+        self.assertIn('use_weather_photos:false', photo)
+        self.assertIn('const path=state.use_weather_photos ?', photo)
+        self.assertIn(') : DEFAULT;', photo)
+        self.assertIn("tint.style.background=weatherTint", photo)
+        self.assertIn('photoBtn.setAttribute("aria-pressed"', photo)
+        self.assertNotIn('realBtn.setAttribute(', photo)
+        self.assertIn('swapPhotos.addEventListener("change"', photo)
+        self.assertIn('skyMoon.draw(', photo)
+        self.assertIn('cinematics.frame(', photo)
+
     def test_exact_approved_readme_image(self):
         self.assertTrue((ROOT / "assets" / "maison3d-reference.jpg").is_file())
         content = (ROOT / "README.md").read_text(encoding="utf-8")

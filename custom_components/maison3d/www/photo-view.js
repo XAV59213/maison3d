@@ -1,6 +1,7 @@
 /**
  * Maison 3D photo-real view. Uses the owner's original screenshot as the
- * default photo; conditions/seasons are distinct configurable image URL slots.
+ * fixed original photo with dynamic weather, lunar and daylight overlays.
+ * Other photographs are optional, never replacements by default.
  * This is a photo-based presentation, NOT a rotatable 3D reconstruction.
  */
 import {createPhotoCinematics} from "./photo-cinematics.js";
@@ -34,7 +35,7 @@ export function createPhotoView() {
     images:defaults(),moon_entity:"sensor.moon_phase",
     weather_entity:"",sun_entity:"sun.sun",
     temperature_entity:"",wind_entity:"",rain_entity:"",snow_entity:"",cloud_entity:"",
-    enabled:true,mode:"auto",effect:true,season:"auto",effect_intensity:1,moon_preview:"auto"
+    enabled:true,mode:"auto",effect:true,season:"auto",effect_intensity:1,moon_preview:"auto",use_weather_photos:false
   };
   try{
     const saved=JSON.parse(localStorage.getItem(STORAGE));
@@ -47,6 +48,7 @@ export function createPhotoView() {
       }
       if(typeof saved.enabled==="boolean")state.enabled=saved.enabled;
       if(typeof saved.effect==="boolean")state.effect=saved.effect;
+      if(typeof saved.use_weather_photos==="boolean")state.use_weather_photos=saved.use_weather_photos;
       if(Number.isFinite(saved.effect_intensity))state.effect_intensity=Math.min(2,Math.max(0,saved.effect_intensity));
       if(typeof saved.mode==="string"&&["auto",...KEYS].includes(saved.mode))state.mode=saved.mode;
       if(typeof saved.season==="string"&&["auto","spring","summer","autumn","winter"].includes(saved.season))state.season=saved.season;
@@ -220,6 +222,19 @@ export function createPhotoView() {
       input.setCustomValidity("");state.images[key]=v;persist();update();
     },DEFAULT);
   }
+  const swapLabel=document.createElement("label");swapLabel.className="checkbox";
+  const swapPhotos=document.createElement("input");swapPhotos.type="checkbox";
+  swapPhotos.checked=state.use_weather_photos;
+  swapPhotos.addEventListener("change",()=>{
+    state.use_weather_photos=swapPhotos.checked;persist();update();
+  });
+  swapLabel.append(swapPhotos,document.createTextNode(
+    "Utiliser les images météo alternatives (facultatif)"
+  ));
+  settings.append(swapLabel);
+  const baseNotice=document.createElement("p");
+  baseNotice.textContent="Par défaut, la photographie officielle reste fixe : seule l'ambiance météo, l'éclairage et la lune changent.";
+  settings.append(baseNotice);
   const checkbox=document.createElement("label");checkbox.className="checkbox";
   const effect=document.createElement("input");effect.type="checkbox";effect.checked=state.effect;
   effect.addEventListener("change",()=>{state.effect=effect.checked;persist();update()});
@@ -360,14 +375,20 @@ export function createPhotoView() {
     const night=state.mode==="night"||(state.mode==="auto"&&nighttime());
     const lunarKey=night&&moonPhase(live.moon)?"moon_"+moonPhase(live.moon):null;
     const bundled=(BUNDLED[selected]&&!missingBundled.has(selected))?BUNDLED[selected]:"";
-    const path=state.images[selected]||bundled||
+    // The official photo is the default immutable scene. Explicit opt-in only
+    // for alternative stills; manual weather previews remain dynamic overlays.
+    const path=state.use_weather_photos ? (
+      state.images[selected]||bundled||
       (lunarKey && ["night","day"].includes(selected) ? state.images[lunarKey] : "")||
       (night?state.images.night:"")||
-      (selected==="day"?state.images[seasonNow()]:"")||DEFAULT;
+      (selected==="day"?state.images[seasonNow()]:"")||DEFAULT
+    ) : DEFAULT;
     if(path!==currentSrc){image.src=path;currentSrc=path;error.hidden=true}
-    tint.style.background=selected==="snow"?"linear-gradient(#f6fcff15,#f0f8ff25)":
+    const weatherTint=selected==="snow"||selected==="winter"?"linear-gradient(#e7f5ff18,#eaf7ff29)":
       selected==="storm"?"#101b3866":selected==="rain"?"#26344746":
-      selected==="cloudy"?"#5b677523":night?"#03132685":"transparent";
+      selected==="cloudy"?"#5b677523":"transparent";
+    tint.style.background=weatherTint;
+    tint.style.opacity=night?"1":"0.8";
     section.classList.toggle("photo-night",night);
     const currentMoon=state.moon_preview==="auto"?live.moon:state.moon_preview;
     const phaseName=skyMoon.normalize(currentMoon);
@@ -383,7 +404,7 @@ export function createPhotoView() {
     nightBtn.setAttribute("aria-pressed",String(state.mode==="night"));
     dayBtn.setAttribute("aria-pressed",String(state.mode==="day"));
     autoBtn.setAttribute("aria-pressed",String(state.mode==="auto"));
-    realBtn.setAttribute("aria-pressed",String(state.enabled));
+    photoBtn.setAttribute("aria-pressed",String(state.enabled));
     modelBtn.setAttribute("aria-pressed",String(!state.enabled));
     section.hidden=!state.enabled;
     if(!state.enabled){section.style.display="none"}else{section.style.display="block"}
