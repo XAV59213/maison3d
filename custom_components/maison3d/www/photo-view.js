@@ -7,6 +7,7 @@
 import {createPhotoCinematics} from "./photo-cinematics.js";
 import {createMoonOverlay} from "./moon-effects.js";
 import {automaticSeason,SEASON_LABELS,createSeasonEffects} from "./season-effects.js";
+import {DEFAULT_MAIN_PHOTO,allowedPhotoUrl,resolveMainPhoto} from "./photo-source.js";
 export function createPhotoView() {
   const KEYS=["day","night","cloudy","rain","snow","wind","storm",
     "spring","summer","autumn","winter",
@@ -19,7 +20,7 @@ export function createPhotoView() {
     moon_first_quarter:"Premier quartier",moon_waxing_gibbous:"Lune gibbeuse croissante",
     moon_full_moon:"Pleine lune",moon_waning_gibbous:"Lune gibbeuse décroissante",
     moon_last_quarter:"Dernier quartier",moon_waning_crescent:"Dernier croissant"};
-  const DEFAULT="/maison3d-assets/maison3d-reference.jpg";
+  const DEFAULT=DEFAULT_MAIN_PHOTO;
   const BUNDLED={
     day:"/maison3d-assets/images/jour.jpg",
     cloudy:"/maison3d-assets/images/nuageux.jpg",
@@ -27,13 +28,10 @@ export function createPhotoView() {
     snow:"/maison3d-assets/images/neige.jpg"
   };
   const STORAGE="maison3d:photo-settings:v1";
-  const allowedUrl=(url)=>typeof url==="string" && (
-    url.startsWith("/local/") || url.startsWith("/maison3d-assets/") ||
-    url.startsWith("/api/") || /^https:\/\//i.test(url)
-  );
+  const allowedUrl=allowedPhotoUrl;
   const defaults=()=>Object.fromEntries(KEYS.map(k=>[k,""]));
   const state={
-    images:defaults(),moon_entity:"sensor.moon_phase",
+    images:defaults(),base_image_url:"",moon_entity:"sensor.moon_phase",
     weather_entity:"",sun_entity:"sun.sun",
     temperature_entity:"",wind_entity:"",rain_entity:"",snow_entity:"",cloud_entity:"",
     enabled:true,model_view:"3d",mode:"auto",effect:true,season:"auto",effect_intensity:1,moon_preview:"auto",use_weather_photos:false
@@ -47,6 +45,7 @@ export function createPhotoView() {
       for(const key of ["moon_entity","weather_entity","sun_entity","temperature_entity","wind_entity","rain_entity","snow_entity","cloud_entity"]){
         if(typeof saved[key]==="string")state[key]=saved[key].slice(0,150);
       }
+      if(allowedUrl(saved.base_image_url))state.base_image_url=saved.base_image_url;
       if(typeof saved.enabled==="boolean")state.enabled=saved.enabled;
       if(saved.model_view==="2d"||saved.model_view==="3d")state.model_view=saved.model_view;
       if(typeof saved.effect==="boolean")state.effect=saved.effect;
@@ -136,7 +135,7 @@ export function createPhotoView() {
   const close=document.createElement("button");close.type="button";close.textContent="✕ Fermer";
   head.append(h,close);settings.append(head);
   const note=document.createElement("p");note.textContent=
-    "Chaque image doit représenter la même propriété et la même perspective. Laissez une URL vide pour utiliser la photo officielle. URL /local/… ou https://… ; les images restent sur Home Assistant ou votre hébergeur.";
+    "Image principale personnalisable : une photo de votre maison. Les effets météo, lune et saisons se dessinent sur cette photo. Laissez vide pour la configuration Home Assistant ou la photo officielle.";
   settings.append(note);
   const makeField=(title,value,onChange,placeholder="")=>{
     const label=document.createElement("label");
@@ -155,6 +154,52 @@ export function createPhotoView() {
     sel.value=value;sel.addEventListener("change",()=>fn(sel.value));label.append(sel);
     settings.append(label);return sel;
   };
+  const mainPhotoInput=makeField("Image principale personnalisée (facultatif)",
+    state.base_image_url,(value,input)=>{
+      if(value&&!allowedUrl(value)){
+        input.setCustomValidity("Utilise /local/…, /maison3d-assets/…, /api/… ou HTTPS.");
+        input.reportValidity();return;
+      }
+      input.setCustomValidity("");
+      state.base_image_url=value;
+      failedImages.delete(value);
+      persist();update();
+      imageCheck.textContent=value?"Image enregistrée · prévisualisation conseillée":"Image principale par défaut";
+    },"/local/maison3d/ma-maison.jpg");
+  const previewRow=document.createElement("div");
+  previewRow.className="main-photo-preview";
+  const previewBtn=document.createElement("button");
+  previewBtn.type="button";previewBtn.textContent="Vérifier et prévisualiser";
+  const imageCheck=document.createElement("span");
+  imageCheck.setAttribute("role","status");
+  imageCheck.textContent="Vérifiez l'image pour contrôler son accès.";
+  const previewThumbnail=document.createElement("img");
+  previewThumbnail.alt="Aperçu de l'image principale";
+  previewThumbnail.hidden=true;
+  previewBtn.addEventListener("click",()=>{
+    const candidate=mainPhotoInput.value.trim();
+    if(candidate&&!allowedUrl(candidate)){
+      imageCheck.textContent="URL invalide";previewThumbnail.hidden=true;return;
+    }
+    const target=candidate||resolveMainPhoto({parent:parentBasePhoto,isCard:isCardView});
+    imageCheck.textContent="Vérification en cours…";
+    previewThumbnail.hidden=true;
+    const probe=new Image();
+    probe.onload=()=>{
+      imageCheck.textContent="Image trouvée";
+      previewThumbnail.src=target;previewThumbnail.hidden=false;
+      failedImages.delete(target);
+    };
+    probe.onerror=()=>{
+      imageCheck.textContent="Image inaccessible — photo officielle utilisée";
+      previewThumbnail.hidden=true;
+      failedImages.add(target);
+      update();
+    };
+    probe.src=target;
+  });
+  previewRow.append(previewBtn,imageCheck,previewThumbnail);
+  settings.append(previewRow);
   makeField("Entité météo",state.weather_entity,v=>{state.weather_entity=v;persist();requestEntities()},
     "weather.ma_maison (vide = première disponible)");
   makeField("Entité soleil",state.sun_entity,v=>{state.sun_entity=v||"sun.sun";persist();requestEntities()},"sun.sun");
@@ -290,6 +335,10 @@ export function createPhotoView() {
     "#maison3d-photo-view .photo-error{position:absolute;top:45%;left:10%;width:80%;text-align:center;",
     "background:#972b30;color:white;border-radius:9px;padding:14px}",
     "#maison3d-photo-view .photo-error[hidden]{display:none}",
+    "#maison3d-photo-settings .main-photo-preview{display:grid;gap:8px;margin:9px 0}",
+    "#maison3d-photo-settings .main-photo-preview img{position:static;width:100%;height:auto;",
+    "max-height:165px;object-fit:contain;border-radius:7px;background:#1d2e43}",
+    "#maison3d-photo-settings .main-photo-preview img[hidden]{display:none}",
     "#maison3d-photo-seasons{position:fixed;right:12px;top:26%;z-index:9;",
     "display:grid;gap:5px;padding:7px;border-radius:12px;background:#101923ee;",
     "max-width:145px;max-height:45vh;overflow:auto}",
@@ -333,6 +382,9 @@ export function createPhotoView() {
   let lastAutoSeason="";
   let currentSrc="",active="day",lastFrame=0;
   let missingBundled=new Set();
+  const failedImages=new Set();
+  const isCardView=new URLSearchParams(window.location.search).get("mode")==="card";
+  let parentBasePhoto="";
   let particles=[];
   const seasonNow=()=>state.season!=="auto"?state.season:automaticSeason(haTimeZone);
   const nighttime=()=>{
@@ -383,13 +435,18 @@ export function createPhotoView() {
     const bundled=(BUNDLED[selected]&&!missingBundled.has(selected))?BUNDLED[selected]:"";
     // The official photo is the default immutable scene. Explicit opt-in only
     // for alternative stills; manual weather previews remain dynamic overlays.
-    const path=state.use_weather_photos ? (
+    const mainPhoto=resolveMainPhoto({
+      parent:parentBasePhoto,local:state.base_image_url,isCard:isCardView
+    });
+    const candidate=state.use_weather_photos ? (
       state.images[selected]||bundled||
       (lunarKey && ["night","day"].includes(selected) ? state.images[lunarKey] : "")||
       (night?state.images.night:"")||
-      (selected==="day"?state.images[seasonNow()]:"")||DEFAULT
-    ) : DEFAULT;
-    if(path!==currentSrc){image.src=path;currentSrc=path;error.hidden=true}
+      (selected==="day"?state.images[seasonNow()]:"")||mainPhoto
+    ) : mainPhoto;
+    const path=failedImages.has(candidate)
+      ?(failedImages.has(mainPhoto)?DEFAULT:mainPhoto):candidate;
+    if(path!==currentSrc){currentSrc=path;image.src=path;error.hidden=true}
     const weatherTint=selected==="snow"||selected==="winter"?"linear-gradient(#e7f5ff18,#eaf7ff29)":
       selected==="storm"?"#101b3866":selected==="rain"?"#26344746":
       selected==="cloudy"?"#5b677523":"transparent";
@@ -440,11 +497,10 @@ export function createPhotoView() {
   optionsBtn.addEventListener("click",()=>{settings.hidden=!settings.hidden});
   close.addEventListener("click",()=>{settings.hidden=true});
   image.addEventListener("error",()=>{
-    const bundledKey=Object.keys(BUNDLED).find(k=>BUNDLED[k]===currentSrc);
-    if(bundledKey) {
-      missingBundled.add(bundledKey);
-      currentSrc=DEFAULT;
-      image.src=DEFAULT;
+    if(currentSrc!==DEFAULT){
+      failedImages.add(currentSrc);
+      imageCheck.textContent="Image inaccessible — retour à la photo officielle";
+      update();
       return;
     }
     error.hidden=false;
@@ -462,6 +518,8 @@ export function createPhotoView() {
   window.addEventListener("message",event=>{
     if(event.source!==window.parent||event.origin!==window.location.origin)return;
     if(event.data?.type!=="maison3d:conditions")return;
+    const supplied=event.data.base_image_url;
+    parentBasePhoto=allowedUrl(supplied)?supplied:"";
     if(event.data.images && typeof event.data.images==="object"){
       for(const k of KEYS){
         const path=event.data.images[k];
