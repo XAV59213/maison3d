@@ -158,7 +158,7 @@ export function createPhotoView() {
     makeField(label,state[key],v=>{state[key]=v;persist();requestEntities()},"sensor.exemple");
   }
   const selectMode=selectField("Ambiance",[
-    ["auto","Automatique (Home Assistant)"],...KEYS.map(k=>[k,LABELS[k]])
+    ["auto","Automatique (Home Assistant)"],...KEYS.filter(k=>!k.startsWith("moon_")).map(k=>[k,LABELS[k]])
   ],state.mode,v=>{state.mode=v;persist();update();});
   const seasonSelect=selectField("Saison",[
     ["auto","Automatique (calendrier)"],
