@@ -31,9 +31,10 @@ button:hover,.on{background:#1270e9!important}.brand{position:fixed;top:10px;lef
 <script type="module">
 import * as THREE from "three";
 import {OrbitControls} from "three/addons/controls/OrbitControls.js";
+import {createAtmosphere} from "./weather-effects.js";
 const KEY="maison3d-v2-layout";const view=document.getElementById("view");const scene=new THREE.Scene();scene.background=new THREE.Color(0x89b7e7);scene.fog=new THREE.Fog(0x89b7e7,45,115);
 const camera=new THREE.PerspectiveCamera(46,innerWidth/innerHeight,.1,230);camera.position.set(31,23,35);
-const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(innerWidth,innerHeight);renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.outputColorSpace=THREE.SRGBColorSpace;view.appendChild(renderer.domElement);
+const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(innerWidth,innerHeight);renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;view.appendChild(renderer.domElement);
 const controls=new OrbitControls(camera,renderer.domElement);controls.target.set(0,1,0);controls.enableDamping=true;controls.maxPolarAngle=Math.PI*.49;controls.minDistance=6;controls.maxDistance=95;
 scene.add(new THREE.HemisphereLight(0xe3f0ff,0x40513b,2.1));const sun=new THREE.DirectionalLight(0xffc777,3);sun.position.set(-20,33,12);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);sun.shadow.camera.left=-47;sun.shadow.camera.right=47;sun.shadow.camera.top=47;sun.shadow.camera.bottom=-47;scene.add(sun);
 function mat(color){return new THREE.MeshStandardMaterial({color,roughness:.85})}
@@ -97,7 +98,6 @@ document.getElementById("topview").onclick=()=>{camera.position.set(0,60,.1);con
 document.getElementById("tab3d").onclick=document.getElementById("orbit").onclick=()=>{camera.position.set(31,23,35);controls.target.set(0,1,0);controls.update()};
 document.getElementById("export").onclick=()=>{let blob=new Blob([JSON.stringify({version:2,items:data},null,2)],{type:"application/json"});let a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="maison3d-projet.json";a.click();URL.revokeObjectURL(a.href)};
 document.getElementById("import").onclick=()=>document.getElementById("file").click();document.getElementById("file").onchange=async e=>{try{const obj=JSON.parse(await e.target.files[0].text());if(!Array.isArray(obj.items))throw Error("Format attendu : items[]");data=obj.items.filter(o=>o&&o.id&&o.type);redraw();save()}catch(err){alert("Import impossible : "+err.message)}};
-document.querySelectorAll("[data-time]").forEach(b=>b.onclick=()=>{document.querySelectorAll("[data-time]").forEach(q=>q.classList.remove("on"));b.classList.add("on");const t=b.dataset.time,night=t==="night";scene.background.set(night?0x0e2035:t==="evening"?0xf3aa73:0x89b7e7);scene.fog.color.copy(scene.background);sun.intensity=night?.12:t==="evening"?1.2:3});
-document.getElementById("weather").onclick=()=>alert("Météo réelle Home Assistant : connexion prévue dans une prochaine version.");
-redraw();if(selected)choose(selected.id);addEventListener("resize",()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});renderer.setAnimationLoop(()=>{controls.update();renderer.render(scene,camera)});
+const atmosphere=createAtmosphere({scene,sun,renderer});
+redraw();if(selected)choose(selected.id);addEventListener("resize",()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});renderer.setAnimationLoop((time)=>{controls.update();renderer.render(scene,camera);atmosphere.frame(time)});
 </script></body></html>
