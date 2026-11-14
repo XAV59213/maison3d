@@ -27,9 +27,10 @@ button:hover,.on{background:#1270e9!important}.brand{position:fixed;top:10px;lef
 <label>Hauteur <input id="h" type="number" min=".2" step=".25"></label><label>Rotation ° <input id="r" type="number" step="5"></label>
 </div><div class="actions"><button id="add">+ Ajouter</button><button id="copy">Dupliquer</button><button id="del">Supprimer</button><button id="reset">Réinitialiser</button></div><label>Nouvel objet<select id="kind"><option value="tree">Arbre</option><option value="building">Bâtiment</option><option value="shed">Abri métal</option><option value="wall">Muret</option><option value="steps">Escalier</option><option value="road">Chemin / route</option><option value="gate">Portail</option><option value="pool">Piscine</option><option value="swing">Balançoire</option><option value="furniture">Mobilier</option></select></label></section>
 <input type="file" id="file" accept="application/json" hidden>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}</script>
 <script type="module">
-import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js";
-import {OrbitControls} from "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/controls/OrbitControls.js";
+import * as THREE from "three";
+import {OrbitControls} from "three/addons/controls/OrbitControls.js";
 const KEY="maison3d-v2-layout";const view=document.getElementById("view");const scene=new THREE.Scene();scene.background=new THREE.Color(0x89b7e7);scene.fog=new THREE.Fog(0x89b7e7,45,115);
 const camera=new THREE.PerspectiveCamera(46,innerWidth/innerHeight,.1,230);camera.position.set(31,23,35);
 const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(innerWidth,innerHeight);renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.outputColorSpace=THREE.SRGBColorSpace;view.appendChild(renderer.domElement);
