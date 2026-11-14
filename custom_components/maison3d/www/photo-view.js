@@ -321,7 +321,8 @@ export function createPhotoView() {
   function frame(time){
     if(time-lastFrame<33)return;
     lastFrame=time;
-    if(!state.enabled||!state.effect){
+    if(!state.enabled||!state.effect||state.effect_intensity<=0){
+      ctx.clearRect(0,0,canvas.width,canvas.height);
       cinematics.frame(time,"none",seasonNow(),0,0,false,false);
       return;
     }
@@ -335,10 +336,11 @@ export function createPhotoView() {
     const count=kind==="snow"?110:kind==="rain"?170:kind==="storm"?210:
       kind==="wind"?75:seasonNow()==="autumn"?42:0;
     const type=count && !["snow","rain","storm","wind"].includes(kind)?"leaves":kind;
-    while(particles.length<count)particles.push(spawn(w,h));
-    particles.length=count;
+    const scaledCount=Math.floor(count*Math.min(state.effect_intensity,2));
+    while(particles.length<scaledCount)particles.push(spawn(w,h));
+    particles.length=scaledCount;
     const windy=type==="wind"||live.windSpeed>18;
-    for(let i=0;i<count;i++){
+    for(let i=0;i<scaledCount;i++){
       const p=particles[i];
       if(type==="snow"){
         ctx.fillStyle="#f7fbffdf";ctx.beginPath();ctx.arc(p.x,p.y,1.1+p.speed,0,Math.PI*2);ctx.fill();
