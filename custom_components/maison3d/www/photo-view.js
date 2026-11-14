@@ -235,6 +235,12 @@ export function createPhotoView() {
   window.addEventListener("message",event=>{
     if(event.source!==window.parent||event.origin!==window.location.origin)return;
     if(event.data?.type!=="maison3d:conditions")return;
+    if(event.data.images && typeof event.data.images==="object"){
+      for(const k of KEYS){
+        const path=event.data.images[k];
+        if(allowedUrl(path))state.images[k]=path;
+      }
+    }
     live={
       weather:typeof event.data.weather==="string"?event.data.weather:null,
       sun:typeof event.data.sun==="string"?event.data.sun:null,
