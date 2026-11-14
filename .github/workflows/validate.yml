@@ -27,6 +27,8 @@ jobs:
           node --check custom_components/maison3d/www/world-ambience.js
           node --check custom_components/maison3d/www/photo-view.js
           node --check custom_components/maison3d/www/moon-effects.js
+          node --check custom_components/maison3d/www/season-effects.js
+          node tests/test_seasons.mjs
           node --check custom_components/maison3d/www/photo-cinematics.js
           node --check custom_components/maison3d/www/weather-effects.js
           python - <<'PY'
