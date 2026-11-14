@@ -52,21 +52,35 @@ class Maison3DPanel extends HTMLElement {
 
     const states = this._hass.states || {};
     // Prefer a known/available weather entity rather than an unknown one.
-    const requested = this._choices.weather_entity && states[this._choices.weather_entity];
+    const diagnostic = Object.values(states).find(entity => entity.attributes?.maison3d_config === true);
+    const configured = diagnostic?.attributes?.entities || {};
+    const choice = key => configured[key] || this._choices[key] || "";
+    const requested = choice("weather_entity") && states[choice("weather_entity")];
     const weather = requested || Object.values(states).find(
       entity => entity.entity_id?.startsWith("weather.") &&
         entity.state !== "unknown" && entity.state !== "unavailable"
     );
-    const sun = states[this._choices.sun_entity || "sun.sun"];
-    const moonState = states[this._choices.moon_entity] ||
+    const sun = states[choice("sun_entity") || "sun.sun"];
+    const moonState = states[choice("moon_entity")] ||
       Object.values(states).find(entity=>entity.entity_id?.startsWith("sensor.") &&
         entity.entity_id.includes("moon") && entity.state!=="unavailable");
     const attributes = weather?.attributes || {};
+    const numeric = (key, fallback) => {
+      const source = states[choice(key)];
+      if (!source || ["unknown","unavailable"].includes(source.state)) return fallback;
+      if (source.state === "on") return 1;
+      if (source.state === "off") return 0;
+      const value = Number(source.state);
+      return Number.isFinite(value) ? value : fallback;
+    };
     const payload = {
       type: "maison3d:conditions",
       weather: weather?.state ?? null,
-      temperature: typeof attributes.temperature === "number" ? attributes.temperature : null,
-      windSpeed: typeof attributes.wind_speed === "number" ? attributes.wind_speed : null,
+      temperature: numeric("temperature_entity", typeof attributes.temperature === "number" ? attributes.temperature : null),
+      windSpeed: numeric("wind_entity", typeof attributes.wind_speed === "number" ? attributes.wind_speed : null),
+      rain: numeric("rain_entity", null),
+      snow: numeric("snow_entity", null),
+      cloud: numeric("cloud_entity", null),
       windSpeedUnit: attributes.wind_speed_unit ?? "",
       sun: sun?.state ?? null,
       moon: moonState?.state ?? null,
