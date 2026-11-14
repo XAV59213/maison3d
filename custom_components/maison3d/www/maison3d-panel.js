@@ -75,6 +75,7 @@ class Maison3DPanel extends HTMLElement {
     };
     const payload = {
       type: "maison3d:conditions",
+      time_zone: this._hass.config?.time_zone ?? "UTC",
       weather: weather?.state ?? null,
       temperature: numeric("temperature_entity", typeof attributes.temperature === "number" ? attributes.temperature : null),
       windSpeed: numeric("wind_entity", typeof attributes.wind_speed === "number" ? attributes.wind_speed : null),
