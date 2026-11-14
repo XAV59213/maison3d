@@ -81,7 +81,10 @@ class TestMaison3D(unittest.TestCase):
         self.assertIn("frost_enabled: diagnostic?.attributes?.frost_enabled !== false", panel)
         self.assertIn('toggle("frost_enabled"', editor)
         self.assertIn('from "./frost-effects.js"', photo)
-        self.assertIn('frostBtn.addEventListener("click"', photo)
+        # Frost is controlled from the settings menu only: no extra button on the photo.
+        self.assertIn('frostInput.addEventListener("change"', photo)
+        self.assertNotIn("frostBtn", photo)
+        self.assertIn("nav.append(photoBtn,planBtn,modelBtn,nightBtn,dayBtn,autoBtn,effectsBtn,optionsBtn)", photo)
         self.assertIn("frost.frame(time,frostTarget())", photo)
         self.assertIn("frost.frame(time,0)", photo)
         self.assertIn("prefers-reduced-motion", frost)

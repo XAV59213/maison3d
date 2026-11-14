@@ -51,7 +51,6 @@ export function createPhotoView() {
       if(saved.model_view==="2d"||saved.model_view==="3d")state.model_view=saved.model_view;
       if(typeof saved.effect_override==="boolean")state.effect_override=saved.effect_override;
       if(typeof saved.frost_override==="boolean")state.frost_override=saved.frost_override;
-      if(typeof saved.frost_preview==="boolean")state.frost_preview=saved.frost_preview;
       if(typeof saved.use_weather_photos==="boolean")state.use_weather_photos=saved.use_weather_photos;
       if(Number.isFinite(saved.effect_intensity))state.effect_intensity=Math.min(2,Math.max(0,saved.effect_intensity));
       if(typeof saved.mode==="string"&&["auto",...KEYS].includes(saved.mode))state.mode=saved.mode;
@@ -115,9 +114,7 @@ export function createPhotoView() {
   autoBtn.title="Utiliser le soleil et la météo réels de Home Assistant";
   const effectsBtn=document.createElement("button");
   effectsBtn.type="button";effectsBtn.title="Activer ou désactiver les effets animés";
-  const frostBtn=document.createElement("button");
-  frostBtn.type="button";frostBtn.title="Activer ou désactiver l'effet gel (température ≤ 0 °C)";
-  nav.append(photoBtn,planBtn,modelBtn,nightBtn,dayBtn,autoBtn,effectsBtn,frostBtn,optionsBtn);
+  nav.append(photoBtn,planBtn,modelBtn,nightBtn,dayBtn,autoBtn,effectsBtn,optionsBtn);
   const seasonalNav=document.createElement("nav");
   seasonalNav.id="maison3d-photo-seasons";
   seasonalNav.setAttribute("aria-label","Tester les saisons de la vue photo");
@@ -328,7 +325,6 @@ export function createPhotoView() {
     persist();update();
   };
   frostInput.addEventListener("change",()=>setFrost(frostInput.checked));
-  frostBtn.addEventListener("click",()=>setFrost(!state.frost));
   frostLabel.append(frostInput,document.createTextNode("Effet gel quand la température est ≤ 0 °C"));settings.append(frostLabel);
   const strengthLabel=document.createElement("label");
   strengthLabel.textContent="Intensité des animations (0 = aucune, 200 % = forte)";
@@ -510,8 +506,6 @@ export function createPhotoView() {
       (phaseName?" · Lune : "+String(currentMoon):"")+
       (state.moon_preview!=="auto"?" · Lune en test":"")+
       (frostTarget()>0?(state.frost_preview?" · Gel en test":" · Gel"):"");
-    frostBtn.textContent=state.frost?"❄ Gel ON":"○ Gel OFF";
-    frostBtn.setAttribute("aria-pressed",String(state.frost));
     frostInput.checked=state.frost;
     frostTest.setAttribute("aria-pressed",String(state.frost_preview));
     nightBtn.setAttribute("aria-pressed",String(state.mode==="night"));

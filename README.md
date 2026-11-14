@@ -81,7 +81,7 @@ Quand le **capteur de température extérieure** passe à **0 °C ou moins**, du
 
 - **Intégration :** option **Activer l'effet gel quand la température est inférieure ou égale à 0 °C** (activée par défaut). Elle nécessite un capteur de température, ou une entité météo qui fournit une température.
 - **Carte Lovelace :** `frost_enabled: true` / `false`, ou « Hériter de l'intégration » dans l'éditeur visuel.
-- **Vue photo :** bouton **❄ Gel ON / ○ Gel OFF** et case dans **⚙ Images / météo** ; **🧊 Tester le gel** le force sans changer la température. Le gel suit aussi l'interrupteur général des effets : avec **○ Effets OFF**, il n'y a pas de gel.
+- **Vue photo :** case **Effet gel** dans le menu **⚙ Images / météo** (aucun bouton ajouté sur la photo) ; dans ce même menu, **🧊 Tester le gel** le force sans changer la température. Le gel suit aussi l'interrupteur général des effets : avec **○ Effets OFF**, il n'y a pas de gel.
 
 ## 🏡 Une photographie unique, une maison vivante
 
