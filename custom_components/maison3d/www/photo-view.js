@@ -4,6 +4,7 @@
  * This is a photo-based presentation, NOT a rotatable 3D reconstruction.
  */
 import {createPhotoCinematics} from "./photo-cinematics.js";
+import {createMoonOverlay} from "./moon-effects.js";
 export function createPhotoView() {
   const KEYS=["day","night","cloudy","rain","snow","wind","storm",
     "spring","summer","autumn","winter",
@@ -33,7 +34,7 @@ export function createPhotoView() {
     images:defaults(),moon_entity:"sensor.moon_phase",
     weather_entity:"",sun_entity:"sun.sun",
     temperature_entity:"",wind_entity:"",rain_entity:"",snow_entity:"",cloud_entity:"",
-    enabled:true,mode:"auto",effect:true,season:"auto",effect_intensity:1
+    enabled:true,mode:"auto",effect:true,season:"auto",effect_intensity:1,moon_preview:"auto"
   };
   try{
     const saved=JSON.parse(localStorage.getItem(STORAGE));
@@ -49,6 +50,7 @@ export function createPhotoView() {
       if(Number.isFinite(saved.effect_intensity))state.effect_intensity=Math.min(2,Math.max(0,saved.effect_intensity));
       if(typeof saved.mode==="string"&&["auto",...KEYS].includes(saved.mode))state.mode=saved.mode;
       if(typeof saved.season==="string"&&["auto","spring","summer","autumn","winter"].includes(saved.season))state.season=saved.season;
+      if(typeof saved.moon_preview==="string"&&["auto","new_moon","waxing_crescent","first_quarter","waxing_gibbous","full_moon","waning_gibbous","last_quarter","waning_crescent"].includes(saved.moon_preview))state.moon_preview=saved.moon_preview;
     }
   }catch{}
   const persist=()=>{try{localStorage.setItem(STORAGE,JSON.stringify(state))}catch{}};
@@ -75,6 +77,7 @@ export function createPhotoView() {
   error.className="photo-error";error.hidden=true;
   error.textContent="Image inaccessible : corrigez son URL dans les réglages Photo.";
   section.append(image,tint,cinematicCanvas,canvas,status,moon,error);
+  const skyMoon=createMoonOverlay({container:section});
   const cinematics=createPhotoCinematics(cinematicCanvas);
   const nav=document.createElement("nav");
   nav.id="maison3d-photo-controls";
@@ -94,6 +97,26 @@ export function createPhotoView() {
   autoBtn.type="button";autoBtn.textContent="◉ Auto";
   autoBtn.title="Utiliser le soleil et la météo réels de Home Assistant";
   nav.append(photoBtn,nightBtn,dayBtn,autoBtn,modelBtn,optionsBtn);
+  const seasonalNav=document.createElement("nav");
+  seasonalNav.id="maison3d-photo-seasons";
+  seasonalNav.setAttribute("aria-label","Tester les saisons de la vue photo");
+  const seasonButtons=new Map();
+  for(const [key,label] of [
+    ["spring","🌸 Printemps"],["summer","☀ Été"],
+    ["autumn","🍂 Automne"],["winter","❄ Hiver"],["auto","◉ Saisons auto"]
+  ]){
+    const btn=document.createElement("button");
+    btn.type="button";btn.textContent=label;
+    btn.title="Tester : "+label;
+    btn.addEventListener("click",()=>{
+      state.enabled=true;state.season=key;
+      state.mode=key==="auto"?"auto":key;
+      selectMode.value=state.mode;
+      seasonSelect.value=key;
+      persist();update();
+    });
+    seasonalNav.append(btn);seasonButtons.set(key,btn);
+  }
   const settings=document.createElement("section");
   settings.id="maison3d-photo-settings";settings.hidden=true;
   const head=document.createElement("div");
@@ -137,10 +160,60 @@ export function createPhotoView() {
   const selectMode=selectField("Ambiance",[
     ["auto","Automatique (Home Assistant)"],...KEYS.map(k=>[k,LABELS[k]])
   ],state.mode,v=>{state.mode=v;persist();update();});
-  selectField("Saison",[
+  const seasonSelect=selectField("Saison",[
     ["auto","Automatique (calendrier)"],
     ["spring","Printemps"],["summer","Été"],["autumn","Automne"],["winter","Hiver"]
-  ],state.season,v=>{state.season=v;persist();update();});
+  ],state.season,v=>{
+    state.season=v;
+    state.enabled=true;
+    if(v!=="auto"){state.mode=v;selectMode.value=v}
+    else{state.mode="auto";selectMode.value="auto"}
+    persist();update();
+  });
+  const testSection=document.createElement("fieldset");
+  testSection.className="maison3d-test-states";
+  const legend=document.createElement("legend");
+  legend.textContent="Tester chaque état (sans changer les capteurs)";
+  testSection.append(legend);
+  const testGrid=document.createElement("div");testGrid.className="test-grid";
+  const tests=[
+    ["day","☀ Jour"],["night","☾ Nuit"],["cloudy","☁ Nuages"],
+    ["rain","🌧 Pluie"],["snow","❄ Neige"],["wind","💨 Vent"],
+    ["storm","⚡ Orage"],["spring","🌸 Printemps"],["summer","☀ Été"],
+    ["autumn","🍂 Automne"],["winter","❄ Hiver"]
+  ];
+  const testButtons=new Map();
+  for(const [key,label] of tests){
+    const btn=document.createElement("button");
+    btn.type="button";btn.textContent=label;
+    btn.addEventListener("click",()=>{
+      state.enabled=true;state.mode=key;
+      if(["spring","summer","autumn","winter"].includes(key)){
+        state.season=key;seasonSelect.value=key;
+      }
+      selectMode.value=key;persist();update();
+    });
+    testGrid.append(btn);testButtons.set(key,btn);
+  }
+  testSection.append(testGrid);
+  const moonPreview=selectField("Tester la phase de lune (jour ou nuit)",[
+    ["auto","Depuis le capteur Home Assistant"],
+    ["new_moon","Nouvelle lune"],["waxing_crescent","Premier croissant"],
+    ["first_quarter","Premier quartier"],["waxing_gibbous","Gibbeuse croissante"],
+    ["full_moon","Pleine lune"],["waning_gibbous","Gibbeuse décroissante"],
+    ["last_quarter","Dernier quartier"],["waning_crescent","Dernier croissant"]
+  ],state.moon_preview,v=>{state.moon_preview=v;persist();update();});
+  // Move the lunar selector below the test controls in the settings panel.
+  const moonLabel=moonPreview.parentElement;
+  testSection.append(moonLabel);
+  const resetTest=document.createElement("button");
+  resetTest.type="button";resetTest.textContent="◉ Revenir à la météo réelle";
+  resetTest.addEventListener("click",()=>{
+    state.mode="auto";state.season="auto";state.moon_preview="auto";
+    state.enabled=true;selectMode.value="auto";seasonSelect.value="auto";
+    moonPreview.value="auto";persist();update();
+  });
+  testSection.append(resetTest);settings.append(testSection);
   for(const key of KEYS){
     makeField("Image "+LABELS[key],state.images[key],(v,input)=>{
       if(v&&!allowedUrl(v)){input.setCustomValidity("Utilise /local/…, /maison3d-assets/…, /api/… ou HTTPS.");input.reportValidity();return}
@@ -174,7 +247,7 @@ export function createPhotoView() {
       const text=l.firstChild?.textContent||"";
       if(text.startsWith("Image "))input.value="";
     });
-    selectMode.value="auto";update();
+    selectMode.value="auto";seasonSelect.value="auto";state.moon_preview="auto";moonPreview.value="auto";update();
   });settings.append(reset);
   const style=document.createElement("style");
   style.textContent=[
@@ -193,6 +266,20 @@ export function createPhotoView() {
     "#maison3d-photo-view .photo-error{position:absolute;top:45%;left:10%;width:80%;text-align:center;",
     "background:#972b30;color:white;border-radius:9px;padding:14px}",
     "#maison3d-photo-view .photo-error[hidden]{display:none}",
+    "#maison3d-photo-seasons{position:fixed;right:12px;top:26%;z-index:9;",
+    "display:grid;gap:5px;padding:7px;border-radius:12px;background:#101923ee;",
+    "max-width:145px;max-height:45vh;overflow:auto}",
+    "#maison3d-photo-seasons button{border:0;border-radius:7px;background:#29405b;",
+    "color:white;text-align:left;padding:9px;cursor:pointer;font:12px system-ui}",
+    "#maison3d-photo-seasons button[aria-pressed=true]{background:#1477dc}",
+    "html:not(.photo-active) #maison3d-photo-seasons{display:none}",
+    ".maison3d-test-states{border:1px solid #66778c;border-radius:8px;margin-top:12px}",
+    ".maison3d-test-states legend{font-size:13px;font-weight:bold}",
+    ".maison3d-test-states .test-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}",
+    ".maison3d-test-states button{padding:8px;border-radius:6px}",
+    ".maison3d-test-states button[aria-pressed=true]{background:#1579ea!important}",
+    "@media(max-width:700px){#maison3d-photo-seasons{top:25%;right:5px;max-width:98px;",
+    "padding:4px}#maison3d-photo-seasons button{padding:6px;font-size:10px}}",
     "#maison3d-photo-controls{position:fixed;top:10px;left:10px;z-index:8;display:flex;gap:6px;background:#101923e5;",
     "padding:7px;border-radius:13px;max-width:calc(100vw - 20px);flex-wrap:wrap}",
     "#maison3d-photo-controls button,#maison3d-photo-settings button{border:0;border-radius:8px;",
@@ -216,7 +303,7 @@ export function createPhotoView() {
     "#maison3d-photo-status{top:8px;right:8px;font-size:11px}}"
   ].join("");
   document.head.append(style);
-  document.body.append(section,nav,settings);
+  document.body.append(section,nav,seasonalNav,settings);
   let live={weather:null,sun:null,temperature:null,windSpeed:0,moon:null,rain:null,snow:null,cloud:null};
   let currentSrc="",active="day",lastFrame=0;
   let missingBundled=new Set();
@@ -282,11 +369,17 @@ export function createPhotoView() {
       selected==="storm"?"#101b3866":selected==="rain"?"#26344746":
       selected==="cloudy"?"#5b677523":night?"#03132685":"transparent";
     section.classList.toggle("photo-night",night);
-    moon.textContent=night?moonSymbol(live.moon):"";
+    const currentMoon=state.moon_preview==="auto"?live.moon:state.moon_preview;
+    const phaseName=skyMoon.normalize(currentMoon);
+    skyMoon.draw(phaseName,night,Boolean(phaseName),state.effect_intensity);
+    moon.textContent=""; // The phase is rendered on the sky, including daytime.
+    for(const [key,btn] of seasonButtons)btn.setAttribute("aria-pressed",String(state.season===key));
+    for(const [key,btn] of testButtons)btn.setAttribute("aria-pressed",String(state.mode===key));
     const effectLabel=LABELS[selected]||selected;
     status.textContent=(state.mode==="auto"?"Automatique":"Aperçu manuel")+" · "+effectLabel+
       (typeof live.temperature==="number"?" · "+live.temperature+"°C":"")+
-      (live.moon&&night?" · Lune : "+String(live.moon):"");
+      (phaseName?" · Lune : "+String(currentMoon):"")+
+      (state.moon_preview!=="auto"?" · Lune en test":"");
     nightBtn.setAttribute("aria-pressed",String(state.mode==="night"));
     dayBtn.setAttribute("aria-pressed",String(state.mode==="day"));
     autoBtn.setAttribute("aria-pressed",String(state.mode==="auto"));
@@ -300,6 +393,7 @@ export function createPhotoView() {
   const setQuickMode=mode=>{
     state.enabled=true;state.mode=mode;
     selectMode.value=mode;
+    if(mode==="auto"){state.season="auto";state.moon_preview="auto";seasonSelect.value="auto";moonPreview.value="auto"}
     persist();update();
   };
   nightBtn.addEventListener("click",()=>setQuickMode("night"));
