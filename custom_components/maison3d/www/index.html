@@ -16,16 +16,16 @@ button:hover,.on{background:#1270e9!important}.brand{position:fixed;top:10px;lef
 @media(max-width:850px){.brand{font-size:12px;max-width:142px}.toolbar{top:77px;width:calc(100% - 12px);overflow:auto;justify-content:flex-start}.toolbar button{white-space:nowrap}.editor{width:230px}.modes{top:160px}#hint{font-size:10px;right:5px}}
 </style></head><body>
 <div id="view"></div><div class="brand">⌂ Maison 3D V2.0<small>Mode édition · Propriété Marly</small></div>
-<nav class="toolbar"><button class="on" id="tab3d">▣ 3D</button><button id="topview">▤ Plan 2D</button><button id="terrain">△ Terrain</button><button id="addtree">♧ Végétation</button><button id="addchair">▣ Mobilier</button><button id="toggle">⚙ Édition</button></nav>
+<nav class="toolbar"><button class="on" id="tab3d">▣ 3D</button><button id="topview">▤ Plan 2D</button><button id="terrain">△ Terrain</button><button id="addsteps">▤ Escalier</button><button id="addtree">♧ Végétation</button><button id="addchair">▣ Mobilier</button><button id="toggle">⚙ Édition</button></nav>
 <div id="hint">☀ Scène éditable · Déplacement, rotation, taille · Sauvegarde locale</div>
 <div class="side"><button id="orbit" title="Vue générale">⌂</button><button id="duplicate" title="Dupliquer">▣</button><button id="remove" title="Supprimer">⌫</button><button id="export" title="Exporter JSON">⇩</button><button id="import" title="Importer JSON">⇧</button></div>
 <div class="modes"><button class="on" data-time="day">☀ Jour</button><button data-time="evening">◒ Soir</button><button data-time="night">☾ Nuit</button><button id="weather">☁ Météo</button></div>
 <div class="bottom">📁 Projet : Propriété Marly · <span id="save">Enregistré localement</span></div>
-<section class="editor" id="editor"><strong>Édition des objets</strong><p style="font-size:12px;color:#bcc9d4">Clique sur un élément du décor pour le sélectionner.</p><label>Objet sélectionné<select id="objects"></select></label><div class="cols">
+<section class="editor" id="editor"><strong>Édition des objets</strong><p style="font-size:12px;color:#bcc9d4">Clique sur un élément puis déplace-le à la souris. Utilise les champs pour les dimensions et la rotation. Maj + glisser permet aussi un repositionnement précis.</p><label>Objet sélectionné<select id="objects"></select></label><div class="cols">
 <label>X <input id="x" type="number" step=".25"></label><label>Z <input id="z" type="number" step=".25"></label>
 <label>Largeur <input id="w" type="number" min=".2" step=".25"></label><label>Longueur <input id="d" type="number" min=".2" step=".25"></label>
 <label>Hauteur <input id="h" type="number" min=".2" step=".25"></label><label>Rotation ° <input id="r" type="number" step="5"></label>
-</div><div class="actions"><button id="add">+ Ajouter</button><button id="copy">Dupliquer</button><button id="del">Supprimer</button><button id="reset">Réinitialiser</button></div><label>Nouvel objet<select id="kind"><option value="tree">Arbre</option><option value="building">Bâtiment</option><option value="shed">Abri métal</option><option value="wall">Muret</option><option value="road">Chemin / route</option><option value="gate">Portail</option><option value="pool">Piscine</option><option value="swing">Balançoire</option><option value="furniture">Mobilier</option></select></label></section>
+</div><div class="actions"><button id="add">+ Ajouter</button><button id="copy">Dupliquer</button><button id="del">Supprimer</button><button id="reset">Réinitialiser</button></div><label>Nouvel objet<select id="kind"><option value="tree">Arbre</option><option value="building">Bâtiment</option><option value="shed">Abri métal</option><option value="wall">Muret</option><option value="steps">Escalier</option><option value="road">Chemin / route</option><option value="gate">Portail</option><option value="pool">Piscine</option><option value="swing">Balançoire</option><option value="furniture">Mobilier</option></select></label></section>
 <input type="file" id="file" accept="application/json" hidden>
 <script type="module">
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js";
@@ -40,47 +40,57 @@ const landmat=mat(0x6d8b49),brick=mat(0xc5a17a),roof=mat(0x393a3d),wood=mat(0x71
 function box(g,w,h,d,m,x=0,y=0,z=0){const q=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);q.position.set(x,y,z);q.castShadow=true;q.receiveShadow=true;g.add(q);return q}
 function cyl(g,a,b,height,m,x,y,z){let q=new THREE.Mesh(new THREE.CylinderGeometry(a,b,height,9),m);q.position.set(x,y,z);q.castShadow=true;g.add(q);return q}
 const ground=box(scene,90,.4,65,grass,0,-.6,0);box(scene,90,.2,6,roadmat,0,-.37,30);
+// Physical stepped terrain: landscaped low garden, raised dwelling platform and retaining walls.
+box(scene,43,1.55,22,grass,3,.24,-12);
+box(scene,25,.72,16,grass,-25,-.03,-7);
+box(scene,24,.8,15,grass,26,-.01,-5);
+box(scene,41,1.15,.55,brick,3,.12,-.65);
+box(scene,.55,1.25,20,brick,24,.04,-11);
 const defaultItems=[
-{id:"maison",name:"Maison principale",type:"building",x:2,z:-9,w:14,d:10,h:5,r:0},
-{id:"grange",name:"Grange / salle de jeux",type:"building",x:-16,z:-10,w:9,d:7,h:3.3,r:0},
-{id:"garage",name:"Garage droit",type:"garage",x:23,z:1,w:6,d:7,h:3,r:0},
-{id:"rampe",name:"Rampe véhicules",type:"ramp",x:-14,z:13,w:3.5,d:22,h:2.5,r:-18},
-{id:"abri",name:"Abri métallique",type:"shed",x:-3,z:15,w:7,d:4,h:2.4,r:0},
-{id:"terrasse",name:"Terrasse supérieure",type:"terrace",x:0,z:-1,w:15,d:5,h:1.4,r:0},
+{id:"maison",name:"Maison principale",type:"building",x:7,z:-9,w:14,d:10,h:5,r:0},
+{id:"grange",name:"Grange / salle de jeux indépendante",type:"building",x:-18,z:-12,w:9,d:7,h:3.3,r:0},
+{id:"garage",name:"Garage extrême droite",type:"garage",x:31,z:4,w:6,d:7,h:3,r:0},
+{id:"rampe",name:"Rampe véhicules gauche",type:"ramp",x:-18,z:13,w:3.5,d:23,h:2.5,r:-18},
+{id:"abri",name:"Petit abri métallique devant",type:"shed",x:-2,z:16,w:5.5,d:3.4,h:2.3,r:0},
+{id:"terrasse",name:"Terrasse surélevée",type:"terrace",x:7,z:-1,w:15,d:5,h:1.4,r:0},
 {id:"muret",name:"Mur de soutènement",type:"wall",x:10,z:10,w:27,d:.5,h:2,r:0},
 {id:"portail",name:"Portail coulissant",type:"gate",x:-14,z:26,w:4.8,d:.3,h:2,r:0},
 {id:"portillon",name:"Portillon gauche",type:"gate",x:-25,z:26,w:1.2,d:.22,h:1.8,r:0},
-{id:"piscine",name:"Piscine du jardin",type:"pool",x:-25,z:0,w:6,d:4,h:.7,r:0},
-{id:"balancoire",name:"Balançoire",type:"swing",x:-29,z:10,w:3,d:2,h:2.7,r:0},
+{id:"piscine",name:"Piscine jardin bas",type:"pool",x:-29,z:-2,w:6,d:4,h:.7,r:0},
+{id:"balancoire",name:"Balançoire jardin",type:"swing",x:-29,z:10,w:3,d:2,h:2.7,r:0},
 {id:"arbre1",name:"Arbre jardin",type:"tree",x:17,z:14,w:3,d:3,h:7,r:0},
-{id:"arbre2",name:"Arbre près grange",type:"tree",x:-28,z:-10,w:3,d:3,h:7,r:0}
+{id:"arbre2",name:"Arbre près grange",type:"tree",x:-32,z:-10,w:3,d:3,h:7,r:0},
+{id:"escalier1",name:"Escalier jardin - terrasse",type:"steps",x:17,z:3,w:2,d:5,h:1.6,r:0}
 ];let data;try{data=JSON.parse(localStorage.getItem(KEY))||structuredClone(defaultItems)}catch{data=structuredClone(defaultItems)}
-const meshes=new Map();let selected=null,outline;
+const meshes=new Map();let selected=null,outline;let moving=false;const dragPlane=new THREE.Plane(new THREE.Vector3(0,1,0),0),dragHit=new THREE.Vector3(),dragOffset=new THREE.Vector3();
 function build(o){const g=new THREE.Group();g.position.set(o.x,0,o.z);g.rotation.y=THREE.MathUtils.degToRad(o.r||0);g.userData.id=o.id;let {w,d,h}=o;
 if(o.type==="building"||o.type==="garage"){box(g,w,h*.76,d,brick,0,h*.38,0);const roofMesh=new THREE.Mesh(new THREE.ConeGeometry(Math.max(w,d)*.73,h*.3,4),roof);roofMesh.rotation.y=Math.PI/4;roofMesh.scale.z=d/w;roofMesh.position.y=h*.89;roofMesh.castShadow=true;g.add(roofMesh);box(g,w*.48,h*.28,.07,wood,0,h*.42,d/2+.06);box(g,w*.16,h*.28,.08,gold,-w*.28,h*.43,d/2+.1)}
 else if(o.type==="shed"){box(g,w,h*.8,d,gray,0,h*.4,0);box(g,w*1.04,.17,d*1.06,roof,0,h*.83,0);box(g,w*.25,h*.6,.1,wood,0,h*.38,d/2+.06)}
 else if(o.type==="wall"){box(g,w,h,d,brick,0,h/2,0)}
 else if(o.type==="terrace"){box(g,w,h,d,brick,0,h/2,0);box(g,w,.12,d,gray,0,h+.06,0);for(let i=0;i<8;i++){cyl(g,.08,.1,.75,gray,-w/2+.3+i*w/8,h+.45,d/2-.15)}}
-else if(o.type==="ramp"){const ramp=box(g,w,.25,d,roadmat,0,h/2,0);ramp.rotation.x=Math.atan2(h,d);ramp.position.y=h/2;box(g,.16,h,d,brick,-w/2-.2,h/2,0);box(g,.16,h,d,brick,w/2+.2,h/2,0)}
+else if(o.type==="ramp"){const incline=Math.atan2(h,d);const ramp=box(g,w,.2,Math.hypot(d,h),roadmat,0,h/2,0);ramp.rotation.x=-incline;for(let side of [-1,1]){const wall=box(g,.22,h*.8,d,brick,side*(w/2+.15),h*.4,0);wall.rotation.x=-incline*.5}}
+else if(o.type==="steps"){let n=Math.max(3,Math.round(d/.42));for(let i=0;i<n;i++){box(g,w,(i+1)*h/n,d/n+.04,gray,0,(i+1)*h/(2*n),-d/2+(i+.5)*d/n)}}
 else if(o.type==="road"){box(g,w,.08,d,roadmat,0,.08,0)}
 else if(o.type==="gate"){box(g,w,h,.12,roof,0,h/2,0);for(let i=0;i<Math.max(4,Math.round(w*3));i++){box(g,.03,h*.9,.15,gray,-w/2+(i+.5)*w/Math.max(4,Math.round(w*3)),h/2,0)}}
 else if(o.type==="pool"){box(g,w,.25,d,gray,0,.1,0);box(g,w*.94,.03,d*.9,mat(0x39b8ca),0,.24,0)}
 else if(o.type==="tree"){const trunk=cyl(g,w*.08,w*.11,h*.6,wood,0,h*.3,0);const leaves=new THREE.Mesh(new THREE.SphereGeometry(w*.55,12,10),mat(0x385e31));leaves.scale.y=h/w*.58;leaves.position.y=h*.73;leaves.castShadow=true;g.add(leaves)}
 else if(o.type==="swing"){for(let s of [-1,1]){let l=box(g,.12,h,.12,wood,s*w*.44,h/2,0);l.rotation.z=s*.22}box(g,w,.12,.12,wood,0,h,0);for(let s of [-1,1]){box(g,.025,h*.65,.025,gray,s*w*.19,h*.65,0)}box(g,w*.52,.1,.5,wood,0,h*.33,0)}
 else{box(g,w,h,d,wood,0,h/2,0)}scene.add(g);meshes.set(o.id,g)}
-function redraw(){for(const g of meshes.values())scene.remove(g);meshes.clear();data.forEach(build);refreshSelect()}
+function redraw(){if(outline){scene.remove(outline);outline.geometry.dispose();outline.material.dispose();outline=null}for(const g of meshes.values())scene.remove(g);meshes.clear();data.forEach(build);refreshSelect();if(selected)choose(selected.id)}
 const select=document.getElementById("objects"),ids=["x","z","w","d","h","r"];function refreshSelect(){select.innerHTML=data.map(o=>'<option value="'+o.id+'">'+o.name+'</option>').join("");if(data.length){selected=data.find(o=>o.id===selected?.id)||data[0];select.value=selected.id;ids.forEach(k=>document.getElementById(k).value=selected[k])}else selected=null}
-function choose(id){selected=data.find(o=>o.id===id);refreshSelect()}
+function choose(id){selected=data.find(o=>o.id===id);refreshSelect();if(outline){scene.remove(outline);outline.geometry.dispose();outline.material.dispose();outline=null}if(selected&&meshes.get(id)){outline=new THREE.BoxHelper(meshes.get(id),0x00d8ff);scene.add(outline)}}
 function save(){localStorage.setItem(KEY,JSON.stringify(data));document.getElementById("save").textContent="Sauvegardé à "+new Date().toLocaleTimeString("fr-FR")}
 ids.forEach(k=>document.getElementById(k).addEventListener("change",e=>{if(!selected)return;const v=+e.target.value;selected[k]=["w","d","h"].includes(k)?Math.max(.2,v):v;redraw();save()}));
 select.onchange=e=>choose(e.target.value);
-const ray=new THREE.Raycaster(),pointer=new THREE.Vector2();renderer.domElement.addEventListener("pointerdown",e=>{pointer.set(e.clientX/innerWidth*2-1,1-e.clientY/innerHeight*2);ray.setFromCamera(pointer,camera);const hits=ray.intersectObjects([...meshes.values()],true);if(hits.length){let g=hits[0].object;while(g.parent&&!g.userData.id)g=g.parent;if(g.userData.id)choose(g.userData.id)}});
-function add(type){const id=type+Date.now();data.push({id,name:({building:"Bâtiment",tree:"Arbre",shed:"Abri",wall:"Muret",road:"Chemin",gate:"Portail",pool:"Piscine",swing:"Balançoire",furniture:"Mobilier"})[type]||type,type,x:0,z:17,w:3,d:3,h:2,r:0});selected=data.at(-1);redraw();save()}
+const ray=new THREE.Raycaster(),pointer=new THREE.Vector2();renderer.domElement.addEventListener("pointerdown",e=>{pointer.set(e.clientX/innerWidth*2-1,1-e.clientY/innerHeight*2);ray.setFromCamera(pointer,camera);const hits=ray.intersectObjects([...meshes.values()],true);if(hits.length){let g=hits[0].object;while(g.parent&&!g.userData.id)g=g.parent;if(g.userData.id){choose(g.userData.id);if(ray.ray.intersectPlane(dragPlane,dragHit)){dragOffset.set(selected.x-dragHit.x,0,selected.z-dragHit.z);moving=true;controls.enabled=false}}}});
+renderer.domElement.addEventListener("pointermove",e=>{if(!moving||!selected)return;pointer.set(e.clientX/innerWidth*2-1,1-e.clientY/innerHeight*2);ray.setFromCamera(pointer,camera);if(ray.ray.intersectPlane(dragPlane,dragHit)){selected.x=Math.round((dragHit.x+dragOffset.x)*4)/4;selected.z=Math.round((dragHit.z+dragOffset.z)*4)/4;let g=meshes.get(selected.id);if(g){g.position.x=selected.x;g.position.z=selected.z;if(outline)outline.update()}ids.slice(0,2).forEach(k=>document.getElementById(k).value=selected[k])}});
+function endDrag(){if(moving){moving=false;controls.enabled=true;save()}}renderer.domElement.addEventListener("pointerup",endDrag);renderer.domElement.addEventListener("pointercancel",endDrag);window.addEventListener("pointerup",endDrag);
+function add(type){const id=type+Date.now();data.push({id,name:({building:"Bâtiment",tree:"Arbre",shed:"Abri",wall:"Muret",road:"Chemin",gate:"Portail",pool:"Piscine",swing:"Balançoire",steps:"Escalier",furniture:"Mobilier"})[type]||type,type,x:0,z:17,w:3,d:3,h:2,r:0});selected=data.at(-1);redraw();save()}
 function duplicate(){if(!selected)return;const cp={...selected,id:selected.type+Date.now(),name:selected.name+" (copie)",x:selected.x+2,z:selected.z+2};data.push(cp);selected=cp;redraw();save()}
 function del(){if(!selected)return;data=data.filter(o=>o.id!==selected.id);redraw();save()}
 document.getElementById("add").onclick=()=>add(document.getElementById("kind").value);document.getElementById("copy").onclick=duplicate;document.getElementById("duplicate").onclick=duplicate;document.getElementById("del").onclick=del;document.getElementById("remove").onclick=del;
 document.getElementById("reset").onclick=()=>{if(confirm("Revenir à la disposition initiale ?")){data=structuredClone(defaultItems);redraw();save()}};
-document.getElementById("addtree").onclick=()=>add("tree");document.getElementById("addchair").onclick=()=>add("furniture");document.getElementById("terrain").onclick=()=>add("wall");
+document.getElementById("addtree").onclick=()=>add("tree");document.getElementById("addchair").onclick=()=>add("furniture");document.getElementById("terrain").onclick=()=>add("wall");document.getElementById("addsteps").onclick=()=>add("steps");
 document.getElementById("toggle").onclick=()=>document.getElementById("editor").classList.toggle("hidden");
 document.getElementById("topview").onclick=()=>{camera.position.set(0,60,.1);controls.target.set(0,0,0);controls.update()};
 document.getElementById("tab3d").onclick=document.getElementById("orbit").onclick=()=>{camera.position.set(31,23,35);controls.target.set(0,1,0);controls.update()};
@@ -88,5 +98,5 @@ document.getElementById("export").onclick=()=>{let blob=new Blob([JSON.stringify
 document.getElementById("import").onclick=()=>document.getElementById("file").click();document.getElementById("file").onchange=async e=>{try{const obj=JSON.parse(await e.target.files[0].text());if(!Array.isArray(obj.items))throw Error("Format attendu : items[]");data=obj.items.filter(o=>o&&o.id&&o.type);redraw();save()}catch(err){alert("Import impossible : "+err.message)}};
 document.querySelectorAll("[data-time]").forEach(b=>b.onclick=()=>{document.querySelectorAll("[data-time]").forEach(q=>q.classList.remove("on"));b.classList.add("on");const t=b.dataset.time,night=t==="night";scene.background.set(night?0x0e2035:t==="evening"?0xf3aa73:0x89b7e7);scene.fog.color.copy(scene.background);sun.intensity=night?.12:t==="evening"?1.2:3});
 document.getElementById("weather").onclick=()=>alert("Météo réelle Home Assistant : connexion prévue dans une prochaine version.");
-redraw();addEventListener("resize",()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});renderer.setAnimationLoop(()=>{controls.update();renderer.render(scene,camera)});
+redraw();if(selected)choose(selected.id);addEventListener("resize",()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});renderer.setAnimationLoop(()=>{controls.update();renderer.render(scene,camera)});
 </script></body></html>
