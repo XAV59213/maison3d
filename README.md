@@ -11,6 +11,9 @@
 Intégration Home Assistant avec panneau 3D interactif et éditeur d'implantation.
 
 ## Installation
+
+> **Version en développement :** les corrections V2 sont dans la [PR #1](https://github.com/XAV59213/maison3d/pull/1), pas encore fusionnées. Ne pas interpréter la capture photoréaliste comme une capture de l'application WebGL actuelle.
+
 1. HACS → Dépôts personnalisés → `https://github.com/XAV59213/maison3d` → **Intégration**.
 2. Télécharger, puis redémarrer Home Assistant.
 3. Paramètres → Appareils et services → Ajouter une intégration → **Maison 3D**.
@@ -27,7 +30,7 @@ Sélectionner un objet pour modifier sa position X/Z, ses dimensions, son orient
 ## Limites
 - Three.js est chargé depuis un CDN, accès Internet requis.
 - Aucune commande d'entité Home Assistant (portail, lumière, volets) n'est activée pour le moment.
-- La météo affichée n'est pas une prévision réelle.
+- L'intégration utilise la **première entité `weather.*` disponible** dans Home Assistant ; si aucune n'est disponible, l'affichage indique une simulation locale. Les données météo viennent de Home Assistant, ce ne sont pas des prévisions générées par Maison 3D.
 - La photo de référence n'est pas un mesh 3D : le rendu est un modèle interactif distinct.
 
 ## Installation manuelle
@@ -41,4 +44,6 @@ Copier `custom_components/maison3d` dans `/config/custom_components/maison3d`, r
 
 ## Météo et soleil
 
-Le panneau JavaScript relaie désormais les états de la première entité `weather.*` et de `sun.sun` vers la vue WebGL. L'animation des précipitations et feuilles, l'éclairage en fonction du soleil et la sélection explicite de l'entité météo doivent encore être intégrés et testés avant publication stable.
+Le panneau transmet les états de la première entité `weather.*` ainsi que `sun.sun` à la scène WebGL. L'éclairage suit `sun.sun` automatiquement : jour, soir et nuit. Les animations Canvas affichent pluie, neige ou feuilles d'automne selon la condition et la saison ; le bouton **Météo** permet une démonstration pluie/neige/soleil et **Auto** rétablit la météo réelle. Le moteur calcule les saisons à partir du calendrier local.
+
+**Limites à connaître :** premier capteur météo détecté automatiquement (choix explicite à développer), effets 2D superposés à la scène 3D et aucune commande d'appareil Home Assistant. Les animations météo et l'intégration complète n'ont pas encore été validées en conditions réelles sur une instance Home Assistant.
