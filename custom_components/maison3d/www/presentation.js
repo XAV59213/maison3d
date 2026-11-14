@@ -82,5 +82,7 @@ export function createPresentation({THREE,camera,controls}) {
     if(camera.position.distanceTo(destination.position)<.03 &&
        controls.target.distanceTo(destination.target)<.03)destination=null;
   }
-  return {frame,changeView,presets};
+  // Stop any camera glide so a toolbar view (top, 3D) is not overridden.
+  function cancel(){destination=null}
+  return {frame,changeView,presets,cancel};
 }

@@ -100,6 +100,24 @@ export function createPhotoCinematics(canvas) {
     gradient.addColorStop(1,"rgba(6,18,41,"+(.12*strength)+")");
     ctx.fillStyle=gradient;ctx.fillRect(0,0,width,height);
   }
+  function fogBanks(time,strength,night) {
+    // Slow drifting mist layers, denser near the ground.
+    const tone=night?"150,165,190":"222,228,234";
+    const veil=ctx.createLinearGradient(0,0,0,height);
+    veil.addColorStop(0,"rgba("+tone+","+(.18*strength)+")");
+    veil.addColorStop(.55,"rgba("+tone+","+(.34*strength)+")");
+    veil.addColorStop(1,"rgba("+tone+","+(.46*strength)+")");
+    ctx.fillStyle=veil;ctx.fillRect(0,0,width,height);
+    for(let i=0;i<6;i++){
+      const y=height*(.38+i*.11);
+      const x=((time*.006*(1+i*.25)+i*width*.37)%(width*1.6))-width*.3;
+      const r=width*(.35+.06*(i%3));
+      const g=ctx.createRadialGradient(x,y,0,x,y,r);
+      g.addColorStop(0,"rgba("+tone+","+(.22*strength)+")");
+      g.addColorStop(1,"rgba("+tone+",0)");
+      ctx.fillStyle=g;ctx.beginPath();ctx.ellipse(x,y,r,r*.18,0,0,Math.PI*2);ctx.fill();
+    }
+  }
   function frame(time,condition,season,wind,intensity=1,night=false,enabled=true) {
     if(canvas.hidden)return;
     const previousW=width,previousH=height;
@@ -119,6 +137,7 @@ export function createPhotoCinematics(canvas) {
     if(condition==="rain"||condition==="storm")drizzleShine(actualTime,value);
     if(condition==="snow"||condition==="winter")snowAccumulation(value);
     if(season==="autumn"&&condition!=="snow")autumnHaze(actualTime,.7*value);
+    if(condition==="fog")fogBanks(actualTime,Math.min(1.4,value),night);
     if(night)nightHaze(.75*value);
   }
   resize();

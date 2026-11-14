@@ -97,6 +97,17 @@ class TestMaison3D(unittest.TestCase):
         strings = json.loads((COMPONENT / "strings.json").read_text(encoding="utf-8"))
         self.assertIn("frost_enabled", strings["options"]["step"]["init"]["data"])
 
+    def test_weather_test_mode(self):
+        """Forced weather + day/night, kept in memory only, reset by « Revenir à la météo réelle »."""
+        photo = (COMPONENT / "www" / "photo-view.js").read_text(encoding="utf-8")
+        for key in ("clear", "cloudy", "rain", "storm", "snow", "wind", "fog", "frost"):
+            self.assertIn('["' + key + '",', photo)
+        self.assertIn('const test={weather:"auto",time:"auto"};', photo)
+        self.assertIn('if(test.time!=="auto")return test.time==="night";', photo)
+        self.assertIn('test.weather="auto";test.time="auto";', photo)
+        self.assertIn('status.classList.toggle("testing",testing())', photo)
+        self.assertNotIn("test:", photo.split("const persist=")[0].split("const state={")[1])
+
     def test_clean_photos_and_right_menu_layout(self):
         """Bundled photos carry no drawn interface; the seasons menu never covers the status or bottom bar."""
         def jpeg_size(path):
@@ -211,10 +222,13 @@ class TestMaison3D(unittest.TestCase):
         phases = ("new_moon", "waxing_crescent", "first_quarter",
                   "waxing_gibbous", "full_moon", "waning_gibbous",
                   "last_quarter", "waning_crescent")
+        source = (COMPONENT / "www" / "photo-source.js").read_text(encoding="utf-8")
         for phase in phases:
-            key = "moon_" + phase
-            for code in (photo, card, editor):
-                self.assertIn(key, code)
+            self.assertIn('"moon_' + phase + '"', source)
+        # The image slots are shared from photo-source.js by the photo view, card and editor.
+        self.assertIn("IMAGE_KEYS", photo)
+        self.assertIn("IMAGE_KEYS.includes(key)", card)
+        self.assertIn("IMAGE_SLOTS", editor)
         self.assertIn("ctx.shadowBlur=28", photo)
         self.assertIn("ctx.lineTo(x,y)", photo)
         self.assertIn("moonPhase(live.moon)", photo)
@@ -223,15 +237,25 @@ class TestMaison3D(unittest.TestCase):
         from pathlib import Path
         from hashlib import sha256
         images = COMPONENT / "www" / "images"
-        photo = (COMPONENT / "www" / "photo-view.js").read_text(encoding="utf-8")
-        for name in ("jour.jpg", "nuageux.jpg", "pluie.jpg", "neige.jpg"):
+        source = (COMPONENT / "www" / "photo-source.js").read_text(encoding="utf-8")
+        generated = [f"{w}-{t}.jpg" for w in ("clair", "nuageux", "pluie", "neige", "vent", "orage", "brouillard")
+                     for t in ("jour", "nuit")]
+        for name in ("jour.jpg", "nuageux.jpg", "pluie.jpg", "neige.jpg", *generated):
             path = images / name
             self.assertTrue(path.is_file(), f"Missing bundled photo: {name}")
             data = path.read_bytes()
-            self.assertGreater(len(data), 50000)
+            self.assertGreater(len(data), 30000)
+            if name in generated:
+                self.assertLess(len(data), 400000)
             self.assertTrue(data.startswith(bytes.fromhex("ffd8ff")))
             self.assertTrue(data.endswith(bytes.fromhex("ffd9")))
-            self.assertIn('images/' + name, photo)
+        for word in ("clair", "nuageux", "pluie", "neige", "vent", "orage", "brouillard"):
+            self.assertIn(f'"{word}"', source)
+        self.assertIn('"-jour.jpg"', source)
+        self.assertIn('"-nuit.jpg"', source)
+        readme = (images / "README.md").read_text(encoding="utf-8")
+        for name in generated:
+            self.assertIn(name, readme)
         self.assertEqual(len({sha256((images / n).read_bytes()).hexdigest()
             for n in ("jour.jpg", "nuageux.jpg", "pluie.jpg", "neige.jpg")}), 4)
 
@@ -247,19 +271,19 @@ class TestMaison3D(unittest.TestCase):
             self.assertIn(feature, module)
         self.assertIn('type="range"', photo)
         self.assertIn("effect_intensity", photo)
-        for filename in ("day.jpg", "cloudy.jpg", "rain.jpg", "snow.jpg"):
+        self.assertIn("fogBanks(", module)
+        for filename in ("jour.jpg", "nuageux.jpg", "pluie.jpg", "neige.jpg"):
             self.assertIn(filename, importer)
         self.assertIn("ZipFile", importer)
 
     def test_photo_night_day_auto_buttons_and_visible_night_filter(self):
         photo = (COMPONENT / "www" / "photo-view.js").read_text(encoding="utf-8")
         self.assertIn('nightBtn.textContent="☾ Nuit réelle"', photo)
-        self.assertIn('nightBtn.addEventListener("click",()=>setQuickMode("night"))', photo)
-        self.assertIn('dayBtn.addEventListener("click",()=>setQuickMode("day"))', photo)
-        self.assertIn('autoBtn.addEventListener("click",()=>setQuickMode("auto"))', photo)
+        self.assertIn('nightBtn.addEventListener("click",()=>setTest({time:"night"}))', photo)
+        self.assertIn('dayBtn.addEventListener("click",()=>setTest({time:"day"}))', photo)
+        self.assertIn('autoBtn.addEventListener("click",()=>resetTest.click())', photo)
         self.assertIn('section.classList.toggle("photo-night",night)', photo)
-        self.assertIn('photo-night:not(.effects-off) img{filter:brightness(', photo)
-        self.assertIn('selectMode.value=mode', photo)
+        self.assertIn('photo-night:not(.effects-off):not(.night-photo) img{filter:brightness(', photo)
         self.assertIn('persist();update()', photo)
 
     def test_photo_moon_preview_and_right_hand_season_buttons(self):
@@ -288,8 +312,8 @@ class TestMaison3D(unittest.TestCase):
     def test_fixed_photo_is_default_and_weather_only_changes_overlays(self):
         photo = (COMPONENT / "www" / "photo-view.js").read_text(encoding="utf-8")
         self.assertIn('use_weather_photos:false', photo)
-        self.assertIn('const candidate=state.use_weather_photos ?', photo)
-        self.assertIn(') : mainPhoto;', photo)
+        self.assertIn('const picked=state.use_weather_photos?pickWeatherPhoto({', photo)
+        self.assertIn('}):{path:mainPhoto,nightPhoto:false};', photo)
         self.assertIn('tint.style.background=state.effect?weatherTint:"transparent"', photo)
         self.assertIn('photoBtn.setAttribute("aria-pressed"', photo)
         self.assertNotIn('realBtn.setAttribute(', photo)

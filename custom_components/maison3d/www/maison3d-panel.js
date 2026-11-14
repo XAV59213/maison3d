@@ -79,6 +79,7 @@ class Maison3DPanel extends HTMLElement {
       base_image_url: typeof diagnostic?.attributes?.base_image_url === "string" ? diagnostic.attributes.base_image_url : "",
       effects_enabled: diagnostic?.attributes?.effects_enabled !== false,
       frost_enabled: diagnostic?.attributes?.frost_enabled !== false,
+      weather_photos: diagnostic?.attributes?.weather_photos_enabled === true,
       time_zone: this._hass.config?.time_zone ?? "UTC",
       weather: weather?.state ?? null,
       temperature: numeric("temperature_entity", typeof attributes.temperature === "number" ? attributes.temperature : null),

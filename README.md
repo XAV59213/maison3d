@@ -14,7 +14,7 @@
 
 *Image officielle de référence, validée par le propriétaire : maison au centre, rampe et voitures à gauche, abri métallique au premier plan, garage et jardin à droite.*
 
-[**Installation**](#-installation-avec-hacs) · [**Galerie météo**](#-galerie-des-vraies-photos-météo) · [**Carte Lovelace**](#-carte-lovelace-prête-à-lemploi) · [**Capteurs**](#-configurer-les-capteurs-home-assistant) · [**Tests des effets**](#-tester-tous-les-états)
+[**Installation**](#-installation-avec-hacs) · [**Photos météo**](#-photos-météo-jour--nuit) · [**Carte Lovelace**](#-carte-lovelace-prête-à-lemploi) · [**Capteurs**](#-configurer-les-capteurs-home-assistant) · [**Mode test**](#-mode-test)
 
 </div>
 
@@ -89,13 +89,33 @@ La **photographie officielle est l'arrière-plan fixe par défaut**. La maison, 
 
 - **En automatique** : les capteurs Home Assistant déterminent le jour/la nuit, la pluie, la neige, le vent et les nuages ; le capteur lunaire fait évoluer la lune visible dans le ciel.
 - **En mode test** : forcer pluie, neige, orage, vent, soleil, nuit, saison ou phase lunaire modifie uniquement les effets graphiques.
-- **Photos alternatives (facultatif)** : une case « Utiliser les images météo alternatives » dans **⚙ Images / météo** réactive les quatre images livrées ou les images personnalisées. Elle est **désactivée par défaut**. Cela ne modifie pas le modèle 3D, qui reste indépendant.
+- **Photos alternatives (facultatif)** : l'option « Photos météo jour/nuit » (intégration, carte ou menu **⚙ Images / météo**) active les 14 photos jour/nuit livrées et les images personnalisées. Elle est **désactivée par défaut**. Cela ne modifie pas le modèle 3D, qui reste indépendant.
 
 Cette approche privilégie la continuité de la propriété et une ambiance vivante plutôt que des changements répétés de photographies.
 
-## 📸 Galerie des vraies photos météo
+## 📸 Photos météo jour / nuit
 
-Les quatre photographies alternatives ci-dessous sont **incluses dans le dépôt** depuis **v2.3.1**, mais ne sont **plus sélectionnées automatiquement par défaut**. Pour les utiliser, activer « Utiliser les images météo alternatives » dans le panneau **⚙ Images / météo**. Aucun chargement manuel n'est nécessaire.
+L'intégration livre **14 photos retouchées** de la maison de référence, une **de jour** et une **de nuit** pour chaque météo (≈ 2,9 Mo au total, JPEG ≈ q76). Elles sont **désactivées par défaut** : la photo principale fixe + les animations reste le comportement normal.
+
+Pour les activer :
+
+- **pour tout le monde** : *Paramètres → Appareils et services → Maison 3D → Configurer →* « Photos météo jour/nuit » (`weather_photos_enabled`) ;
+- **pour une carte** : option `weather_photos: true` (ou « Photos météo jour/nuit » dans l'éditeur visuel) ;
+- **dans ce navigateur** : case « Utiliser les photos météo jour/nuit » du menu **⚙ Images / météo**.
+
+| Météo | Jour | Nuit |
+|---|---|---|
+| ☀ Clair (et gel) | `clair-jour.jpg` | `clair-nuit.jpg` |
+| ☁ Nuageux | `nuageux-jour.jpg` | `nuageux-nuit.jpg` |
+| 🌧 Pluie | `pluie-jour.jpg` | `pluie-nuit.jpg` |
+| ⚡ Orage | `orage-jour.jpg` | `orage-nuit.jpg` |
+| ❄ Neige | `neige-jour.jpg` | `neige-nuit.jpg` |
+| 💨 Vent | `vent-jour.jpg` | `vent-nuit.jpg` |
+| 🌫 Brouillard | `brouillard-jour.jpg` | `brouillard-nuit.jpg` |
+
+URL installée : `/maison3d-assets/images/<nom>`. Elles sont générées par `scripts/generate_variant_images.py` (retouche PIL de la photo de référence, aucune image externe) : ce sont des **approximations**, pas de vraies photos prises sous la neige ou l'orage. Si vous avez défini **votre propre photo principale**, ces photos de la maison de référence ne sont jamais utilisées.
+
+Les quatre anciennes photos ci-dessous restent livrées pour compatibilité (URL `/maison3d-assets/images/jour.jpg`…), mais ne sont plus choisies automatiquement :
 
 <table>
 <tr>
@@ -123,17 +143,6 @@ Les quatre photographies alternatives ci-dessous sont **incluses dans le dépôt
 </td>
 </tr>
 </table>
-
-Les images sont accessibles depuis le navigateur connecté à Home Assistant :
-
-| Ambiance | URL d'image installée |
-|---|---|
-| ☀️ Jour | `/maison3d-assets/images/jour.jpg` |
-| ☁️ Nuageux | `/maison3d-assets/images/nuageux.jpg` |
-| 🌧️ Pluie | `/maison3d-assets/images/pluie.jpg` |
-| ❄️ Neige | `/maison3d-assets/images/neige.jpg` |
-
-**Autres ambiances :** le dépôt ne livre pas encore de JPEG distinct pour Nuit, Vent, Orage, chaque saison ou chaque phase lunaire. Le logiciel utilise alors la photo de référence et les effets animés, ou une image personnalisée si vous l'avez configurée.
 
 ## 📦 Installation avec HACS
 
@@ -180,15 +189,24 @@ Après installation de l'intégration, ajouter la ressource **Module JavaScript*
 /maison3d-assets/maison3d-card.js
 ```
 
-Puis ajouter une carte manuelle :
+Puis ajouter la carte. **Aucune configuration n'est nécessaire** :
 
 ```yaml
 type: custom:maison3d-card
-title: Maison 3D
-height: 600
 ```
 
-Les capteurs sélectionnés dans l'intégration sont repris automatiquement si la carte ne définit pas de remplacement. L'éditeur visuel de la carte permet de choisir ses propres capteurs et les images de chaque état.
+Une carte sans réglage reprend **dynamiquement** tout ce qui est réglé dans l'intégration (capteurs, photo principale, effets, gel, photos météo) : changer une option de l'intégration met la carte à jour sans la modifier.
+
+Pour personnaliser une carte, utiliser **son éditeur visuel** (ou le YAML). **Toutes les options sont facultatives** ; un champ vide ou « Hériter de l'intégration » = on garde la valeur de l'intégration.
+
+| Option | Défaut si vide |
+|---|---|
+| `title` | « Maison 3D » |
+| `height` (240 à 1400 px) | 440 |
+| `base_image_url` | photo de l'intégration, sinon photo officielle |
+| `effects_enabled` / `frost_enabled` / `weather_photos` (true/false) | réglage de l'intégration |
+| `weather_entity`, `sun_entity`, `moon_entity`, `temperature_entity`, `wind_entity`, `rain_entity`, `snow_entity`, `cloud_entity` | entités de l'intégration, puis détection automatique |
+| `images:` (voir « Personnaliser les images ») | photos fournies / photo principale |
 
 <details>
 <summary>Exemple avancé : carte personnalisée</summary>
@@ -197,50 +215,43 @@ Les capteurs sélectionnés dans l'intégration sont repris automatiquement si l
 type: custom:maison3d-card
 title: Ma propriété
 height: 600
-weather_entity: weather.maison
-sun_entity: sun.sun
-moon_entity: sensor.moon_phase
+weather_photos: true
 temperature_entity: sensor.temperature_exterieure
-wind_entity: sensor.vitesse_vent
-rain_entity: binary_sensor.pluie
-snow_entity: binary_sensor.neige
-cloud_entity: sensor.couverture_nuageuse
 images:
-  night: /local/maison3d/nuit.jpg
+  snow_night: /local/maison3d/neige-nuit.jpg
+  rain_day: /local/maison3d/pluie-jour.jpg
   storm: /local/maison3d/orage.jpg
-  wind: /local/maison3d/vent.jpg
-  moon_full_moon: /local/maison3d/pleine_lune.jpg
+  moon_full_moon: /local/maison3d/lune-full-moon.jpg
 ```
 
 **Exemple à adapter** : ces noms d'entités ne sont pas garantis sur votre installation. Les images sous `/local/maison3d/` doivent être placées dans `/config/www/maison3d/`.
 
 </details>
 
-## 🎮 Tester tous les états
+## 🧪 Mode test
 
-Le panneau **⚙ Images / météo** contient une zone **« Tester chaque état »** qui sert à vérifier les effets **sans modifier les vrais capteurs**.
+Dans le menu **⚙ Images / météo** (panneau **et** carte), la zone **« Mode test »** force n'importe quelle météo, de jour ou de nuit, **sans toucher aux capteurs**. Aucun bouton n'est ajouté sur la photo.
+
+- **Météo forcée** : ☀ Clair, ☁ Nuageux, 🌧 Pluie, ⚡ Orage (éclairs), ❄ Neige, 💨 Vent, 🌫 Brouillard, 🧊 Gel — par la liste ou les boutons.
+- **Moment forcé** : ☀ Forcer le jour / ☾ Forcer la nuit (aussi ☾ Nuit réelle / ☀ Jour dans la barre du haut).
+- Saisons, 🧊 Ajouter le gel (sur n'importe quelle météo) et les 8 phases de lune.
+- La bulle d'état passe en orange : « 🧪 Mode test · Orage · Nuit… ».
+- Le mode test est **gardé en mémoire uniquement** : un rechargement, **◉ Revenir à la météo réelle** ou **◉ Auto** rendent la main à Home Assistant.
 
 | Test | Effet attendu |
 |---|---|
-| ☀ Jour | Photo lumineuse / soleil |
-| ☾ Nuit | Assombrissement de la photo |
-| ☁ Nuages | Photo nuageuse et voile mobile |
-| 🌧 Pluie | Gouttes et reflets visuels |
-| ❄ Neige | Flocons et atmosphère hivernale |
-| 💨 Vent | Rafales et feuilles en mouvement |
-| ⚡ Orage | Pluie et éclairs dessinés |
-| 🌸 Printemps | Pétales flottants |
-| ☀ Été | Rayons de soleil |
-| 🍂 Automne | Feuilles emportées |
-| ❄ Hiver | Neige et voile froid |
+| ☀ Clair | Photo claire (soleil de jour, lune la nuit) |
+| ☁ Nuageux | Voile nuageux mobile |
+| 🌧 Pluie | Gouttes |
+| ⚡ Orage | Pluie + éclairs (aléatoires, quelques secondes) |
+| ❄ Neige | Flocons |
+| 💨 Vent | Rafales et feuilles |
+| 🌫 Brouillard | Bancs de brume |
+| 🧊 Gel | Givre sur les bords de la photo |
 
-**Phases lunaires :** un sélecteur permet de tester **nouvelle lune**, **premier croissant**, **premier quartier**, **gibbeuse croissante**, **pleine lune**, **gibbeuse décroissante**, **dernier quartier** et **dernier croissant**. La lune apparaît **sur l'image même en journée**. En mode normal, sa phase provient du capteur Home Assistant configuré, s'il est disponible et reconnu.
+Avec les photos météo activées, chaque test affiche aussi la photo `<météo>-<jour|nuit>.jpg` correspondante.
 
-À droite de la vue photo, les boutons **Printemps, Été, Automne, Hiver et Saisons auto** donnent aussi un accès direct aux démonstrations saisonnières.
-
-Pour retourner aux conditions réelles, utiliser **◉ Revenir à la météo réelle** dans le panneau de test ou **◉ Auto** dans la barre supérieure.
-
-> Les boutons de test sont un **aperçu manuel local**, et ne modifient ni la météo ni le capteur lunaire dans Home Assistant.
+À droite de la vue photo, les boutons **Printemps, Été, Automne, Hiver et Saisons auto** donnent un accès direct aux saisons ; ce menu se place sous la bulle d'état et passe en 2 colonnes sur les écrans bas (téléphone à l'horizontale).
 
 ## 🌙 Lune, saisons et météo animée
 
@@ -252,18 +263,26 @@ Les saisons suivent le calendrier local en mode Auto ; les boutons de droite per
 
 ## 🎨 Personnaliser les images
 
-**19 images peuvent être remplacées** :
+**32 images peuvent être remplacées**, dans l'éditeur de la carte (`images:`) ou dans le menu ⚙ du panneau. Nom de fichier conseillé dans `/config/www/maison3d/` → URL `/local/maison3d/<fichier>` :
 
-- **Météo et saisons (11)** : `day`, `night`, `cloudy`, `rain`, `snow`, `wind`, `storm`, `spring`, `summer`, `autumn`, `winter`.
-- **Phases lunaires (8)** : `moon_new_moon`, `moon_waxing_crescent`, `moon_first_quarter`, `moon_waxing_gibbous`, `moon_full_moon`, `moon_waning_gibbous`, `moon_last_quarter`, `moon_waning_crescent`.
+| Clé | Fichier conseillé | Clé | Fichier conseillé |
+|---|---|---|---|
+| `day` | `jour.jpg` | `night` | `nuit.jpg` |
+| `cloudy` | `nuageux.jpg` | `cloudy_day` / `cloudy_night` | `nuageux-jour.jpg` / `nuageux-nuit.jpg` |
+| `rain` | `pluie.jpg` | `rain_day` / `rain_night` | `pluie-jour.jpg` / `pluie-nuit.jpg` |
+| `snow` | `neige.jpg` | `snow_day` / `snow_night` | `neige-jour.jpg` / `neige-nuit.jpg` |
+| `wind` | `vent.jpg` | `wind_day` / `wind_night` | `vent-jour.jpg` / `vent-nuit.jpg` |
+| `storm` | `orage.jpg` | `storm_day` / `storm_night` | `orage-jour.jpg` / `orage-nuit.jpg` |
+| `fog` | `brouillard.jpg` | `fog_day` / `fog_night` | `brouillard-jour.jpg` / `brouillard-nuit.jpg` |
+| `spring` / `summer` | `printemps.jpg` / `ete.jpg` | `autumn` / `winter` | `automne.jpg` / `hiver.jpg` |
+| `moon_new_moon` | `lune-new-moon.jpg` | `moon_waxing_crescent` | `lune-waxing-crescent.jpg` |
+| `moon_first_quarter` | `lune-first-quarter.jpg` | `moon_waxing_gibbous` | `lune-waxing-gibbous.jpg` |
+| `moon_full_moon` | `lune-full-moon.jpg` | `moon_waning_gibbous` | `lune-waning-gibbous.jpg` |
+| `moon_last_quarter` | `lune-last-quarter.jpg` | `moon_waning_crescent` | `lune-waning-crescent.jpg` |
 
-Pour utiliser une photo personnelle :
+**Ordre de choix** (photos météo activées) : image perso `<météo>_<jour|nuit>` → image perso `<météo>` → photo fournie `<météo>-<jour|nuit>.jpg` → la nuit : image de la phase de lune → `night` → `clair-nuit.jpg` ; le jour : image de la saison → `day` → `clair-jour.jpg` → photo principale.
 
-1. La déposer dans `/config/www/maison3d/`.
-2. Saisir son URL (exemple `/local/maison3d/nuit.jpg`) dans le champ correspondant de la carte ou du panneau.
-3. Choisir **Tester** pour vérifier le résultat.
-
-Les quatre photos météo installées avec HACS restent disponibles en activant l'option facultative d'images alternatives. La photo officielle reste affichée par défaut. Les réglages du panneau Photo sont enregistrés dans le **navigateur local** ; pour reproduire une configuration sur plusieurs appareils, préférer les options de l'intégration et la configuration YAML de la carte.
+Les réglages du menu ⚙ sont enregistrés dans le **navigateur local** ; pour plusieurs appareils, préférer les options de l'intégration et la configuration de la carte (les images de la carte ne sont jamais recopiées dans le navigateur).
 
 ## 🍂 Module des quatre saisons — calendrier Home Assistant
 

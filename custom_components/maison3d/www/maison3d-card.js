@@ -1,4 +1,5 @@
 import "./maison3d-card-editor.js";
+import {IMAGE_KEYS} from "./photo-source.js";
 /**
  * Maison 3D interactive Lovelace card.
  * Load as a JavaScript module resource: /maison3d-assets/maison3d-card.js
@@ -8,12 +9,12 @@ class Maison3DCard extends HTMLElement {
     if (!config || (config.type && config.type !== "custom:maison3d-card")) {
       throw new Error("Maison 3D: type must be custom:maison3d-card");
     }
-    const height = Number(config.height ?? 440);
+    const height = config.height === "" || config.height == null ? 440 : Number(config.height);
     if (!Number.isFinite(height) || height < 240 || height > 1400) {
       throw new Error("Maison 3D: height must be between 240 and 1400 pixels");
     }
     this._config = {
-      title: String(config.title ?? "Maison 3D"),
+      title: String(config.title || "Maison 3D"),
       height,
       weather_entity: String(config.weather_entity ?? ""),
       sun_entity: String(config.sun_entity ?? ""),
@@ -26,10 +27,9 @@ class Maison3DCard extends HTMLElement {
       base_image_url: String(config.base_image_url ?? "").slice(0,500),
       effects_enabled: typeof config.effects_enabled === "boolean" ? config.effects_enabled : null,
       frost_enabled: typeof config.frost_enabled === "boolean" ? config.frost_enabled : null,
+      weather_photos: typeof config.weather_photos === "boolean" ? config.weather_photos : null,
       images: Object.fromEntries(Object.entries(config.images || {}).filter(([key,url])=>
-        ["day","night","cloudy","rain","snow","wind","storm","spring","summer","autumn","winter",
-         "moon_new_moon","moon_waxing_crescent","moon_first_quarter","moon_waxing_gibbous",
-         "moon_full_moon","moon_waning_gibbous","moon_last_quarter","moon_waning_crescent"].includes(key) &&
+        IMAGE_KEYS.includes(key) &&
         typeof url==="string" && url.length<500))
     };
     this._renderCard();
@@ -141,6 +141,7 @@ class Maison3DCard extends HTMLElement {
       base_image_url:this._config.base_image_url||diagnostic?.attributes?.base_image_url||"",
       effects_enabled:this._config.effects_enabled??(diagnostic?.attributes?.effects_enabled!==false),
       frost_enabled:this._config.frost_enabled??(diagnostic?.attributes?.frost_enabled!==false),
+      weather_photos:this._config.weather_photos??(diagnostic?.attributes?.weather_photos_enabled===true),
       time_zone:this._hass.config?.time_zone??"UTC",
       weather:weather?.state??null,
       temperature,
@@ -170,7 +171,8 @@ class Maison3DCard extends HTMLElement {
     return document.createElement("maison3d-card-editor");
   }
   static getStubConfig() {
-    return {type:"custom:maison3d-card",title:"Maison 3D",height:440};
+    // Zero configuration: everything is inherited from the integration options.
+    return {type:"custom:maison3d-card"};
   }
 }
 if (!customElements.get("maison3d-card")) customElements.define("maison3d-card",Maison3DCard);
