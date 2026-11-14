@@ -28,3 +28,24 @@ jobs:
           pathlib.Path('/tmp/maison3d-inline.mjs').write_text(code)
           PY
           node --check /tmp/maison3d-inline.mjs
+
+  validate-hacs:
+    name: HACS repository validation
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify HACS integration structure
+        uses: hacs/action@main
+        with:
+          category: integration
+          comment: "false"
+
+  hassfest:
+    name: Home Assistant hassfest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: home-assistant/actions/hassfest@master
