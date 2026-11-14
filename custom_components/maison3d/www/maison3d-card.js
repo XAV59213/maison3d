@@ -1,3 +1,4 @@
+import "./maison3d-card-editor.js";
 /**
  * Maison 3D interactive Lovelace card.
  * Load as a JavaScript module resource: /maison3d-assets/maison3d-card.js
@@ -17,6 +18,11 @@ class Maison3DCard extends HTMLElement {
       weather_entity: String(config.weather_entity ?? ""),
       sun_entity: String(config.sun_entity ?? "sun.sun"),
       moon_entity: String(config.moon_entity ?? "sensor.moon_phase"),
+      temperature_entity: String(config.temperature_entity ?? ""),
+      wind_entity: String(config.wind_entity ?? ""),
+      rain_entity: String(config.rain_entity ?? ""),
+      snow_entity: String(config.snow_entity ?? ""),
+      cloud_entity: String(config.cloud_entity ?? ""),
       images: Object.fromEntries(Object.entries(config.images || {}).filter(([key,url])=>
         ["day","night","cloudy","rain","snow","wind","storm","spring","summer","autumn","winter"].includes(key) &&
         typeof url==="string" && url.length<500))
@@ -86,11 +92,30 @@ class Maison3DCard extends HTMLElement {
     const sun=states[this._config.sun_entity];
     const moon=states[this._config.moon_entity] || Object.values(states).find(s=>s.entity_id?.startsWith("sensor.") && s.entity_id.includes("moon") && s.state!=="unavailable");
     const attrs=weather?.attributes||{};
+    const numeric=(entityId,fallback)=>{
+      const entity=entityId&&states[entityId];
+      if(!entity||["unknown","unavailable"].includes(entity.state))return fallback;
+      const state=String(entity.state).toLowerCase();
+      if(state==="on")return 1;
+      if(state==="off")return 0;
+      const value=Number(entity.state);
+      return Number.isFinite(value)?value:fallback;
+    };
+    const temperature=numeric(this._config.temperature_entity,
+      typeof attrs.temperature==="number"?attrs.temperature:null);
+    const windSpeed=numeric(this._config.wind_entity,
+      typeof attrs.wind_speed==="number"?attrs.wind_speed:null);
+    const rain=numeric(this._config.rain_entity,null);
+    const snow=numeric(this._config.snow_entity,null);
+    const cloud=numeric(this._config.cloud_entity,null);
     const payload={
       type:"maison3d:conditions",
       weather:weather?.state??null,
-      temperature:typeof attrs.temperature==="number"?attrs.temperature:null,
-      windSpeed:typeof attrs.wind_speed==="number"?attrs.wind_speed:null,
+      temperature,
+      windSpeed,
+      rain,
+      snow,
+      cloud,
       windSpeedUnit:attrs.wind_speed_unit??"",
       sun:sun?.state??null,
       moon:moon?.state??null,
@@ -107,6 +132,9 @@ class Maison3DCard extends HTMLElement {
   }
   getGridOptions() {
     return {columns:12, rows:Math.max(5,Math.ceil((this._config?.height??440)/56)),min_columns:4};
+  }
+  static getConfigElement() {
+    return document.createElement("maison3d-card-editor");
   }
   static getStubConfig() {
     return {type:"custom:maison3d-card",title:"Maison 3D",height:440};
