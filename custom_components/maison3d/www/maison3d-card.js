@@ -24,7 +24,9 @@ class Maison3DCard extends HTMLElement {
       snow_entity: String(config.snow_entity ?? ""),
       cloud_entity: String(config.cloud_entity ?? ""),
       images: Object.fromEntries(Object.entries(config.images || {}).filter(([key,url])=>
-        ["day","night","cloudy","rain","snow","wind","storm","spring","summer","autumn","winter"].includes(key) &&
+        ["day","night","cloudy","rain","snow","wind","storm","spring","summer","autumn","winter",
+         "moon_new_moon","moon_waxing_crescent","moon_first_quarter","moon_waxing_gibbous",
+         "moon_full_moon","moon_waning_gibbous","moon_last_quarter","moon_waning_crescent"].includes(key) &&
         typeof url==="string" && url.length<500))
     };
     this._renderCard();
