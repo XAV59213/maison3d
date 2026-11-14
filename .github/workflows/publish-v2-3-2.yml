@@ -1,0 +1,67 @@
+name: Publish Maison 3D v2.3.2
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/publish-v2-3-2.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    if: github.repository == 'XAV59213/maison3d'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify version and night view patch
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path("custom_components/maison3d")
+          assert json.loads((root/"manifest.json").read_text(encoding="utf-8"))["version"]=="2.3.2"
+          photo=(root/"www/photo-view.js").read_text(encoding="utf-8")
+          assert 'nightBtn.textContent="☾ Nuit réelle"' in photo
+          assert 'section.classList.toggle("photo-night",night)' in photo
+          assert 'photo-night img{filter:brightness(' in photo
+          assert 'dayBtn.addEventListener("click",()=>setQuickMode("day"))' in photo
+          assert 'autoBtn.addEventListener("click",()=>setQuickMode("auto"))' in photo
+          for name in ("jour.jpg","nuageux.jpg","pluie.jpg","neige.jpg"):
+              data=(root/"www/images"/name).read_bytes()
+              assert data.startswith(bytes.fromhex("ffd8ff")) and data.endswith(bytes.fromhex("ffd9"))
+          PY
+          node --check custom_components/maison3d/www/photo-view.js
+          python3 -m unittest discover -s tests -q
+      - name: Publish release v2.3.2
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          if gh release view v2.3.2 >/dev/null 2>&1; then
+            echo "v2.3.2 already exists"
+            exit 0
+          fi
+          cat > /tmp/release-notes.md <<'EOF'
+          ## Maison 3D v2.3.2 — Correction Nuit réelle
+
+          ### Correction principale
+          - Le bouton **☾ Nuit réelle** est maintenant directement accessible dans la vue photographique, y compris dans la carte Lovelace.
+          - Cliquer dessus applique **immédiatement une ambiance nocturne visible** sur la photo, même sans image de nuit dédiée.
+          - Ajout des commandes **☀ Jour** et **◉ Auto** pour revenir au jour ou à la météo/soleil réels de Home Assistant.
+          - Affichage de la phase lunaire disponible et conservation des réglages de photo de nuit personnalisée.
+
+          ### Fonctionnalités conservées
+          - Photos météo intégrées : jour, nuageux, pluie et neige.
+          - Animations pluie, neige, vent, orages, nuages, soleil et saisons.
+          - Capteurs configurables directement dans l'intégration Home Assistant et diagnostics.
+
+          ### Installation
+          Dans HACS, mettre à jour **Maison 3D** vers **v2.3.2** puis redémarrer Home Assistant. Rafraîchir le navigateur si les anciens scripts restent en cache.
+
+          ### Limites
+          L'ambiance Nuit réelle est un effet visuel sur une photo existante : elle ne constitue pas une photo nocturne distincte générée pour la propriété.
+          La validation automatique est réussie ; un essai visuel dans Home Assistant reste recommandé.
+          EOF
+          gh release create v2.3.2 --target "${GITHUB_SHA}" --title "Maison 3D v2.3.2 — Nuit réelle corrigée" --notes-file /tmp/release-notes.md
