@@ -1,0 +1,72 @@
+name: Publish Maison 3D v2.1.0
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/publish-v2-1-0.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    if: github.repository == 'XAV59213/maison3d'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify version and 3D architecture
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root = Path('custom_components/maison3d')
+          assert json.loads((root / 'manifest.json').read_text())['version'] == '2.1.0'
+          assert (root / 'www/architecture.js').is_file()
+          assert (root / 'www/maison3d-card.js').is_file()
+          assert (root / 'www/index.html').is_file()
+          PY
+          node --check custom_components/maison3d/www/architecture.js
+          node --check custom_components/maison3d/www/maison3d-card.js
+      - name: Publish Maison 3D v2.1.0
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          if gh release view v2.1.0 >/dev/null 2>&1; then
+            echo "Release v2.1.0 already exists; no duplicate."
+            exit 0
+          fi
+          cat > /tmp/notes.md <<'EOF'
+          ## Maison 3D v2.1.0 — Architecture détaillée
+
+          Nouvelle version de Maison 3D pour Home Assistant, disponible comme **intégration HACS** avec panneau latéral et **carte Lovelace 3D interactive**.
+
+          ### Améliorations du rendu
+          - Façades en pierre avec textures procédurales.
+          - Toitures à deux pans, encadrements des fenêtres, vitrages, portes, cheminée, gouttières.
+          - Garage avec porte sectionnelle, abri métallique avec bardage et toiture.
+          - Terrasses avec garde-corps, murets de soutènement, rampe inclinée détaillée.
+          - Aménagements du jardin : allées pavées, plantations et arbres.
+          - Conservation de la sélection et de l'édition des objets dans le panneau Maison 3D.
+
+          ### Installation
+          Mettre à jour l'intégration **Maison 3D** vers v2.1.0 via HACS, redémarrer Home Assistant, puis rafraîchir le navigateur.
+
+          Pour la carte Lovelace, vérifier la ressource JavaScript (Module) :
+          `/maison3d-assets/maison3d-card.js`
+
+          Exemple de carte :
+          ```yaml
+          type: custom:maison3d-card
+          title: Maison 3D
+          height: 500
+          sun_entity: sun.sun
+          ```
+
+          ### Remarques
+          - La scène est une maquette 3D interactive enrichie, **pas encore photoréaliste** comme la capture de référence.
+          - Les modules Three.js sont actuellement chargés via CDN (Internet requis).
+          - Les tests CI/HACS/Hassfest sont passés ; un test d'affichage dans une instance Home Assistant reste recommandé.
+          EOF
+          gh release create v2.1.0 --target "${GITHUB_SHA}" --title "Maison 3D v2.1.0 — Architecture 3D détaillée" --notes-file /tmp/notes.md
