@@ -16,8 +16,8 @@ class Maison3DCard extends HTMLElement {
       title: String(config.title ?? "Maison 3D"),
       height,
       weather_entity: String(config.weather_entity ?? ""),
-      sun_entity: String(config.sun_entity ?? "sun.sun"),
-      moon_entity: String(config.moon_entity ?? "sensor.moon_phase"),
+      sun_entity: String(config.sun_entity ?? ""),
+      moon_entity: String(config.moon_entity ?? ""),
       temperature_entity: String(config.temperature_entity ?? ""),
       wind_entity: String(config.wind_entity ?? ""),
       rain_entity: String(config.rain_entity ?? ""),
@@ -86,11 +86,14 @@ class Maison3DCard extends HTMLElement {
   _updateStates(force=false) {
     if (!this._loaded || !this._frame?.contentWindow || !this._hass) return;
     const states=this._hass.states||{};
-    const weather=(this._config.weather_entity && states[this._config.weather_entity]) ||
+    const diagnostic = Object.values(states).find(e=>e.attributes?.maison3d_config===true);
+    const integration = diagnostic?.attributes?.entities || {};
+    const choice = key => this._config[key] || integration[key] || "";
+    const weather=(choice("weather_entity") && states[choice("weather_entity")]) ||
       Object.values(states).find(s=>s.entity_id?.startsWith("weather.") &&
         s.state!=="unknown" && s.state!=="unavailable");
-    const sun=states[this._config.sun_entity];
-    const moon=states[this._config.moon_entity] || Object.values(states).find(s=>s.entity_id?.startsWith("sensor.") && s.entity_id.includes("moon") && s.state!=="unavailable");
+    const sun=states[choice("sun_entity") || "sun.sun"];
+    const moon=states[choice("moon_entity")] || Object.values(states).find(s=>s.entity_id?.startsWith("sensor.") && s.entity_id.includes("moon") && s.state!=="unavailable");
     const attrs=weather?.attributes||{};
     const numeric=(entityId,fallback)=>{
       const entity=entityId&&states[entityId];
@@ -101,13 +104,13 @@ class Maison3DCard extends HTMLElement {
       const value=Number(entity.state);
       return Number.isFinite(value)?value:fallback;
     };
-    const temperature=numeric(this._config.temperature_entity,
+    const temperature=numeric(choice("temperature_entity"),
       typeof attrs.temperature==="number"?attrs.temperature:null);
-    const windSpeed=numeric(this._config.wind_entity,
+    const windSpeed=numeric(choice("wind_entity"),
       typeof attrs.wind_speed==="number"?attrs.wind_speed:null);
-    const rain=numeric(this._config.rain_entity,null);
-    const snow=numeric(this._config.snow_entity,null);
-    const cloud=numeric(this._config.cloud_entity,null);
+    const rain=numeric(choice("rain_entity"),null);
+    const snow=numeric(choice("snow_entity"),null);
+    const cloud=numeric(choice("cloud_entity"),null);
     const payload={
       type:"maison3d:conditions",
       weather:weather?.state??null,
