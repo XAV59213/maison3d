@@ -1,0 +1,51 @@
+name: Validate Maison 3D
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Validate Python and JSON
+        run: |
+          python -m compileall -q custom_components/maison3d
+          python -m unittest discover -s tests -v
+      - name: Validate JavaScript syntax
+        run: |
+          node --check custom_components/maison3d/www/maison3d-panel.js
+          node --check custom_components/maison3d/www/weather-effects.js
+          python - <<'PY'
+          import pathlib, re
+          page = pathlib.Path('custom_components/maison3d/www/index.html').read_text()
+          code = re.search(r'<script type="module">(.*?)</script>', page, re.S).group(1)
+          pathlib.Path('/tmp/maison3d-inline.mjs').write_text(code)
+          PY
+          node --check /tmp/maison3d-inline.mjs
+
+  validate-hacs:
+    name: HACS repository validation
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify HACS integration structure
+        uses: hacs/action@main
+        with:
+          category: integration
+          comment: "false"
+
+  hassfest:
+    name: Home Assistant hassfest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: home-assistant/actions/hassfest@master

@@ -1,0 +1,14 @@
+{
+  "title": "Maison 3D",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Maison 3D",
+        "description": "Add the Maison 3D interactive panel to the Home Assistant sidebar."
+      }
+    },
+    "abort": {
+      "already_configured": "Maison 3D is already configured."
+    }
+  }
+}
