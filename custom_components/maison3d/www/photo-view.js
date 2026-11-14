@@ -470,9 +470,13 @@ export function createPhotoView() {
     const kind=state.mode==="auto"?weatherKey():state.mode;
     const isNight=state.mode==="night"||(state.mode==="auto"&&nighttime());
     cinematics.frame(time,kind,seasonNow(),live.windSpeed,state.effect_intensity,isNight,true);
-    const count=kind==="snow"?110:kind==="rain"?170:kind==="storm"?210:
-      kind==="wind"?75:seasonNow()==="autumn"?42:0;
-    const type=count && !["snow","rain","storm","wind"].includes(kind)?"leaves":kind;
+    const count=kind==="snow"||kind==="winter"?180:
+      kind==="rain"?190:kind==="storm"?235:
+      kind==="wind"?100:kind==="autumn"?75:
+      kind==="spring"?70:seasonNow()==="autumn"?42:0;
+    const type=kind==="winter"?"snow":kind==="spring"?"petals":
+      kind==="autumn"?"leaves":
+      count&&!["snow","rain","storm","wind"].includes(kind)?"leaves":kind;
     const scaledCount=Math.floor(count*Math.min(state.effect_intensity,2));
     while(particles.length<scaledCount)particles.push(spawn(w,h));
     particles.length=scaledCount;
@@ -488,12 +492,33 @@ export function createPhotoView() {
         p.y+=p.speed*8;p.x+=1.2;
       }else{
         ctx.save();ctx.translate(p.x,p.y);ctx.rotate(time*.001+p.turn);
-        ctx.fillStyle=["#d39b31","#ad5f22","#c17832"][i%3];
-        ctx.fillRect(-3,-5,6,10);ctx.restore();
+        if(type==="petals"){
+          ctx.fillStyle=["#f9cadd","#ef9abf","#fff0f6"][i%3];
+          ctx.beginPath();ctx.ellipse(0,0,4,2.5,.4,0,Math.PI*2);ctx.fill();
+        }else{
+          ctx.fillStyle=["#d39b31","#ad5f22","#c17832"][i%3];
+          ctx.fillRect(-3,-5,6,10);
+        }
+        ctx.restore();
         p.y+=p.speed*(type==="wind"?.55:1.1);
         p.x+=(windy?3:1)+Math.sin(time*.001+p.turn);
       }
       if(p.y>h+12||p.x>w+15){p.x=Math.random()*w;p.y=-15}
+    }
+    if(type==="wind" || (state.mode==="auto" && live.windSpeed>=25)){
+      // Transparent gust streaks make strong wind visually distinct.
+      ctx.save();
+      const gustAlpha=Math.min(.34,.08+.06*state.effect_intensity);
+      ctx.strokeStyle="rgba(229,238,245,"+gustAlpha+")";
+      ctx.lineWidth=1.2;
+      const phase=(time*.12)%Math.max(1,w+100);
+      for(let n=0;n<15;n++){
+        const yy=(n*.137*h+Math.sin(time*.001+n)*13)%h;
+        const xx=(phase+n*173)%(w+100)-50;
+        ctx.beginPath();ctx.moveTo(xx,yy);ctx.lineTo(xx+38+n%4*12,yy-6);
+        ctx.stroke();
+      }
+      ctx.restore();
     }
     if(type==="storm" && Math.random()<.015){
       // Draw a jagged lightning bolt from cloud level, not just a white flash.
