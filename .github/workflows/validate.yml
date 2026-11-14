@@ -21,6 +21,7 @@ jobs:
         run: |
           node --check custom_components/maison3d/www/maison3d-panel.js
           node --check custom_components/maison3d/www/maison3d-card.js
+          node --check custom_components/maison3d/www/architecture.js
           node --check custom_components/maison3d/www/weather-effects.js
           python - <<'PY'
           import pathlib, re

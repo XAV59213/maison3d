@@ -44,6 +44,12 @@ La carte offre une **vue orbitale 3D interactive** (rotation, zoom) et l'ambianc
 
 ⚠️ Le rendu est une scène Three.js composée de géométries 3D : il n'est pas encore une reconstitution photoréaliste identique à la capture officielle du README. Pour installer cette carte, utiliser la version intégrant les changements de la PR de maintenance v2.0.1, non la release v2.0.0.
 
+## Détails architecturaux 3D en développement
+
+Cette branche améliore le **véritable modèle géométrique Three.js** qui alimente à la fois le panneau plein écran et la carte Lovelace : façades pierre en texture procédurale, toitures à deux pans, encadrements de fenêtres, vitres, portes de garage, cheminée, gouttières, abri métallique, garde-corps, murets de soutènement, rampe inclinée, arbres et allées pavées.
+
+Les objets restent sélectionnables, déplaçables, redimensionnables et exportables grâce à l'éditeur existant. Aucun modèle 3D externe n'est nécessaire pour les nouveaux détails. **Le rendu photoréaliste de la capture officielle n'est pas encore atteint** : les dimensions, détails exacts, textures photographiques et implantations devront être validés sur des captures de l'application réellement exécutée.
+
 ## Référence retenue
 La **capture Maison 3D V2.0 fournie explicitement le 14 novembre 2026** est la seule référence visuelle. La scène éditable est une maquette technique et ne reproduit pas encore photoréalistiquement cette image. Les positions et dimensions restent ajustables et approximatives.
 
