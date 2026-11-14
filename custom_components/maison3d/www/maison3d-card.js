@@ -15,7 +15,11 @@ class Maison3DCard extends HTMLElement {
       title: String(config.title ?? "Maison 3D"),
       height,
       weather_entity: String(config.weather_entity ?? ""),
-      sun_entity: String(config.sun_entity ?? "sun.sun")
+      sun_entity: String(config.sun_entity ?? "sun.sun"),
+      moon_entity: String(config.moon_entity ?? "sensor.moon_phase"),
+      images: Object.fromEntries(Object.entries(config.images || {}).filter(([key,url])=>
+        ["day","night","cloudy","rain","snow","wind","storm","spring","summer","autumn","winter"].includes(key) &&
+        typeof url==="string" && url.length<500))
     };
     this._renderCard();
   }
@@ -80,6 +84,7 @@ class Maison3DCard extends HTMLElement {
       Object.values(states).find(s=>s.entity_id?.startsWith("weather.") &&
         s.state!=="unknown" && s.state!=="unavailable");
     const sun=states[this._config.sun_entity];
+    const moon=states[this._config.moon_entity] || Object.values(states).find(s=>s.entity_id?.startsWith("sensor.") && s.entity_id.includes("moon") && s.state!=="unavailable");
     const attrs=weather?.attributes||{};
     const payload={
       type:"maison3d:conditions",
@@ -87,7 +92,9 @@ class Maison3DCard extends HTMLElement {
       temperature:typeof attrs.temperature==="number"?attrs.temperature:null,
       windSpeed:typeof attrs.wind_speed==="number"?attrs.wind_speed:null,
       windSpeedUnit:attrs.wind_speed_unit??"",
-      sun:sun?.state??null
+      sun:sun?.state??null,
+      moon:moon?.state??null,
+      images:this._config.images
     };
     const serialized=JSON.stringify(payload);
     if (!force && serialized===this._lastState) return;
