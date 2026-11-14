@@ -1,0 +1,70 @@
+name: Publish Maison 3D v2.2.0
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/publish-v2-2-0.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    if: github.repository == 'XAV59213/maison3d'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify manifest and dynamic 3D modules
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root = Path('custom_components/maison3d')
+          assert json.loads((root / 'manifest.json').read_text())['version'] == '2.2.0'
+          for name in ('index.html', 'maison3d-card.js', 'presentation.js', 'world-ambience.js', 'weather-effects.js'):
+              assert (root / 'www' / name).is_file(), name
+          PY
+          node --check custom_components/maison3d/www/presentation.js
+          node --check custom_components/maison3d/www/world-ambience.js
+          node --check custom_components/maison3d/www/weather-effects.js
+      - name: Publish release v2.2.0
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          if gh release view v2.2.0 >/dev/null 2>&1; then
+            echo "Release v2.2.0 already exists"
+            exit 0
+          fi
+          cat > /tmp/release-notes.md <<'EOF'
+          ## Maison 3D v2.2.0 — Vues 3D et météo dynamique
+
+          Nouvelle version de l'intégration Home Assistant Maison 3D, avec carte Lovelace interactive et panneau complet d'édition.
+
+          ### Nouveautés
+          - Quatre vues de présentation en 3D : façade, aérienne, jardin et garage, avec transitions de caméra.
+          - Mode présentation épuré, conservant le mode édition dans le panneau Home Assistant.
+          - Pluie, neige et feuilles d'automne sous forme de particules spatiales Three.js.
+          - Éclairage extérieur adapté à la nuit, ambiance du ciel liée au soleil et aux conditions météo.
+          - Météo actuelle relayée depuis l'entité weather.* et sun.sun de Home Assistant, avec simulations manuelles explicitement indiquées.
+
+          ### Installer via HACS
+          Installer ou mettre à jour Maison 3D vers v2.2.0 puis redémarrer Home Assistant.
+          Si vous utilisez la carte Lovelace, vérifier la ressource JavaScript de type Module :
+          `/maison3d-assets/maison3d-card.js`
+
+          Carte manuelle :
+          ```yaml
+          type: custom:maison3d-card
+          title: Maison 3D
+          height: 500
+          sun_entity: sun.sun
+          ```
+
+          ### Limites
+          - Les vues caméra se rapprochent de la composition de l'image officielle, mais ne reproduisent pas encore sa qualité photoréaliste.
+          - Le modèle reste une scène WebGL modifiable. La fidélité visuelle et le fonctionnement dans une instance Home Assistant réelle restent à confirmer.
+          - Three.js est chargé depuis un CDN, un accès Internet est requis.
+          EOF
+          gh release create v2.2.0 --target "${GITHUB_SHA}" --title "Maison 3D v2.2.0 — Vues 3D et météo dynamique" --notes-file /tmp/release-notes.md
