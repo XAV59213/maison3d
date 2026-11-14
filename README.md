@@ -46,9 +46,19 @@ Elle propose deux vues complémentaires :
 - 🩺 Sélection de capteurs et état de disponibilité depuis l'intégration.
 - 🎨 **19 emplacements d'images configurables** pour les météos, saisons et phases lunaires.
 
+## 🏡 Une photographie unique, une maison vivante
+
+La **photographie officielle est l'arrière-plan fixe par défaut**. La maison, les voitures, les bâtiments et le jardin conservent **exactement leur perspective** ; les variations de météo, de saison, de luminosité et de phase lunaire sont dessinées **par-dessus**.
+
+- **En automatique** : les capteurs Home Assistant déterminent le jour/la nuit, la pluie, la neige, le vent et les nuages ; le capteur lunaire fait évoluer la lune visible dans le ciel.
+- **En mode test** : forcer pluie, neige, orage, vent, soleil, nuit, saison ou phase lunaire modifie uniquement les effets graphiques.
+- **Photos alternatives (facultatif)** : une case « Utiliser les images météo alternatives » dans **⚙ Images / météo** réactive les quatre images livrées ou les images personnalisées. Elle est **désactivée par défaut**. Cela ne modifie pas le modèle 3D, qui reste indépendant.
+
+Cette approche privilégie la continuité de la propriété et une ambiance vivante plutôt que des changements répétés de photographies.
+
 ## 📸 Galerie des vraies photos météo
 
-Les quatre fichiers ci-dessous sont **inclus dans le dépôt** et sont distribués par l'intégration depuis la version **v2.3.1**. Aucun chargement manuel dans `/config/www` n'est nécessaire pour ces images.
+Les quatre photographies alternatives ci-dessous sont **incluses dans le dépôt** depuis **v2.3.1**, mais ne sont **plus sélectionnées automatiquement par défaut**. Pour les utiliser, activer « Utiliser les images météo alternatives » dans le panneau **⚙ Images / météo**. Aucun chargement manuel n'est nécessaire.
 
 <table>
 <tr>
@@ -216,7 +226,7 @@ Pour utiliser une photo personnelle :
 2. Saisir son URL (exemple `/local/maison3d/nuit.jpg`) dans le champ correspondant de la carte ou du panneau.
 3. Choisir **Tester** pour vérifier le résultat.
 
-Les quatre photos météo installées avec HACS restent disponibles automatiquement sans configuration. Les réglages du panneau Photo sont enregistrés dans le **navigateur local** ; pour reproduire une configuration sur plusieurs appareils, préférer les options de l'intégration et la configuration YAML de la carte.
+Les quatre photos météo installées avec HACS restent disponibles en activant l'option facultative d'images alternatives. La photo officielle reste affichée par défaut. Les réglages du panneau Photo sont enregistrés dans le **navigateur local** ; pour reproduire une configuration sur plusieurs appareils, préférer les options de l'intégration et la configuration YAML de la carte.
 
 ## 🏗️ Vue 3D et édition
 
