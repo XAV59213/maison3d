@@ -47,6 +47,16 @@ class TestMaison3D(unittest.TestCase):
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
         self.assertIn("maison3d-assets/maison3d-card.js", readme)
 
+    def test_architecture_module(self):
+        architecture = (COMPONENT / "www" / "architecture.js").read_text(encoding="utf-8")
+        page = (COMPONENT / "www" / "index.html").read_text(encoding="utf-8")
+        self.assertIn("createArchitectureKit", architecture)
+        for expected in ("gableRoof", "masonryTexture", "window(", "house(", "terrace(", "wall(", "ramp(", "landscape("):
+            self.assertIn(expected, architecture)
+        self.assertIn('from "./architecture.js"', page)
+        self.assertIn("architecture.build(g,o)", page)
+        self.assertIn("architecture.landscape(scene)", page)
+
     def test_exact_approved_readme_image(self):
         self.assertTrue((ROOT / "assets" / "maison3d-reference.jpg").is_file())
         content = (ROOT / "README.md").read_text(encoding="utf-8")
