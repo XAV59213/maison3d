@@ -19,6 +19,7 @@ export function createPhotoView() {
   const state={
     images:defaults(),moon_entity:"sensor.moon_phase",
     weather_entity:"",sun_entity:"sun.sun",
+    temperature_entity:"",wind_entity:"",rain_entity:"",snow_entity:"",cloud_entity:"",
     enabled:true,mode:"auto",effect:true,season:"auto"
   };
   try{
@@ -27,7 +28,7 @@ export function createPhotoView() {
       for(const k of KEYS){
         if(allowedUrl(saved.images?.[k]))state.images[k]=saved.images[k];
       }
-      for(const key of ["moon_entity","weather_entity","sun_entity"]){
+      for(const key of ["moon_entity","weather_entity","sun_entity","temperature_entity","wind_entity","rain_entity","snow_entity","cloud_entity"]){
         if(typeof saved[key]==="string")state[key]=saved[key].slice(0,150);
       }
       if(typeof saved.enabled==="boolean")state.enabled=saved.enabled;
@@ -97,6 +98,15 @@ export function createPhotoView() {
     "weather.ma_maison (vide = première disponible)");
   makeField("Entité soleil",state.sun_entity,v=>{state.sun_entity=v||"sun.sun";persist();requestEntities()},"sun.sun");
   makeField("Entité lune",state.moon_entity,v=>{state.moon_entity=v;persist();requestEntities()},"sensor.moon_phase");
+  for(const [key,label] of [
+    ["temperature_entity","Capteur température extérieure"],
+    ["wind_entity","Capteur vitesse du vent"],
+    ["rain_entity","Capteur pluie (valeur ou on/off)"],
+    ["snow_entity","Capteur neige (valeur ou on/off)"],
+    ["cloud_entity","Capteur nuages (pourcentage ou on/off)"]
+  ]){
+    makeField(label,state[key],v=>{state[key]=v;persist();requestEntities()},"sensor.exemple");
+  }
   const selectMode=selectField("Ambiance",[
     ["auto","Automatique (Home Assistant)"],...KEYS.map(k=>[k,LABELS[k]])
   ],state.mode,v=>{state.mode=v;persist();update();});
@@ -234,7 +244,10 @@ export function createPhotoView() {
     // Explicit request; only this iframe's parent is allowed to receive it.
     if(window.parent===window)return;
     window.parent.postMessage({type:"maison3d:entity-selection",weather_entity:state.weather_entity,
-      sun_entity:state.sun_entity,moon_entity:state.moon_entity},window.location.origin);
+      sun_entity:state.sun_entity,moon_entity:state.moon_entity,
+      temperature_entity:state.temperature_entity,wind_entity:state.wind_entity,
+      rain_entity:state.rain_entity,snow_entity:state.snow_entity,
+      cloud_entity:state.cloud_entity},window.location.origin);
   }
   window.addEventListener("message",event=>{
     if(event.source!==window.parent||event.origin!==window.location.origin)return;
