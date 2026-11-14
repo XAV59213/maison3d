@@ -35,7 +35,7 @@ export function createPhotoView() {
     images:defaults(),moon_entity:"sensor.moon_phase",
     weather_entity:"",sun_entity:"sun.sun",
     temperature_entity:"",wind_entity:"",rain_entity:"",snow_entity:"",cloud_entity:"",
-    enabled:true,mode:"auto",effect:true,season:"auto",effect_intensity:1,moon_preview:"auto",use_weather_photos:false
+    enabled:true,model_view:"3d",mode:"auto",effect:true,season:"auto",effect_intensity:1,moon_preview:"auto",use_weather_photos:false
   };
   try{
     const saved=JSON.parse(localStorage.getItem(STORAGE));
@@ -47,6 +47,7 @@ export function createPhotoView() {
         if(typeof saved[key]==="string")state[key]=saved[key].slice(0,150);
       }
       if(typeof saved.enabled==="boolean")state.enabled=saved.enabled;
+      if(saved.model_view==="2d"||saved.model_view==="3d")state.model_view=saved.model_view;
       if(typeof saved.effect==="boolean")state.effect=saved.effect;
       if(typeof saved.use_weather_photos==="boolean")state.use_weather_photos=saved.use_weather_photos;
       if(Number.isFinite(saved.effect_intensity))state.effect_intensity=Math.min(2,Math.max(0,saved.effect_intensity));
@@ -87,6 +88,9 @@ export function createPhotoView() {
   photoBtn.type="button";photoBtn.textContent="▣ Photo réelle";
   const modelBtn=document.createElement("button");
   modelBtn.type="button";modelBtn.textContent="⬡ 3D éditable";
+  const planBtn=document.createElement("button");
+  planBtn.type="button";planBtn.textContent="▤ Plan 2D";
+  planBtn.title="Afficher le plan de dessus du modèle, revenir à la photo à tout moment";
   const optionsBtn=document.createElement("button");
   optionsBtn.type="button";optionsBtn.textContent="⚙ Images / météo";
   const nightBtn=document.createElement("button");
@@ -98,7 +102,7 @@ export function createPhotoView() {
   const autoBtn=document.createElement("button");
   autoBtn.type="button";autoBtn.textContent="◉ Auto";
   autoBtn.title="Utiliser le soleil et la météo réels de Home Assistant";
-  nav.append(photoBtn,nightBtn,dayBtn,autoBtn,modelBtn,optionsBtn);
+  nav.append(photoBtn,planBtn,modelBtn,nightBtn,dayBtn,autoBtn,optionsBtn);
   const seasonalNav=document.createElement("nav");
   seasonalNav.id="maison3d-photo-seasons";
   seasonalNav.setAttribute("aria-label","Tester les saisons de la vue photo");
@@ -405,7 +409,8 @@ export function createPhotoView() {
     dayBtn.setAttribute("aria-pressed",String(state.mode==="day"));
     autoBtn.setAttribute("aria-pressed",String(state.mode==="auto"));
     photoBtn.setAttribute("aria-pressed",String(state.enabled));
-    modelBtn.setAttribute("aria-pressed",String(!state.enabled));
+    modelBtn.setAttribute("aria-pressed",String(!state.enabled && state.model_view==="3d"));
+    planBtn.setAttribute("aria-pressed",String(!state.enabled && state.model_view==="2d"));
     section.hidden=!state.enabled;
     if(!state.enabled){section.style.display="none"}else{section.style.display="block"}
     document.documentElement.classList.toggle("photo-active",state.enabled);
@@ -420,7 +425,15 @@ export function createPhotoView() {
   nightBtn.addEventListener("click",()=>setQuickMode("night"));
   dayBtn.addEventListener("click",()=>setQuickMode("day"));
   autoBtn.addEventListener("click",()=>setQuickMode("auto"));
-  modelBtn.addEventListener("click",()=>{state.enabled=false;persist();settings.hidden=true;update()});
+  const setModelView=view=>{
+    state.enabled=false;state.model_view=view;
+    settings.hidden=true;
+    persist();update();
+    // Reuse the existing camera controls so the editor remains consistent.
+    document.getElementById(view==="2d"?"topview":"tab3d")?.click();
+  };
+  planBtn.addEventListener("click",()=>setModelView("2d"));
+  modelBtn.addEventListener("click",()=>setModelView("3d"));
   optionsBtn.addEventListener("click",()=>{settings.hidden=!settings.hidden});
   close.addEventListener("click",()=>{settings.hidden=true});
   image.addEventListener("error",()=>{
@@ -568,5 +581,8 @@ export function createPhotoView() {
   document.addEventListener("visibilitychange",()=>{if(!document.hidden){resize();cinematics.resize()}});
   requestEntities();
   update();
+  if(!state.enabled && state.model_view==="2d"){
+    document.getElementById("topview")?.click();
+  }
   return {frame,update,state};
 }
