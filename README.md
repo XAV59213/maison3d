@@ -46,6 +46,34 @@ Elle propose deux vues complémentaires :
 - 🩺 Sélection de capteurs et état de disponibilité depuis l'intégration.
 - 🎨 **19 emplacements d'images configurables** pour les météos, saisons et phases lunaires.
 
+## 🖼️ Choisir sa propre photo — v2.3.6
+
+Chaque utilisateur peut désormais utiliser **sa propre photographie de maison** comme arrière-plan fixe, avec toutes les animations Home Assistant au-dessus. L'image officielle livrée est utilisée si aucune image n'est renseignée ou si l'URL choisie est inaccessible.
+
+**Exemple :** déposez `ma-maison.jpg` dans `/config/www/maison3d/`, puis renseignez `/local/maison3d/ma-maison.jpg`.
+
+- **Configuration globale :** Paramètres → Appareils et services → **Maison 3D** → **Configurer** → **Image principale**. Le choix s'applique au panneau Maison 3D et aux cartes qui ne définissent pas leur propre photo.
+- **Configuration par carte Lovelace :** éditeur visuel de la carte → **Image principale de la propriété** → URL personnalisée et **Vérifier et prévisualiser**. La carte a priorité sur la configuration globale.
+- **Panneau photo :** bouton **⚙ Images / météo** → **Image principale personnalisée**, avec bouton de contrôle et aperçu. Ce choix local au navigateur peut remplacer la valeur globale dans le panneau complet.
+- **Priorité en mode carte :** URL de la carte → URL de l'intégration → photo officielle. **Priorité dans le panneau :** URL locale facultative → URL de l'intégration → photo officielle.
+- **Formats :** URL `/local/...`, `/maison3d-assets/...`, `/api/...` ou HTTPS. Une image accessible depuis le navigateur est nécessaire. Les URLs non valides sont refusées.
+
+### ✦ Activer ou désactiver les effets
+
+La configuration de l'intégration propose **Activer les effets météo, lumineux et saisonniers**. L'éditeur Lovelace permet de laisser la valeur héritée, de l'activer ou de la désactiver pour une carte précise.
+
+Dans la vue photo, **✦ Effets ON / ○ Effets OFF** et la case **Activer les effets météo, lumineux et saisonniers** permettent une bascule locale immédiate. Quand les effets sont désactivés, la photo de la propriété reste affichée sans pluie, neige, orage, lune dessinée, coloration météo ou assombrissement nocturne. La météo Home Assistant reste reçue, et les effets pourront être réactivés. Le choix manuel local de la vue est enregistré dans le navigateur.
+
+Exemple de carte :
+
+```yaml
+type: custom:maison3d-card
+title: Ma maison
+height: 600
+base_image_url: /local/maison3d/ma-maison.jpg
+effects_enabled: true
+```
+
 ## 🏡 Une photographie unique, une maison vivante
 
 La **photographie officielle est l'arrière-plan fixe par défaut**. La maison, les voitures, les bâtiments et le jardin conservent **exactement leur perspective** ; les variations de météo, de saison, de luminosité et de phase lunaire sont dessinées **par-dessus**.
