@@ -77,6 +77,14 @@ python3 scripts/import_weather_images.py maison3d_images_meteo.zip
 
 Il produit `custom_components/maison3d/www/images/day.jpg`, `cloudy.jpg`, `rain.jpg` et `snow.jpg`, qui pourront ensuite être versionnés dans le dépôt. **Ces fichiers binaires ne font pas encore partie de la PR tant que l'import n'a pas été exécuté depuis une copie de l'archive dans un environnement ayant accès au dépôt**. Il ne faut pas fusionner en supposant que les quatre JPEG ont été téléversés.
 
+## Photos météo intégrées — v2.3.1
+
+Les photos météo réelles ajoutées au dépôt GitHub sont **incluses dans l'intégration HACS** : `jour.jpg`, `nuageux.jpg`, `pluie.jpg`, `neige.jpg` dans `custom_components/maison3d/www/images/`.
+
+La vue photo sélectionne automatiquement l'image correspondant à la météo Home Assistant avec les URLs `/maison3d-assets/images/jour.jpg`, `nuageux.jpg`, `pluie.jpg`, `neige.jpg`. Il n'est **plus nécessaire** de copier ou de renommer ces quatre fichiers à la main. Les images personnalisées configurées dans la carte prennent priorité.
+
+Les autres états (nuit, vent, orage, saisons, lune) utilisent une image personnalisée lorsqu'elle est renseignée, sinon un repli sur la photo officielle avec les animations. Cela ne crée pas une image différente de nuit ou d'orage par magie.
+
 ## Phases de lune, éclairs et fichiers d'images
 
 Le moteur utilise la valeur de ton capteur de **phase lunaire** pour afficher le bon symbole parmi les huit phases de lune (nouvelle lune, croissants, quartiers, gibbeuses et pleine lune). Tu peux maintenant définir une image spécifique pour chacune avec les clés `moon_new_moon`, `moon_waxing_crescent`, `moon_first_quarter`, `moon_waxing_gibbous`, `moon_full_moon`, `moon_waning_gibbous`, `moon_last_quarter` et `moon_waning_crescent`. Les images lunaires sont utilisées de nuit si une image correspondante existe et si aucun visuel météo spécifique n'a priorité.
