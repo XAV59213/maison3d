@@ -84,7 +84,16 @@ export function createPhotoView() {
   modelBtn.type="button";modelBtn.textContent="⬡ 3D éditable";
   const optionsBtn=document.createElement("button");
   optionsBtn.type="button";optionsBtn.textContent="⚙ Images / météo";
-  nav.append(photoBtn,modelBtn,optionsBtn);
+  const nightBtn=document.createElement("button");
+  nightBtn.type="button";nightBtn.textContent="☾ Nuit réelle";
+  nightBtn.title="Prévisualiser immédiatement la nuit sur la photo";
+  const dayBtn=document.createElement("button");
+  dayBtn.type="button";dayBtn.textContent="☀ Jour";
+  dayBtn.title="Prévisualiser immédiatement le jour sur la photo";
+  const autoBtn=document.createElement("button");
+  autoBtn.type="button";autoBtn.textContent="◉ Auto";
+  autoBtn.title="Utiliser le soleil et la météo réels de Home Assistant";
+  nav.append(photoBtn,nightBtn,dayBtn,autoBtn,modelBtn,optionsBtn);
   const settings=document.createElement("section");
   settings.id="maison3d-photo-settings";settings.hidden=true;
   const head=document.createElement("div");
@@ -170,7 +179,12 @@ export function createPhotoView() {
   const style=document.createElement("style");
   style.textContent=[
     "#maison3d-photo-view{position:fixed;inset:0;z-index:5;overflow:hidden;background:#111c2d}",
-    "#maison3d-photo-view img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}",
+    "#maison3d-photo-view img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:filter 1.3s ease}",
+    "#maison3d-photo-view.photo-night img{filter:brightness(.36) saturate(.70) contrast(1.09)}",
+    "#maison3d-photo-view.photo-night .moon-phase{filter:drop-shadow(0 0 18px #cdd9ff)}",
+    "#maison3d-photo-view.photo-night::after{content:'';position:absolute;pointer-events:none;inset:0;",
+    "background:radial-gradient(ellipse at 23% 10%,#d4def51c,transparent 35%),",
+    "linear-gradient(180deg,#06102b29 0%,transparent 55%,#06102366 100%)}",
     "#maison3d-photo-view .photo-light{position:absolute;inset:0;pointer-events:none;transition:background 1s}",
     "#maison3d-photo-view canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}",
     "#maison3d-photo-status{position:absolute;top:78px;right:14px;max-width:70%;border-radius:10px;",
@@ -267,11 +281,15 @@ export function createPhotoView() {
     tint.style.background=selected==="snow"?"linear-gradient(#f6fcff15,#f0f8ff25)":
       selected==="storm"?"#101b3866":selected==="rain"?"#26344746":
       selected==="cloudy"?"#5b677523":night?"#03132685":"transparent";
+    section.classList.toggle("photo-night",night);
     moon.textContent=night?moonSymbol(live.moon):"";
     const effectLabel=LABELS[selected]||selected;
     status.textContent=(state.mode==="auto"?"Automatique":"Aperçu manuel")+" · "+effectLabel+
       (typeof live.temperature==="number"?" · "+live.temperature+"°C":"")+
       (live.moon&&night?" · Lune : "+String(live.moon):"");
+    nightBtn.setAttribute("aria-pressed",String(state.mode==="night"));
+    dayBtn.setAttribute("aria-pressed",String(state.mode==="day"));
+    autoBtn.setAttribute("aria-pressed",String(state.mode==="auto"));
     realBtn.setAttribute("aria-pressed",String(state.enabled));
     modelBtn.setAttribute("aria-pressed",String(!state.enabled));
     section.hidden=!state.enabled;
@@ -279,6 +297,14 @@ export function createPhotoView() {
     document.documentElement.classList.toggle("photo-active",state.enabled);
   }
   photoBtn.addEventListener("click",()=>{state.enabled=true;persist();update()});
+  const setQuickMode=mode=>{
+    state.enabled=true;state.mode=mode;
+    selectMode.value=mode;
+    persist();update();
+  };
+  nightBtn.addEventListener("click",()=>setQuickMode("night"));
+  dayBtn.addEventListener("click",()=>setQuickMode("day"));
+  autoBtn.addEventListener("click",()=>setQuickMode("auto"));
   modelBtn.addEventListener("click",()=>{state.enabled=false;persist();settings.hidden=true;update()});
   optionsBtn.addEventListener("click",()=>{settings.hidden=!settings.hidden});
   close.addEventListener("click",()=>{settings.hidden=true});
