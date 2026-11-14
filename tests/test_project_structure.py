@@ -75,6 +75,22 @@ class TestMaison3D(unittest.TestCase):
         self.assertIn('CustomEvent("maison3d:weather"', effects)
         self.assertIn("live?.sun", effects)
 
+    def test_editable_photo_seasons_weather_and_moon(self):
+        photo = (COMPONENT / "www" / "photo-view.js").read_text(encoding="utf-8")
+        html = (COMPONENT / "www" / "index.html").read_text(encoding="utf-8")
+        panel = (COMPONENT / "www" / "maison3d-panel.js").read_text(encoding="utf-8")
+        card = (COMPONENT / "www" / "maison3d-card.js").read_text(encoding="utf-8")
+        self.assertTrue((COMPONENT / "www" / "maison3d-reference.jpg").is_file())
+        for key in ("day","night","cloudy","rain","snow","wind","storm","spring","summer","autumn","winter"):
+            self.assertIn('"' + key + '"', photo)
+        self.assertIn('from "./photo-view.js"', html)
+        self.assertIn("photoView.frame(time)", html)
+        self.assertIn("maison3d:entity-selection", photo)
+        self.assertIn("moon_entity", photo)
+        self.assertIn("moon_entity", panel)
+        self.assertIn("images:this._config.images", card)
+        self.assertIn("weather_entity:", card)
+
     def test_exact_approved_readme_image(self):
         self.assertTrue((ROOT / "assets" / "maison3d-reference.jpg").is_file())
         content = (ROOT / "README.md").read_text(encoding="utf-8")
