@@ -10,5 +10,23 @@
     "abort": {
       "already_configured": "Maison 3D is already configured."
     }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Configure Maison 3D sensors",
+        "description": "Select your Home Assistant entities. Additional sensors are optional.",
+        "data": {
+          "weather_entity": "Weather entity",
+          "sun_entity": "Sun entity",
+          "moon_entity": "Moon phase entity",
+          "temperature_entity": "Outdoor temperature sensor",
+          "wind_entity": "Wind sensor",
+          "rain_entity": "Rain sensor",
+          "snow_entity": "Snow sensor",
+          "cloud_entity": "Cloud cover sensor"
+        }
+      }
+    }
   }
 }

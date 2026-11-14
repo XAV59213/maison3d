@@ -75,6 +75,61 @@ class TestMaison3D(unittest.TestCase):
         self.assertIn('CustomEvent("maison3d:weather"', effects)
         self.assertIn("live?.sun", effects)
 
+    def test_editable_photo_seasons_weather_and_moon(self):
+        photo = (COMPONENT / "www" / "photo-view.js").read_text(encoding="utf-8")
+        html = (COMPONENT / "www" / "index.html").read_text(encoding="utf-8")
+        panel = (COMPONENT / "www" / "maison3d-panel.js").read_text(encoding="utf-8")
+        card = (COMPONENT / "www" / "maison3d-card.js").read_text(encoding="utf-8")
+        self.assertTrue((COMPONENT / "www" / "maison3d-reference.jpg").is_file())
+        for key in ("day","night","cloudy","rain","snow","wind","storm","spring","summer","autumn","winter"):
+            self.assertIn('"' + key + '"', photo)
+        self.assertIn('from "./photo-view.js"', html)
+        self.assertIn("photoView.frame(time)", html)
+        self.assertIn("maison3d:entity-selection", photo)
+        self.assertIn("moon_entity", photo)
+        self.assertIn("moon_entity", panel)
+        self.assertIn("images:this._config.images", card)
+        self.assertIn("weather_entity:", card)
+
+    def test_homeassistant_integration_options_and_diagnostics(self):
+        flow = (COMPONENT / "config_flow.py").read_text(encoding="utf-8")
+        sensors = (COMPONENT / "sensor.py").read_text(encoding="utf-8")
+        setup = (COMPONENT / "__init__.py").read_text(encoding="utf-8")
+        panel = (COMPONENT / "www" / "maison3d-panel.js").read_text(encoding="utf-8")
+        card = (COMPONENT / "www" / "maison3d-card.js").read_text(encoding="utf-8")
+        editor = (COMPONENT / "www" / "maison3d-card-editor.js").read_text(encoding="utf-8")
+        for key in ("weather_entity","sun_entity","moon_entity","temperature_entity","wind_entity","rain_entity","snow_entity","cloud_entity"):
+            self.assertIn(key, flow)
+            self.assertIn(key, sensors)
+            self.assertIn(key, editor)
+        self.assertIn("OptionsFlowWithReload",flow)
+        self.assertIn("async_get_options_flow",flow)
+        self.assertIn('async_forward_entry_setups(entry, ["sensor"])', setup)
+        self.assertIn("maison3d_config",sensors)
+        self.assertIn("Maison3DSourceStatusSensor",sensors)
+        self.assertIn("config-changed",editor)
+        self.assertIn("static getConfigElement()",card)
+        self.assertIn("maison3d_config",panel)
+        self.assertIn("maison3d_config",card)
+        for language in ("fr","en"):
+            translation = json.loads((COMPONENT / "translations" / f"{language}.json").read_text(encoding="utf-8"))
+            self.assertIn("options",translation)
+
+    def test_lunar_phases_and_lightning_visual_effects(self):
+        photo = (COMPONENT / "www" / "photo-view.js").read_text(encoding="utf-8")
+        card = (COMPONENT / "www" / "maison3d-card.js").read_text(encoding="utf-8")
+        editor = (COMPONENT / "www" / "maison3d-card-editor.js").read_text(encoding="utf-8")
+        phases = ("new_moon", "waxing_crescent", "first_quarter",
+                  "waxing_gibbous", "full_moon", "waning_gibbous",
+                  "last_quarter", "waning_crescent")
+        for phase in phases:
+            key = "moon_" + phase
+            for code in (photo, card, editor):
+                self.assertIn(key, code)
+        self.assertIn("ctx.shadowBlur=28", photo)
+        self.assertIn("ctx.lineTo(x,y)", photo)
+        self.assertIn("moonPhase(live.moon)", photo)
+
     def test_exact_approved_readme_image(self):
         self.assertTrue((ROOT / "assets" / "maison3d-reference.jpg").is_file())
         content = (ROOT / "README.md").read_text(encoding="utf-8")
