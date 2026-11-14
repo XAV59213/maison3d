@@ -25,7 +25,7 @@
           "rain_entity": "Rain sensor",
           "snow_entity": "Snow sensor",
           "cloud_entity": "Cloud cover sensor",
-          "base_image_url": "Main photo (URL /local/… or HTTPS)",
+          "base_image_url": "Main photo (/local/…, /maison3d-media/…, HTTPS or media-source://…)",
           "effects_enabled": "Enable weather, lighting and seasonal effects",
           "frost_enabled": "Enable the frost effect when the temperature is at or below 0 °C",
           "weather_photos_enabled": "Use the bundled/custom day and night weather photos"

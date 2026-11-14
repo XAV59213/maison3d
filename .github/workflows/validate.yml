@@ -33,6 +33,9 @@ jobs:
           node --check custom_components/maison3d/www/ha-storage.js
           node --check custom_components/maison3d/www/storage-bridge.js
           node tests/test_storage_bridge.mjs
+          node --check custom_components/maison3d/www/media-resolver.js
+          node tests/test_media_resolver.mjs
+          node tests/test_upload_photo.mjs
           node --check custom_components/maison3d/www/moon-effects.js
           node --check custom_components/maison3d/www/season-effects.js
           node tests/test_seasons.mjs

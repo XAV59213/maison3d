@@ -1,6 +1,7 @@
 import "./maison3d-card-editor.js";
 import {IMAGE_KEYS} from "./photo-source.js";
 import {createStorageBridge} from "./storage-bridge.js";
+import {createMediaResolver} from "./media-resolver.js";
 /**
  * Maison 3D interactive Lovelace card.
  * Load as a JavaScript module resource: /maison3d-assets/maison3d-card.js
@@ -48,6 +49,7 @@ class Maison3DCard extends HTMLElement {
     if (!this._storage) {
       this._storage = createStorageBridge({getFrame:()=>this._frame,getHass:()=>this._hass});
       this._onStorageMessage = event => this._storage.onMessage(event);
+      this._media = createMediaResolver({getHass:()=>this._hass,onResolved:()=>this._updateStates(true)});
     }
     window.addEventListener("message", this._onStorageMessage);
     if (this._config) this._renderCard();
@@ -148,7 +150,7 @@ class Maison3DCard extends HTMLElement {
     const cloud=numeric(choice("cloud_entity"),null);
     const payload={
       type:"maison3d:conditions",
-      base_image_url:this._config.base_image_url||diagnostic?.attributes?.base_image_url||"",
+      base_image_url:this._media.url(this._config.base_image_url||diagnostic?.attributes?.base_image_url||""),
       effects_enabled:this._config.effects_enabled??(diagnostic?.attributes?.effects_enabled!==false),
       frost_enabled:this._config.frost_enabled??(diagnostic?.attributes?.frost_enabled!==false),
       weather_photos:this._config.weather_photos??(diagnostic?.attributes?.weather_photos_enabled===true),
@@ -163,7 +165,7 @@ class Maison3DCard extends HTMLElement {
       windSpeedUnit:attrs.wind_speed_unit??"",
       sun:sun?.state??null,
       moon:moon?.state??null,
-      images:this._config.images
+      images:this._media.images(this._config.images)
     };
     const serialized=JSON.stringify(payload);
     if (!force && serialized===this._lastState) return;
