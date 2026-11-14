@@ -15,11 +15,12 @@ from zipfile import ZipFile
 
 ROOT = Path(__file__).resolve().parents[1]
 DESTINATION = ROOT / "custom_components" / "maison3d" / "www" / "images"
+# Archive member name -> file name used by the photo view (www/images/).
 IMAGES = {
-    "jour": "day.jpg",
-    "nuageux": "cloudy.jpg",
-    "pluie": "rain.jpg",
-    "neige": "snow.jpg",
+    "jour": "jour.jpg",
+    "nuageux": "nuageux.jpg",
+    "pluie": "pluie.jpg",
+    "neige": "neige.jpg",
 }
 
 def import_archive(source: Path, output: Path = DESTINATION) -> dict[str, int]:

@@ -1,4 +1,4 @@
-import {allowedPhotoUrl,DEFAULT_MAIN_PHOTO} from "./photo-source.js";
+import {allowedPhotoUrl,DEFAULT_MAIN_PHOTO,IMAGE_SLOTS,suggestedFileName} from "./photo-source.js";
 /**
  * Visual configuration editor for the custom Maison 3D Lovelace card.
  * Lets users choose their actual Home Assistant entities without knowing IDs.
@@ -25,7 +25,8 @@ class Maison3DCardEditor extends HTMLElement {
     if(image) {
       if(value)next.images[key]=value;
       else delete next.images[key];
-    }else if(value==="" && !["title","height"].includes(key)){
+    }else if(value===""||value===null){
+      // Every option is optional: an empty field means « inherit » (integration or default).
       delete next[key];
     }else{
       next[key]=value;
@@ -63,10 +64,10 @@ class Maison3DCardEditor extends HTMLElement {
       const label=document.createElement("label");label.textContent=labelText;
       const input=document.createElement("input");
       input.type=type;input.placeholder=placeholder;
-      input.value=String(this._config[key]??(key==="height"?500:""));
+      input.value=String(this._config[key]??"");
       input.addEventListener("change",()=>{
         let value=input.value.trim();
-        if(type==="number"){
+        if(type==="number"&&value!==""){
           value=Number(value);
           if(!Number.isFinite(value)||value<240||value>1400){
             input.setCustomValidity("Hauteur entre 240 et 1400 pixels");
@@ -77,9 +78,9 @@ class Maison3DCardEditor extends HTMLElement {
       });
       parent.append(label,input);
     };
-    const base=section("Général","La carte utilise la photo officielle par défaut, sans configuration complexe.");
-    field(base,"title","Titre","Maison 3D");
-    field(base,"height","Hauteur de la carte (px)","500","number");
+    const base=section("Général","Tout est facultatif : une carte sans réglage reprend la configuration de l'intégration (Paramètres → Appareils et services → Maison 3D → Configurer). Un champ vide = hériter.");
+    field(base,"title","Titre (vide = « Maison 3D »)","Maison 3D");
+    field(base,"height","Hauteur de la carte en px (vide = 440)","440","number");
     const photoSection=section("Image principale de la propriété",
       "Facultatif : cette photo reste fixe et reçoit les animations météo. Laissez vide pour hériter de l'image configurée dans l'intégration ou de la photo officielle.");
     const photoLabel=document.createElement("label");
@@ -148,10 +149,12 @@ class Maison3DCardEditor extends HTMLElement {
       [["inherit","Hériter de l’intégration"],["on","Activer les effets"],["off","Désactiver les effets"]]);
     toggle("frost_enabled","Effet gel (température ≤ 0 °C)",
       [["inherit","Hériter de l’intégration"],["on","Activer le gel"],["off","Désactiver le gel"]]);
+    toggle("weather_photos","Photos météo jour/nuit",
+      [["inherit","Hériter de l’intégration"],["on","Utiliser les photos météo"],["off","Photo principale + animations"]]);
 
 
     const pickers=section("Capteurs Home Assistant",
-      "Choisis tes propres entités. Laisse les champs complémentaires vides pour utiliser automatiquement les données de weather.*.");
+      "Facultatif : vide = entités choisies dans l'intégration, puis détection automatique (première entité weather.*, sun.sun).");
     const entities=[
       ["weather_entity","Météo actuelle",["weather"]],
       ["sun_entity","Soleil / jour et nuit",["sun"]],
@@ -168,27 +171,19 @@ class Maison3DCardEditor extends HTMLElement {
       picker.hass=this._hass;
       picker.includeDomains=domains;
       picker.allowCustomEntity=true;
-      picker.value=this._config[key]??(key==="sun_entity"?"sun.sun":"");
+      picker.value=this._config[key]??"";
       picker.addEventListener("value-changed",event=>{
         this._changed(key,event.detail?.value||"");
       });
       pickers.append(label,picker);
     }
-    const images=section("Images personnalisées",
-      "Chaque URL est modifiable. Place les photos dans /config/www/maison3d/ puis renseigne /local/maison3d/jour.jpg, etc. Sans URL : la photo officielle est utilisée.");
-    const keys=[
-      ["day","Jour"],["night","Nuit"],["cloudy","Nuageux"],["rain","Pluie"],
-      ["snow","Neige"],["wind","Vent"],["storm","Orage"],
-      ["spring","Printemps"],["summer","Été"],["autumn","Automne"],["winter","Hiver"],
-      ["moon_new_moon","Nouvelle lune"],["moon_waxing_crescent","Premier croissant"],
-      ["moon_first_quarter","Premier quartier"],["moon_waxing_gibbous","Gibbeuse croissante"],
-      ["moon_full_moon","Pleine lune"],["moon_waning_gibbous","Gibbeuse décroissante"],
-      ["moon_last_quarter","Dernier quartier"],["moon_waning_crescent","Dernier croissant"]
-    ];
+    const images=section("Images personnalisées (facultatif)",
+      "Utilisées quand les photos météo jour/nuit sont activées. Chaque URL est modifiable. Place les photos dans /config/www/maison3d/ puis renseigne par exemple /local/maison3d/neige-nuit.jpg. Ordre : image jour/nuit de la météo → image de la météo → image Jour ou Nuit → photo principale.");
+    const keys=IMAGE_SLOTS;
     for(const [key,name] of keys){
       const label=document.createElement("label");label.textContent=name;
       const input=document.createElement("input");
-      input.type="text";input.placeholder="/local/maison3d/"+key+".jpg";
+      input.type="text";input.placeholder="/local/maison3d/"+suggestedFileName(key);
       input.value=this._config.images?.[key]||"";
       input.addEventListener("change",()=>this._changed(key,input.value.trim(),true));
       images.append(label,input);

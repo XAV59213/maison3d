@@ -101,6 +101,7 @@ class Maison3DConfigurationSensor(SensorEntity):
             "base_image_url": str(self._entry.options.get("base_image_url", "") or ""),
             "effects_enabled": bool(self._entry.options.get("effects_enabled", True)),
             "frost_enabled": bool(self._entry.options.get("frost_enabled", True)),
+            "weather_photos_enabled": bool(self._entry.options.get("weather_photos_enabled", False)),
             "sensor_statuses": statuses,
             "configured_count": sum(bool(v) for v in selected.values()),
             "available_count": sum(s["state"] == "ok" for s in statuses.values()),

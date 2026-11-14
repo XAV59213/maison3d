@@ -26,7 +26,8 @@
           "cloud_entity": "Couverture nuageuse",
           "base_image_url": "Image principale (URL /local/… ou HTTPS)",
           "effects_enabled": "Activer les effets météo, lumineux et saisonniers",
-          "frost_enabled": "Activer l'effet gel quand la température est inférieure ou égale à 0 °C"
+          "frost_enabled": "Activer l'effet gel quand la température est inférieure ou égale à 0 °C",
+          "weather_photos_enabled": "Utiliser les photos météo jour/nuit (fournies ou personnalisées)"
         }
       }
     },
