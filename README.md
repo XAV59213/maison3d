@@ -228,6 +228,16 @@ Pour utiliser une photo personnelle :
 
 Les quatre photos météo installées avec HACS restent disponibles en activant l'option facultative d'images alternatives. La photo officielle reste affichée par défaut. Les réglages du panneau Photo sont enregistrés dans le **navigateur local** ; pour reproduire une configuration sur plusieurs appareils, préférer les options de l'intégration et la configuration YAML de la carte.
 
+## 🗺️ Accès rapide aux trois vues — v2.3.5
+
+Les commandes **▣ Photo réelle**, **▤ Plan 2D** et **⬡ 3D éditable** restent accessibles depuis la barre au-dessus de l'image, même lorsque la vue photo est active.
+
+- **Photo réelle** : photographie officielle fixe avec météo, lune et éclairage animés.
+- **Plan 2D** : passe au modèle vu de dessus, en réutilisant la caméra de l'ancien bouton « Plan 2D ».
+- **3D éditable** : rétablit la caméra 3D orbitale pour explorer la maquette.
+
+Le choix entre plan 2D et vue 3D est mémorisé localement. Il n'est plus nécessaire de rechercher le bouton derrière la photo ; la barre d'outils 3D reste disponible selon le mode présentation ou édition.
+
 ## 🏗️ Vue 3D et édition
 
 La scène Three.js distincte propose les vues **Façade, Aérienne, Jardin et Garage**, ainsi que la rotation, le zoom, le déplacement et le redimensionnement des objets. Dans le panneau complet, elle permet également l'**export et l'import JSON**.
