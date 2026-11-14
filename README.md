@@ -1,3 +1,9 @@
+<p align="center"><img src="assets/logo.svg" width="560" alt="Maison 3D V2.0"/></p>
+
+<p align="center"><img src="assets/icon.svg" width="110" alt="Icône Maison 3D"/></p>
+
+> **Image de référence :** le rendu réaliste validé reste la direction artistique. Le modèle WebGL actuel est une maquette 3D interactive qui ne reproduit pas encore cette fidélité visuelle. Une affiche de présentation est en cours de préparation pour le README.
+
 # Maison 3D V2.0 — Home Assistant
 
 Intégration Home Assistant avec panneau 3D interactif et éditeur d'implantation.
@@ -24,3 +30,13 @@ Sélectionner un objet pour modifier sa position X/Z, ses dimensions, son orient
 
 ## Installation manuelle
 Copier `custom_components/maison3d` dans `/config/custom_components/maison3d`, redémarrer, ajouter l'intégration.
+
+## Identité graphique
+
+- Logo vectoriel : [assets/logo.svg](assets/logo.svg)
+- Icône vectorielle : [assets/icon.svg](assets/icon.svg)
+- L'affiche de présentation jour/nuit et saisons reste illustrative : ne pas confondre avec les fonctionnalités réellement testées.
+
+## Météo et soleil
+
+Le panneau JavaScript relaie désormais les états de la première entité `weather.*` et de `sun.sun` vers la vue WebGL. L'animation des précipitations et feuilles, l'éclairage en fonction du soleil et la sélection explicite de l'entité météo doivent encore être intégrés et testés avant publication stable.
