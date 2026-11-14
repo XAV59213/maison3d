@@ -50,6 +50,17 @@ Cette branche améliore le **véritable modèle géométrique Three.js** qui ali
 
 Les objets restent sélectionnables, déplaçables, redimensionnables et exportables grâce à l'éditeur existant. Aucun modèle 3D externe n'est nécessaire pour les nouveaux détails. **Le rendu photoréaliste de la capture officielle n'est pas encore atteint** : les dimensions, détails exacts, textures photographiques et implantations devront être validés sur des captures de l'application réellement exécutée.
 
+## Mode présentation réaliste — vues et météo 3D
+
+Cette branche prépare une **vue vivante de la propriété** en s'appuyant sur [l'image officielle de référence](assets/maison3d-reference.jpg) : maison au centre, accès automobile et voitures à gauche, abri métallique au premier plan, garage à droite, jardin et balançoire. La scène demeure un vrai modèle 3D Three.js et **n'affiche pas l'image en guise de faux rendu**.
+
+- **Vues 3D** : caméra « Façade » pour retrouver la composition générale de la référence, ainsi que les vues « Aérienne », « Jardin » et « Garage » ; déplacements de caméra animés et rotation libre possible.
+- **Présentation / édition** : mode présentation dégagé des outils, avec retour au mode édition dans le panneau complet. Dans une carte Lovelace, seule la présentation est disponible.
+- **Météo 3D** : pluie et neige sous forme de particules spatiales Three.js, feuilles d'automne, éclairage du terrain à la nuit tombée. Les effets Canvas d'appoint restent également disponibles.
+- **Météo actuelle** : les informations proviennent de l'entité `weather.*` Home Assistant (ou de l'entité configurée sur la carte) et de `sun.sun` ; mise à jour lorsque Home Assistant actualise les états. La démonstration manuelle reste distincte des conditions réelles.
+
+**Limites de fidélité** : les presets caméra sont des approximations géométriques de la perspective de l'image, et non une reconstruction photogrammétrique exacte. Les modèles, textures, véhicules et reliefs devront encore être affinés dans une instance Home Assistant réelle. Aucune prévision météo n'est générée par l'intégration.
+
 ## Référence retenue
 La **capture Maison 3D V2.0 fournie explicitement le 14 novembre 2026** est la seule référence visuelle. La scène éditable est une maquette technique et ne reproduit pas encore photoréalistiquement cette image. Les positions et dimensions restent ajustables et approximatives.
 
