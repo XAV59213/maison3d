@@ -174,7 +174,7 @@ export function createPhotoView({ensureScene=null}={}) {
   const SEASON_ICONS={spring:"🌸",summer:"☀",autumn:"🍂",winter:"❄"};
   const SEASON_CHOICES=[["spring"],["summer"],["autumn"],["winter"],["auto"]];
   const seasonLabel=key=>key==="auto"?t("previewBack"):SEASON_ICONS[key]+" "+SEASON_NAMES[uiLang()][key];
-  const PREVIEW_MS=120000;
+  const PREVIEW_MS=Number(globalThis.__maison3dPreviewMs)||120000; // test hook (headless)
   let previewTimer=null;
   const previewing=()=>test.season!=="auto"||test.moon!=="auto";
   function armPreview(){
@@ -458,7 +458,7 @@ export function createPhotoView({ensureScene=null}={}) {
   legend.textContent="Tester chaque état (sans changer les capteurs)";
   testSection.append(legend);
   // Test mode: forces a weather and/or day/night over the real Home Assistant data.
-  // (The season « Tester » buttons below change the saved season: part of the draft.)
+  // (The season buttons below are temporary previews, like the moon phase: not saved.)
   // Kept in memory only (never saved): a reload or « Revenir à la météo réelle » ends it.
   const testWeatherSelect=selectField("Météo forcée",[["auto","Météo réelle (Home Assistant)"],
     ...TEST_WEATHERS.map(([key,label])=>[key,label])],test.weather,v=>setTest({weather:v}));

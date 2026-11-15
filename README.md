@@ -67,6 +67,8 @@ La configuration de l'intégration propose **Activer les effets météo, lumineu
 
 Dans la vue photo, **✦ Effets ON / ○ Effets OFF** et la case **Activer les effets météo, lumineux et saisonniers** permettent une bascule locale immédiate. Quand les effets sont désactivés, la photo de la propriété reste affichée sans pluie, neige, orage, lune dessinée, coloration météo ou assombrissement nocturne. La météo Home Assistant reste reçue, et les effets pourront être réactivés. Le choix s'enregistre avec le bouton 💾 Enregistrer.
 
+**Réglages qui remplacent l'intégration** : quand un réglage du menu ⚙ (effets, gel, photos météo, image principale, entités) diffère de l'option de l'intégration, une note « ⚠ remplace l'option de l'intégration (intégration : …) » s'affiche à côté, avec **Revenir à l'intégration** (le réglage redevient hérité ; à enregistrer avec 💾). Dans une carte qui impose sa propre option, la note indique « remplace l'option de la carte ». Les options de l'intégration (**Paramètres → Appareils et services → Maison 3D → Configurer**) listent aussi les réglages de la vue qui les remplacent actuellement.
+
 Exemple de carte :
 
 ```yaml
@@ -325,7 +327,7 @@ Dans le menu **⚙ Images / météo** (panneau **et** carte), la zone **« Mode 
 
 Avec les photos météo activées, chaque test affiche aussi la photo `<météo>-<jour|nuit>.webp` correspondante.
 
-Dans la vue photo, les saisons **Printemps, Été, Automne, Hiver et Saisons auto** font partie de la **barre de réglages en bas** : une ligne de boutons sous les autres réglages sur grand écran, un sélecteur **Saison** compact sur téléphone, en paysage et dans une carte étroite. Rien n'est posé sur la photo à part la bulle d'état (en haut à droite) et la lune. Le choix s'applique tout de suite et s'enregistre, comme les autres réglages photo, avec le bouton 💾 Enregistrer.
+Dans la vue photo, les aperçus de saison **Printemps, Été, Automne, Hiver et ↩ Revenir** font partie de la **barre de réglages en bas** : une ligne de boutons sous les autres réglages sur grand écran, un sélecteur **Saison** compact sur téléphone, en paysage et dans une carte étroite. Rien n'est posé sur la photo à part la bulle d'état (en haut à droite) et la lune. Ce sont des **aperçus temporaires** (« 👁 Aperçu · Hiver » dans la bulle d'état) : rien n'est enregistré, et l'aperçu se termine avec **↩ Revenir** ou au bout de 2 minutes. Pour garder une saison, choisir **Saison fixe** dans le menu ⚙ puis 💾 Enregistrer.
 
 ## 🌙 Lune, saisons et météo animée
 
@@ -341,7 +343,7 @@ Dans le menu **⚙**, l'option **Animations** a trois valeurs, enregistrées ave
 
 En Auto, un indicateur **« animations réduites par le système »** apparaît dans le menu ⚙ lorsque la réduction est active.
 
-Les saisons en mode Auto suivent la **date locale du fuseau horaire configuré dans Home Assistant** (`time_zone`, par exemple `Europe/Paris`), pas le calendrier astronomique (équinoxes / solstices) ni l’horloge du navigateur. Les boutons (ou le sélecteur) Saison de la barre du bas permettent de les forcer pour un aperçu. Une vraie photo enneigée présente de la neige sur les éléments de la propriété ; un simple filtre animé ne remplace pas une photographie d'hiver.
+Les saisons en mode Auto suivent la **date locale du fuseau horaire configuré dans Home Assistant** (`time_zone`, par exemple `Europe/Paris`), pas le calendrier astronomique (équinoxes / solstices) ni l’horloge du navigateur. Les boutons (ou le sélecteur) Saison de la barre du bas en donnent un aperçu temporaire ; **Saison fixe** (menu ⚙) en impose une, enregistrée avec 💾. Une vraie photo enneigée présente de la neige sur les éléments de la propriété ; un simple filtre animé ne remplace pas une photographie d'hiver.
 
 ## 🎨 Personnaliser les images
 
@@ -379,7 +381,7 @@ Les quatre saisons suivent **la date locale et le fuseau horaire configurés dan
 
 **Mode automatique :** la date est vérifiée pendant le fonctionnement de la vue, ce qui permet de changer de saison au passage de minuit, même sans changement de capteur météo. Les conditions météo (pluie, orage, vent, etc.) restent indépendantes et peuvent s'ajouter à l'effet saisonnier.
 
-**Mode manuel :** les saisons de la barre du bas (cinq boutons, ou le sélecteur Saison sur petit écran) permettent de tester Printemps, Été, Automne, Hiver et Auto. Le bouton **◉ Saisons auto** rétablit ce calcul automatique selon la date et le fuseau de Home Assistant.
+**Saison fixe :** dans le menu ⚙, **Saison fixe** (Auto, Printemps, Été, Automne, Hiver) impose une saison, enregistrée avec 💾 Enregistrer ; `sensor.maison3d_season_mode` passe alors à `fixed`. **Aperçu :** les saisons de la barre du bas (boutons, ou le sélecteur Saison sur petit écran) montrent une saison sans rien enregistrer ; **↩ Revenir** termine l'aperçu et rétablit le calcul automatique (date et fuseau de Home Assistant) ou la saison fixe.
 
 Les saisons météorologiques ne coïncident pas exactement avec les dates astronomiques des équinoxes et solstices.
 
@@ -443,13 +445,15 @@ Détails :
 Le plan 3D (objets, positions), les réglages du menu ⚙ (images, capteurs, saison, intensité…) et la vue choisie sont **enregistrés dans Home Assistant** (`.storage/maison3d.data`), plus seulement dans le navigateur : on retrouve le même projet sur le PC, la tablette et le téléphone. Ils sont aussi inclus dans les sauvegardes de Home Assistant.
 
 - **Premier lancement après la mise à jour** : si ce navigateur avait déjà un projet, il est copié une fois dans Home Assistant.
-- **Enregistrement : uniquement avec le bouton 💾 Enregistrer.** Chaque modification (vue photo, menu ⚙, saisons, boutons « Tester » des saisons, objets de la vue 3D, import JSON…) s'applique tout de suite à l'écran mais **n'est pas enregistrée** : ni dans Home Assistant, ni dans le navigateur.
+- **Enregistrement : uniquement avec le bouton 💾 Enregistrer.** Chaque modification (vue photo, menu ⚙, Saison fixe, objets de la vue 3D, import JSON…) s'applique tout de suite à l'écran mais **n'est pas enregistrée** : ni dans Home Assistant, ni dans le navigateur.
   - Le bouton **💾 Enregistrer** est dans la barre des vues (photo, plan 2D et 3D) et en haut du panneau ⚙. Il est grisé sans modification et devient orange avec « ● Modifications non enregistrées » dès qu'il y en a une.
   - **↶ Annuler** revient au dernier état enregistré.
   - Après le clic, « Enregistré ✓ » s'affiche, ou un message d'erreur (les modifications sont alors gardées pour réessayer).
   - Fermer ou recharger la page avec des modifications en attente affiche un avertissement du navigateur.
+  - **Récupération** : si l'onglet est rechargé ou si l'on quitte le panneau sans enregistrer, une copie des modifications est gardée pour cet onglet (`sessionStorage`, par panneau ou par carte). Au retour, « Restaurer les modifications non enregistrées ? » propose **Restaurer** (elles reviennent en brouillon, à enregistrer avec 💾) ou **Ignorer**.
+  - **Aperçus** : les bulles de saison (barre du bas) et **Tester la phase de lune** sont des aperçus temporaires, jamais enregistrés : ils n'activent pas 💾 et se terminent avec **↩ Revenir**, **◉ Revenir à la météo réelle** ou au bout de 2 minutes. La saison enregistrée est le réglage **Saison fixe** du menu ⚙ (Auto = calendrier). **Tester chaque état** reste un test d'affichage sans enregistrement.
   - Changer de vue (photo, plan 2D, 3D) ou de point de vue 3D (Façade, Aérienne…) n'est pas une modification ; la vue affichée est retenue au prochain enregistrement.
-- **Droits** : tout utilisateur connecté voit le projet ; seuls les **administrateurs** peuvent l'enregistrer. Pour les autres, les modifications restent dans leur navigateur.
+- **Droits** : tout utilisateur connecté voit le projet ; seuls les **administrateurs** peuvent l'enregistrer dans Home Assistant. Pour un autre utilisateur, 💾 Enregistrer garde **sa version dans ce navigateur** (« Enregistré dans ce navigateur ✓ ») : elle reste affichée dans ce navigateur, même après un rechargement ou une mise à jour du projet dans Home Assistant, avec le badge « Version de ce navigateur ». **↺ Revenir à la version Home Assistant** l'efface et affiche de nouveau le projet partagé. Les administrateurs voient toujours la version Home Assistant.
 - **Hors connexion / ancienne version** : le navigateur garde une copie (cache) et sert de secours.
 - **Export / import JSON** : toujours disponibles ; un import s'affiche tout de suite et s'enregistre avec 💾 Enregistrer.
 - **Envoi de photo** (📤) : le fichier est envoyé tout de suite dans `/config/www/maison3d/` (action explicite) ; son utilisation comme photo s'enregistre avec 💾 Enregistrer.
