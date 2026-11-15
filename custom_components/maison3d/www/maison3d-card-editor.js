@@ -1,8 +1,7 @@
-import {allowedPhotoUrl,bundledPhoto,DEFAULT_MAIN_PHOTO,IMAGE_SLOTS,suggestedFileName} from "./photo-source.js";
-import {uploadPhoto} from "./storage-bridge.js";
-import {MEDIA_PREFIX} from "./media-resolver.js";
-import {sensorIssue,issueText,entityMatches,entityOptions,SOURCE_LABELS} from "./sensor-values.js";
-import {createHassTracker} from "./hass-tracker.js";
+// Cache-busting: the ?v=<version> of this module's URL is passed to its own imports.
+const VERSION=new URL(import.meta.url).searchParams.get("v")||"";
+const V=VERSION?"?v="+encodeURIComponent(VERSION):"";
+const [{allowedPhotoUrl,bundledPhoto,DEFAULT_MAIN_PHOTO,IMAGE_SLOTS,suggestedFileName},{uploadPhoto},{MEDIA_PREFIX},{sensorIssue,issueText,entityMatches,entityOptions,SOURCE_LABELS},{createHassTracker}]=await Promise.all(["./photo-source.js", "./storage-bridge.js", "./media-resolver.js", "./sensor-values.js", "./hass-tracker.js"].map(m=>import(m+V)));
 const editorUrl=value=>allowedPhotoUrl(value)||(typeof value==="string"&&value.startsWith(MEDIA_PREFIX)&&value.length<500&&!/[\u0000-\u001f]/.test(value));
 /**
  * Visual configuration editor for the custom Maison 3D Lovelace card.
@@ -138,7 +137,7 @@ class Maison3DCardEditor extends HTMLElement {
     const check=()=>{
       const value=photoInput.value.trim();
       if(value&&!editorUrl(value)){
-        photoInput.setCustomValidity("URL invalide : /local/, /maison3d-assets/, /api/ ou HTTPS.");
+        photoInput.setCustomValidity("URL invalide : /local/, /maison3d-media/, /maison3d-assets/, /api/, HTTPS ou media-source://.");
         photoInput.reportValidity();
         status.textContent="URL invalide";
         preview.hidden=true;return false;

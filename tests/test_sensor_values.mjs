@@ -11,7 +11,8 @@ for(const [text,level] of [["Vert",0],["vert",0],["green",0],["GREEN",0],["Jaune
   assert.equal(V.vigilanceLevel(text),level,text);
 for(const text of ["","Bleu","sunny","redoute","greenhouse",null,undefined])assert.equal(V.vigilanceLevel(text),null,String(text));
 
-// Météo-France rain vigilance: Vert → nothing, Jaune/Orange → rain, Rouge → storm.
+// Météo-France rain vigilance: Vert → nothing, Jaune alone → nothing (dry weather stays dry),
+// Orange → rain, Rouge → storm.
 const rainVig=state=>s("sensor.alerte_pluie_inondation",state);
 const snowVig=state=>s("sensor.alerte_neige_verglas",state);
 const kind=(rainEntity,snowEntity,extra={})=>{
@@ -20,7 +21,9 @@ const kind=(rainEntity,snowEntity,extra={})=>{
 };
 assert.equal(kind(rainVig("Vert"),null),null);
 assert.equal(kind(rainVig("green"),null),null);
-assert.equal(kind(rainVig("Jaune"),null),"rain");
+assert.equal(kind(rainVig("Jaune"),null),null,"yellow + dry weather: no forced rain");
+assert.equal(kind(rainVig("Jaune"),null,{weather:"rainy"}),"rain","yellow + rainy weather: rain");
+assert.equal(V.precipitation(rainVig("Jaune"),null).rain,0);
 assert.equal(kind(rainVig("Orange"),null),"rain");
 assert.equal(kind(rainVig("Rouge"),null),"storm");
 assert.equal(kind(rainVig("RED"),null),"storm");
@@ -93,9 +96,11 @@ assert.equal(V.moonPhase("full_moon"),"full_moon");
 assert.equal(V.moonPhase("Waning Crescent"),"waning_crescent");
 assert.equal(V.moonPhase("Bleu"),null);
 
-// Moon auto-detection: moon / lune / phase_lune / moon_phase in the id, or a known phase as state.
+// Moon auto-detection: only a sensor whose state is a recognised phase (FR / EN).
 assert.equal(isMoon(s("sensor.phase_de_la_lune","Premier croissant")),true);
-assert.equal(isMoon(s("sensor.phase_lune","x")),true);
+assert.equal(isMoon(s("sensor.phase_lune","x")),false,"a moon name alone is not enough");
+assert.equal(isMoon(s("sensor.lune_lever","07:42")),false);
+assert.equal(isMoon(s("sensor.moon_illumination","42")),false);
 assert.equal(isMoon(s("sensor.moon_phase","new_moon")),true);
 assert.equal(isMoon(s("sensor.astro","Pleine lune")),true);
 assert.equal(isMoon(s("sensor.temperature","12")),false);
@@ -152,12 +157,73 @@ assert.equal(ids("cloud_entity")[0],"sensor.couverture_nuageuse");
 assert.ok(!ids("cloud_entity").includes("sensor.bat"));
 assert.equal(ids("rain_entity")[0],"sensor.alerte_pluie_inondation");
 assert.equal(ids("snow_entity")[0],"sensor.alerte_neige_verglas");
-for(const id of ["sensor.pluie_1h","binary_sensor.fuite","sensor.alerte_neige_verglas"])assert.ok(ids("rain_entity").includes(id),id);
+assert.ok(ids("rain_entity").includes("sensor.pluie_1h"));
+for(const id of ["binary_sensor.fuite","sensor.alerte_neige_verglas"])assert.ok(!ids("rain_entity").includes(id),id+" is not rain");
 assert.ok(!ids("rain_entity").includes("binary_sensor.porte"));
 assert.ok(!ids("rain_entity").includes("sensor.t"),"« Bermerain » is a place, not rain");
 assert.ok(V.entityMatches("rain_entity",s("sensor.rain_rate","0.2")));
 assert.ok(V.entityMatches("snow_entity",s("sensor.hauteur_neige","3")));
 assert.ok(!V.entityMatches("snow_entity",s("sensor.bermerain_temperature_2","5",{friendly_name:"Bermerain Température"})));
 assert.equal(O.weather_entity[0].name,"Bermerain");
+
+// Stricter filters (production feedback).
+const M=(key,entity)=>V.entityMatches(key,entity);
+// Cloud: a cloud word + %, never humidity / disk / battery.
+assert.ok(M("cloud_entity",s("sensor.nebulosite","40",{unit_of_measurement:"%",friendly_name:"Couverture nuageuse"})));
+assert.ok(M("cloud_entity",s("sensor.cloud_cover","40",{unit_of_measurement:"%"})));
+assert.ok(!M("cloud_entity",s("sensor.cloud_cover","40",{unit_of_measurement:"okta"})),"needs %");
+assert.ok(!M("cloud_entity",s("sensor.humidite","60",{unit_of_measurement:"%"})),"no cloud word");
+assert.ok(!M("cloud_entity",s("sensor.cloud_humidity","60",{unit_of_measurement:"%"})));
+assert.ok(!M("cloud_entity",s("sensor.nuage_humidite","60",{unit_of_measurement:"%"})));
+assert.ok(!M("cloud_entity",s("sensor.nextcloud_disk_free","60",{unit_of_measurement:"%"})));
+assert.ok(!M("cloud_entity",s("sensor.cloud_disque","60",{unit_of_measurement:"%"})));
+assert.ok(!M("cloud_entity",s("sensor.cloud_battery","60",{unit_of_measurement:"%"})));
+assert.ok(!M("cloud_entity",s("sensor.couverture","60",{unit_of_measurement:"%",device_class:"battery"})));
+// Moon: only entities with a phase state are offered.
+assert.ok(M("moon_entity",s("sensor.moon","waning_gibbous")));
+assert.ok(!M("moon_entity",s("sensor.moon_distance","384400",{unit_of_measurement:"km"})));
+assert.ok(!M("moon_entity",s("sensor.lune","unknown")));
+// Wind: device_class wind_speed first, never a pace (allure).
+assert.ok(M("wind_entity",s("sensor.anemometre","3",{device_class:"wind_speed",unit_of_measurement:"m/s"})));
+assert.ok(!M("wind_entity",s("sensor.running_pace","10",{unit_of_measurement:"km/h"})));
+assert.ok(!M("wind_entity",s("sensor.allure_course","10",{unit_of_measurement:"km/h"})));
+assert.ok(!M("wind_entity",s("sensor.voiture_vitesse","50",{device_class:"speed",unit_of_measurement:"km/h"})),"speed of a car ≠ wind");
+assert.deepEqual(V.entityOptions({
+  "sensor.a_rafales":s("sensor.a_rafales","20",{unit_of_measurement:"km/h"}),
+  "sensor.z_vent":s("sensor.z_vent","12",{device_class:"wind_speed",unit_of_measurement:"km/h"})
+}).wind_entity.map(o=>o.id),["sensor.z_vent","sensor.a_rafales"],"wind_speed device_class first");
+// Rain: rain / pluie / inondation / flood only.
+for(const id of ["sensor.alerte_pluie_inondation","sensor.rain_rate","binary_sensor.rain","sensor.flood_level","sensor.inondation"])
+  assert.ok(M("rain_entity",s(id,"0")),id);
+for(const id of ["binary_sensor.fuite_eau","sensor.alerte_neige_verglas","sensor.alerte_canicule","sensor.bermerain_temperature_2","sensor.drainage"])
+  assert.ok(!M("rain_entity",s(id,"0")),id);
+assert.ok(!M("rain_entity",s("binary_sensor.sdb","off",{device_class:"moisture"})),"leak detector ≠ rain");
+// Snow: neige / verglas / snow / ice only.
+for(const id of ["sensor.alerte_neige_verglas","sensor.snow_depth","binary_sensor.ice_alert","sensor.verglas"])
+  assert.ok(M("snow_entity",s(id,"0")),id);
+for(const id of ["sensor.alerte_pluie_inondation","sensor.office_temperature","sensor.price","sensor.froid"])
+  assert.ok(!M("snow_entity",s(id,"0")),id);
+
+// Wind in km/h whatever the unit (sensor unit first, else the weather's wind_speed_unit).
+const near=(a,b)=>assert.ok(Math.abs(a-b)<1e-6,a+" ≠ "+b);
+near(V.toKmh(10,"km/h"),10);
+near(V.toKmh(10,"m/s"),36);
+near(V.toKmh(10,"mph"),16.09344);
+near(V.toKmh(10,"kn"),18.52);
+near(V.toKmh(10,"kt"),18.52);
+near(V.toKmh(10,"ft/s"),10.9728);
+near(V.toKmh(0,"Beaufort"),0);
+near(V.toKmh(4,"Beaufort"),24);
+near(V.toKmh(12,"Bft"),120);
+near(V.toKmh(3.6,"Beaufort"),24); // force rounded, middle of its range
+near(V.toKmh(25,""),25);
+assert.equal(V.toKmh("x","m/s"),null);
+near(V.windKmh(s("sensor.vent","5",{unit_of_measurement:"m/s"}),{wind_speed:99,wind_speed_unit:"km/h"}),18);
+near(V.windKmh(null,{wind_speed:10,wind_speed_unit:"m/s"}),36);
+near(V.windKmh(s("sensor.vent","unavailable",{unit_of_measurement:"m/s"}),{wind_speed:20,wind_speed_unit:"mph"}),32.18688);
+near(V.windKmh(null,{wind_speed:30}),30);
+assert.equal(V.windKmh(null,{}),null);
+// 7 m/s (25.2 km/h) reaches the 25 km/h « windy » threshold; 7 km/h doesn't.
+assert.ok(V.toKmh(7,"m/s")>=25&&V.toKmh(7,"km/h")<25);
 assert.equal(V.entityName(s("sensor.x","1")),"sensor.x");
-console.log("Sensor values (vigilance Vert/Jaune/Orange/Rouge, on/off, unknown text, warnings, moon detection) OK");
+console.log("Sensor values (vigilance Vert/Jaune/Orange/Rouge, on/off, unknown text, warnings, moon detection, stricter filters, wind units) OK");

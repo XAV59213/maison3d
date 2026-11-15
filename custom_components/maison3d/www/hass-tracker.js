@@ -6,7 +6,9 @@
  * weather, sun, moon, sensors) and compares their state objects by reference,
  * so nothing is recomputed or posted when an unrelated entity changes.
  */
-import {isMoon as moonSensor,moonRank} from "./sensor-values.js";
+// Cache-busting: same ?v=<version> as this module for its import.
+const VERSION=new URL(import.meta.url).searchParams.get("v")||"";
+const {isMoon:moonSensor,moonRank}=await import("./sensor-values.js"+(VERSION?"?v="+encodeURIComponent(VERSION):""));
 export const RESCAN_MS=30000;
 export const isDiagnostic=entity=>entity?.attributes?.maison3d_config===true;
 export const isWeather=entity=>Boolean(entity?.entity_id?.startsWith("weather.")&&entity.state!=="unknown"&&entity.state!=="unavailable");

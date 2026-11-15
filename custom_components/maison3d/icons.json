@@ -6,7 +6,7 @@
         "state": {
           "ok": "mdi:check-circle-outline",
           "not_configured": "mdi:cog-outline",
-          "unavailable": "mdi:alert-circle-outline"
+          "degraded": "mdi:alert-circle-outline"
         }
       }
     }

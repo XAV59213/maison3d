@@ -34,7 +34,7 @@
       }
     },
     "error": {
-      "invalid_image_url": "URL d’image invalide : utilisez /local/, /maison3d-assets/, /api/ ou HTTPS."
+      "invalid_image_url": "URL d’image invalide : utilisez /local/, /maison3d-media/, /maison3d-assets/, /api/, HTTPS ou media-source://."
     }
   },
   "entity": {
@@ -44,7 +44,7 @@
         "state": {
           "ok": "OK",
           "not_configured": "Non configuré",
-          "unavailable": "Indisponible"
+          "degraded": "Dégradé"
         },
         "state_attributes": {
           "sensor_statuses": {

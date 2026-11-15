@@ -22,7 +22,8 @@ class TestMaison3D(unittest.TestCase):
     def test_html_and_weather_module(self):
         page = (COMPONENT / "www" / "index.html").read_text(encoding="utf-8")
         effects = (COMPONENT / "www" / "weather-effects.js").read_text(encoding="utf-8")
-        self.assertIn('<script type="importmap">', page)
+        self.assertIn('id="maison3d-importmap"', page)
+        self.assertIn('el.type="importmap"', page)
         self.assertIn('from "./weather-effects.js"', page)
         self.assertIn("maison3d:conditions", effects)
         self.assertIn('weather==="snow"', effects)
@@ -36,7 +37,7 @@ class TestMaison3D(unittest.TestCase):
         page = (www / "index.html").read_text(encoding="utf-8")
         for name in ("jsdelivr", "unpkg", "cdn."):
             self.assertNotIn(name, page)
-        importmap = json.loads(re.search(r'<script type="importmap">(.*?)</script>', page, re.S).group(1))
+        importmap = json.loads(re.search(r'<script type="application/json" id="maison3d-importmap">(.*?)</script>', page, re.S).group(1))
         imports = importmap["imports"]
         self.assertEqual(imports["three"], "./vendor/three/three.module.min.js")
         self.assertTrue((www / imports["three"]).is_file())
@@ -167,7 +168,7 @@ class TestMaison3D(unittest.TestCase):
         for name in ("strings.json", "translations/en.json", "translations/fr.json"):
             data = json.loads((COMPONENT / name).read_text(encoding="utf-8"))
             sensor = data["entity"]["sensor"]["sensors_status"]
-            self.assertEqual(set(sensor["state"]), {"ok", "not_configured", "unavailable"}, name)
+            self.assertEqual(set(sensor["state"]), {"ok", "not_configured", "degraded"}, name)
             self.assertIn("single_instance_allowed", data["config"]["abort"], name)
         fr = json.loads((COMPONENT / "translations" / "fr.json").read_text(encoding="utf-8"))
         self.assertEqual(fr["entity"]["sensor"]["sensors_status"]["name"], "État des capteurs")
@@ -293,7 +294,7 @@ class TestMaison3D(unittest.TestCase):
         manifest = json.loads((COMPONENT / "manifest.json").read_text(encoding="utf-8"))
         self.assertIn("frontend", manifest["dependencies"])
         self.assertIn('CARD_URL = f"{ASSETS_URL}/maison3d-card.js"', const)
-        self.assertIn('card_url = f"{CARD_URL}?v={integration.version}"', init)
+        self.assertIn('card_url = f"{CARD_URL}?v={version}"', init)
         self.assertIn("frontend.add_extra_js_url(hass, card_url)", init)
         self.assertIn('getattr(frontend, "remove_extra_js_url", None)', init)
         card = (COMPONENT / "www" / "maison3d-card.js").read_text(encoding="utf-8")
@@ -566,7 +567,7 @@ class TestMaison3D(unittest.TestCase):
             self.assertIn(word, values)
         for name in ("maison3d-card.js", "maison3d-panel.js", "photo-view.js", "maison3d-card-editor.js"):
             src = (www / name).read_text(encoding="utf-8")
-            self.assertIn('from "./sensor-values.js"', src, name)
+            self.assertTrue('from "./sensor-values.js"' in src or '"./sensor-values.js"' in src, name)
         for name in ("maison3d-card.js", "maison3d-panel.js"):
             src = (www / name).read_text(encoding="utf-8")
             self.assertIn("precipitation(", src, name)
@@ -607,6 +608,31 @@ class TestMaison3D(unittest.TestCase):
         # Lovelace editor: HA picker filtered per field, native fallback.
         self.assertIn("control.entityFilter=entity=>entityMatches(key,entity);", editor)
         self.assertIn('customElements.get("ha-entity-picker")', editor)
+
+    def test_cache_busting_version(self):
+        """?v=<manifest version> on the panel, the card, their imports and the iframe."""
+        www = COMPONENT / "www"
+        init = (COMPONENT / "__init__.py").read_text(encoding="utf-8")
+        self.assertIn('module_url=f"{ASSETS_URL}/maison3d-panel.js?v={version}"', init)
+        self.assertIn("async_get_integration(hass, DOMAIN)", init)
+        self.assertIn("async_add_executor_job(_frontend_present)", init)
+        self.assertNotIn(").is_file():", init.split("def _frontend_present")[0])
+        for name in ("maison3d-card.js", "maison3d-panel.js", "maison3d-card-editor.js", "hass-tracker.js"):
+            src = (www / name).read_text(encoding="utf-8")
+            self.assertIn('new URL(import.meta.url).searchParams.get("v")', src, name)
+            self.assertIsNone(re.search(r'^import .* from "\./', src, re.M), name)
+        card = (www / "maison3d-card.js").read_text(encoding="utf-8")
+        panel = (www / "maison3d-panel.js").read_text(encoding="utf-8")
+        self.assertIn('"/maison3d-assets/index.html?mode=card"+(VERSION?"&v="', card)
+        self.assertIn('frame.src = "/maison3d-assets/index.html" + V;', panel)
+        self.assertIn('frame.title = "Maison 3D";', panel)
+        self.assertNotIn("V2.0", panel)
+        page = (www / "index.html").read_text(encoding="utf-8")
+        self.assertNotIn("V2.0", page)
+        modules = json.loads(re.search(r"const MODULES=(\[[^\]]*\])", page).group(1))
+        self.assertEqual(set(modules), {path.name for path in www.glob("*.js")})
+        self.assertLess(page.index('id="maison3d-importmap"'), page.index('<script type="module">'))
+
 
 if __name__ == "__main__":
     unittest.main()

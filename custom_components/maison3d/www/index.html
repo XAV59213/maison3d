@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Maison 3D V2.0</title><style>
+<title>Maison 3D</title><style>
 *{box-sizing:border-box}body{margin:0;font-family:system-ui,Arial;background:#111c2d;color:#fff;overflow:hidden}#view{position:fixed;inset:0}
 .toolbar,.side,.bottom,.editor{position:fixed;background:#101923e8;border:1px solid #ffffff22;backdrop-filter:blur(14px);border-radius:14px;box-shadow:0 5px 20px #0006;z-index:2}
 .toolbar{top:10px;left:50%;transform:translateX(-50%);display:flex;gap:3px;padding:6px}
@@ -25,7 +25,7 @@ html.compact-scene .editor{width:min(250px,calc(100% - 20px));padding:9px;max-he
 html.compact-scene #maison3d-photo-controls,html.compact-scene #maison3d-presentation{padding:4px!important;gap:3px!important}html.compact-scene #maison3d-photo-controls button,html.compact-scene #maison3d-presentation button{padding:6px 7px!important;font-size:11px!important}
 </style></head><body>
 <script>if(new URLSearchParams(location.search).get("mode")==="card")document.documentElement.classList.add("card-mode");</script>
-<div id="view"></div><div class="brand">⌂ Maison 3D V2.0<small>Mode édition · <span class="project-name">Maison 3D</span></small></div>
+<div id="view"></div><div class="brand">⌂ Maison 3D<small>Mode édition · <span class="project-name">Maison 3D</span></small></div>
 <nav class="toolbar"><button class="on" id="tab3d">▣ 3D</button><button id="topview">▤ Plan 2D</button><button id="terrain">△ Terrain</button><button id="addsteps">▤ Escalier</button><button id="addtree">♧ Végétation</button><button id="addchair">▣ Mobilier</button><button id="toggle">⚙ Édition</button></nav>
 <div id="hint">☀ Scène éditable · Déplacement, rotation, taille · Sauvegarde locale</div>
 <div class="side"><button id="orbit" title="Vue générale">⌂</button><button id="duplicate" title="Dupliquer">▣</button><button id="remove" title="Supprimer">⌫</button><button id="export" title="Exporter JSON">⇩</button><button id="import" title="Importer JSON">⇧</button></div>
@@ -37,7 +37,14 @@ html.compact-scene #maison3d-photo-controls,html.compact-scene #maison3d-present
 <label>Hauteur <input id="h" type="number" min=".2" step=".25"></label><label>Rotation ° <input id="r" type="number" step="5"></label>
 </div><div class="actions"><button id="add">+ Ajouter</button><button id="copy">Dupliquer</button><button id="del">Supprimer</button><button id="reset">Réinitialiser</button></div><label>Nouvel objet<select id="kind"><option value="tree">Arbre</option><option value="building">Bâtiment</option><option value="shed">Abri métal</option><option value="wall">Muret</option><option value="steps">Escalier</option><option value="road">Chemin / route</option><option value="gate">Portail</option><option value="pool">Piscine</option><option value="swing">Balançoire</option><option value="furniture">Mobilier</option></select></label></section>
 <input type="file" id="file" accept="application/json" hidden>
-<script type="importmap">{"imports":{"three":"./vendor/three/three.module.min.js","three/addons/":"./vendor/three/addons/"}}</script>
+<script type="application/json" id="maison3d-importmap">{"imports":{"three":"./vendor/three/three.module.min.js","three/addons/":"./vendor/three/addons/"}}</script>
+<script>/* Cache-busting: index.html?v=<version> (set by the card / panel) adds ?v= to every module of this page, then the import map is inserted. */
+(()=>{const MODULES=["architecture.js","frost-effects.js","ha-storage.js","hass-tracker.js","maison3d-card-editor.js","maison3d-card.js","maison3d-panel.js","media-resolver.js","moon-effects.js","photo-cinematics.js","photo-source.js","photo-view.js","presentation.js","scene-layout.js","season-effects.js","sensor-values.js","storage-bridge.js","weather-effects.js","world-ambience.js"];
+const map=JSON.parse(document.getElementById("maison3d-importmap").textContent);const v=new URLSearchParams(location.search).get("v");
+if(v&&/^[\w.+-]{1,40}$/.test(v)){const q="?v="+encodeURIComponent(v),abs=u=>new URL(u,location.href).href;
+map.imports.three+=q;map.imports["three/addons/controls/OrbitControls.js"]="./vendor/three/addons/controls/OrbitControls.js"+q;
+for(const m of MODULES)map.imports[abs("./"+m)]=abs("./"+m)+q}
+const el=document.createElement("script");el.type="importmap";el.textContent=JSON.stringify(map);document.currentScript.after(el)})();</script>
 <script type="module">
 import * as THREE from "three";
 import {OrbitControls} from "three/addons/controls/OrbitControls.js";

@@ -6,11 +6,11 @@
  */
 import {createPhotoCinematics} from "./photo-cinematics.js";
 import {createMoonOverlay} from "./moon-effects.js";
-import {automaticSeason,SEASON_LABELS,createSeasonEffects} from "./season-effects.js";
+import {automaticSeason,haHour,SEASON_LABELS,createSeasonEffects} from "./season-effects.js";
 import {DEFAULT_MAIN_PHOTO,allowedPhotoUrl,bundledPhoto,resolveMainPhoto,IMAGE_SLOTS,IMAGE_KEYS,pickWeatherPhoto,suggestedFileName} from "./photo-source.js";
 import {createFrostEffects,frostLevel,toCelsius} from "./frost-effects.js";
 import {onHaData,saveToHa,uploadToHa} from "./ha-storage.js";
-import {moonPhase,weatherKind,issueText,menuChoice,SOURCE_LABELS,ENTITY_KEYS as SENSOR_KEYS} from "./sensor-values.js";
+import {moonPhase,weatherKind,issueText,toKmh,menuChoice,SOURCE_LABELS,ENTITY_KEYS as SENSOR_KEYS} from "./sensor-values.js";
 export function createPhotoView() {
   const KEYS=IMAGE_KEYS;
   const LABELS={...Object.fromEntries(IMAGE_SLOTS),fog:"Brouillard",clear:"Clair",frost:"Gel"};
@@ -190,7 +190,7 @@ export function createPhotoView() {
   const mainPhotoInput=makeField("Image principale personnalisée (facultatif)",
     state.base_image_url,(value,input)=>{
       if(value&&!allowedUrl(value)){
-        input.setCustomValidity("Utilise /local/…, /maison3d-assets/…, /api/… ou HTTPS.");
+        input.setCustomValidity("Utilise /local/…, /maison3d-media/…, /maison3d-assets/…, /api/… ou HTTPS.");
         input.reportValidity();return;
       }
       input.setCustomValidity("");
@@ -433,7 +433,7 @@ export function createPhotoView() {
   testSection.append(resetTest);settings.append(testSection);
   for(const key of KEYS){
     bind(makeField("Image "+LABELS[key],state.images[key],(v,input)=>{
-      if(v&&!allowedUrl(v)){input.setCustomValidity("Utilise /local/…, /maison3d-assets/…, /api/… ou HTTPS.");input.reportValidity();return}
+      if(v&&!allowedUrl(v)){input.setCustomValidity("Utilise /local/…, /maison3d-media/…, /maison3d-assets/…, /api/… ou HTTPS.");input.reportValidity();return}
       input.setCustomValidity("");state.images[key]=v;persist();update();
     },"/local/maison3d/"+suggestedFileName(key)),()=>state.images[key]);
   }
@@ -605,7 +605,8 @@ export function createPhotoView() {
     if(test.time!=="auto")return test.time==="night";
     if(live.sun==="below_horizon")return true;
     if(live.sun==="above_horizon")return false;
-    const hour=new Date().getHours();return hour<7||hour>=20;
+    // No sun entity: clock of the Home Assistant time zone, not of this device.
+    const hour=haHour(haTimeZone);return hour<7||hour>=20;
   };
   // Night for the current view: test mode first, then the saved ambience, then Home Assistant.
   const isNight=()=>test.time!=="auto"?test.time==="night":
@@ -786,7 +787,8 @@ export function createPhotoView() {
       sun:typeof event.data.sun==="string"?event.data.sun:null,
       temperature:Number.isFinite(event.data.temperature)?event.data.temperature:null,
       temperatureUnit:typeof event.data.temperatureUnit==="string"?event.data.temperatureUnit.slice(0,10):"",
-      windSpeed:Number.isFinite(event.data.windSpeed)?event.data.windSpeed:0,
+      // km/h (the card / panel convert; an older sender's unit is converted here).
+      windSpeed:Number.isFinite(event.data.windSpeed)?toKmh(event.data.windSpeed,typeof event.data.windSpeedUnit==="string"?event.data.windSpeedUnit:"")??0:0,
       moon:typeof event.data.moon==="string"?event.data.moon:null,
       rain:Number.isFinite(event.data.rain)?event.data.rain:null,
       snow:Number.isFinite(event.data.snow)?event.data.snow:null,
@@ -845,7 +847,7 @@ export function createPhotoView() {
     const scaledCount=Math.floor(count*Math.min(state.effect_intensity,2));
     while(particles.length<scaledCount)particles.push(spawn(w,h));
     particles.length=scaledCount;
-    const windy=type==="wind"||live.windSpeed>18;
+    const windy=type==="wind"||live.windSpeed>18; // km/h
     for(let i=0;i<scaledCount;i++){
       const p=particles[i];
       if(type==="snow"){
@@ -870,7 +872,7 @@ export function createPhotoView() {
       }
       if(p.y>h+12||p.x>w+15){p.x=Math.random()*w;p.y=-15}
     }
-    if(type==="wind" || (state.mode==="auto" && test.weather==="auto" && live.windSpeed>=25)){
+    if(type==="wind" || (state.mode==="auto" && test.weather==="auto" && live.windSpeed>=25)){ // km/h
       // Transparent gust streaks make strong wind visually distinct.
       ctx.save();
       const gustAlpha=Math.min(.34,.08+.06*state.effect_intensity);

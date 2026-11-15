@@ -1,6 +1,8 @@
 """Integration hygiene on a real Home Assistant core: one translated ENUM
 diagnostic sensor, old entities removed, single config entry, unload order."""
-from pytest_homeassistant_custom_component.common import MockConfigEntry
+from datetime import timedelta
+
+from pytest_homeassistant_custom_component.common import MockConfigEntry, async_fire_time_changed
 
 from homeassistant import config_entries
 from homeassistant.components import frontend
@@ -8,6 +10,7 @@ from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
 from homeassistant.helpers import entity_registry as er
+from homeassistant.util import dt as dt_util
 
 from custom_components.maison3d.const import DOMAIN
 
@@ -51,15 +54,16 @@ async def test_single_translated_enum_sensor_and_cleanup(hass: HomeAssistant, tm
     state = hass.states.get(main.entity_id)
     assert state.state == "ok"
     assert state.attributes["device_class"] == "enum"
-    assert state.attributes["options"] == ["ok", "not_configured", "unavailable"]
+    assert state.attributes["options"] == ["ok", "not_configured", "degraded"]
     assert state.attributes["friendly_name"] == "Maison 3D Sensors status"
     assert state.attributes["maison3d_config"] is True
     assert state.attributes["sensor_statuses"]["weather_entity"]["state"] == "ok"
     assert state.attributes["sensor_statuses"]["moon_entity"]["state"] == "not_configured"
 
+    # An existing source that becomes unavailable is degraded at once (no grace).
     hass.states.async_set("weather.home", "unavailable")
     await hass.async_block_till_done()
-    assert hass.states.get(main.entity_id).state == "unavailable"
+    assert hass.states.get(main.entity_id).state == "degraded"
 
     assert entry.runtime_data.panel_registered is True
     assert entry.runtime_data.card_url.startswith("/maison3d-assets/maison3d-card.js?v=")
@@ -78,8 +82,15 @@ async def test_fresh_install_and_single_instance(hass: HomeAssistant, tmp_path) 
     assert len(entries) == 1
     state = hass.states.get(entries[0].entity_id)
     assert entries[0].entity_id == "sensor.maison_3d_sensors_status"
-    # Only sun.sun is configured by default, and it does not exist in this test.
-    assert state.state == "unavailable"
+    # Only sun.sun is configured by default, and it does not exist in this test:
+    # tolerated during the start-up grace period, degraded afterwards.
+    assert state.state == "ok"
+    assert state.attributes["startup_grace"] is True
+    async_fire_time_changed(hass, dt_util.utcnow() + timedelta(seconds=31))
+    await hass.async_block_till_done()
+    state = hass.states.get(entries[0].entity_id)
+    assert state.state == "degraded"
+    assert state.attributes["startup_grace"] is False
 
     result = await hass.config_entries.flow.async_init(DOMAIN, context={"source": config_entries.SOURCE_USER})
     assert result["type"] == FlowResultType.ABORT
@@ -104,3 +115,41 @@ async def test_unload_then_reload(hass: HomeAssistant, tmp_path) -> None:
     await hass.async_block_till_done()
     assert entry.state is ConfigEntryState.LOADED
     assert "maison3d" in hass.data[frontend.DATA_PANELS]
+
+
+async def test_startup_grace_for_late_entities(hass: HomeAssistant, tmp_path) -> None:
+    """Netatmo-like sources created a few seconds after Maison 3D: no degraded flash."""
+    entry = await _entry(hass, tmp_path, options={"temperature_entity": "sensor.netatmo_temperature",
+                                                 "wind_entity": "sensor.netatmo_wind", "sun_entity": ""})
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    _, entries = _sensor(hass)
+    entity_id = entries[0].entity_id
+    state = hass.states.get(entity_id)
+    assert state.state == "ok"
+    assert state.attributes["sensor_statuses"]["temperature_entity"]["state"] == "not_found"
+    # The sources show up 5 s later: still ok, then they are really checked.
+    async_fire_time_changed(hass, dt_util.utcnow() + timedelta(seconds=5))
+    hass.states.async_set("sensor.netatmo_temperature", "4.5")
+    hass.states.async_set("sensor.netatmo_wind", "12")
+    await hass.async_block_till_done()
+    assert hass.states.get(entity_id).state == "ok"
+    async_fire_time_changed(hass, dt_util.utcnow() + timedelta(seconds=40))
+    await hass.async_block_till_done()
+    state = hass.states.get(entity_id)
+    assert state.state == "ok"
+    assert state.attributes["sensor_statuses"]["wind_entity"]["state"] == "ok"
+    # After the grace period a missing source is reported.
+    hass.states.async_remove("sensor.netatmo_wind")
+    await hass.async_block_till_done()
+    assert hass.states.get(entity_id).state == "degraded"
+
+
+async def test_versioned_panel_url(hass: HomeAssistant, tmp_path) -> None:
+    entry = await _entry(hass, tmp_path)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    panel = hass.data[frontend.DATA_PANELS]["maison3d"]
+    module_url = panel.config["_panel_custom"]["module_url"]
+    assert module_url.startswith("/maison3d-assets/maison3d-panel.js?v=")
+    assert module_url.split("?v=")[1] == entry.runtime_data.card_url.split("?v=")[1]
