@@ -210,8 +210,15 @@ export function createPhotoView({ensureScene=null}={}) {
     seasonalNav.setAttribute("aria-label",t("seasonBubbles"));
     for(const [key,btn] of seasonButtons){btn.textContent=seasonLabel(key);btn.title=key==="auto"?t("previewBackTitle"):t("previewTitle",{what:seasonLabel(key)})}
     for(const option of seasonPick.options)option.textContent=seasonLabel(option.value);
+    queueMicrotask(refreshSeasonPick); // after `test` exists (first call is synchronous)
     seasonPick.setAttribute("aria-label",t("seasonBubbles"));
   });
+  // Compact selector: « 👁 Aperçu saison » at rest, « ↩ Revenir » during a preview.
+  function refreshSeasonPick(){
+    const back=seasonPick.querySelector('option[value="auto"]');
+    if(back)back.textContent=test.season==="auto"?t("seasonPickIdle"):t("previewBack");
+    if(seasonPick.value!==test.season)seasonPick.value=test.season;
+  }
   seasonPickLabel.append(seasonPick);
   seasonalNav.append(seasonPickLabel);
   const seasonBreak=document.createElement("span");
@@ -939,6 +946,7 @@ export function createPhotoView({ensureScene=null}={}) {
     setBar(nav.classList.contains("collapsed"));
   }
   function update(){
+    refreshSeasonPick();
     const selected=weatherKey();
     active=selected;
     const night=isNight();

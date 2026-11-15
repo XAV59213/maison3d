@@ -12,7 +12,7 @@
  * asks « Restaurer les modifications non enregistrées ? » (Restaurer / Ignorer).
  */
 import {saveToHa,onHaSaved,haStorageStatus,onHaData,keepBrowserCopy,onBrowserCopy,useHaVersion} from "./ha-storage.js";
-import {t,onUiLang} from "./ui-text.js";
+import {t,onUiLang,uiLang} from "./ui-text.js";
 const sections=new Map();
 const listeners=new Set();
 let status={kind:"idle",text:""},saving=false,clearTimer=null,waiter=null;
@@ -98,8 +98,8 @@ function offerRecovery(){
   const yes=document.createElement("button");yes.type="button";yes.className="recovery-restore";
   const no=document.createElement("button");no.type="button";no.className="recovery-ignore";
   yes.addEventListener("click",restoreRecovery);no.addEventListener("click",ignoreRecovery);
-  const when=(()=>{try{return new Date(pending.at).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})}catch{return ""}})();
-  onUiLang(()=>{text.textContent=t("restoreQuestion");detail.textContent=t("restoreDetail",{when});yes.textContent=t("restore");no.textContent=t("ignore")});
+  const when=()=>{try{return new Date(pending.at).toLocaleTimeString(uiLang()==="fr"?"fr-FR":"en-GB",{hour:"2-digit",minute:"2-digit"})}catch{return ""}};
+  onUiLang(()=>{text.textContent=t("restoreQuestion");detail.textContent=t("restoreDetail",{when:when()});yes.textContent=t("restore");no.textContent=t("ignore")});
   banner.append(text,detail,yes,no);
   document.body.append(banner);
 }
