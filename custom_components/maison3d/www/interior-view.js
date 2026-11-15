@@ -116,6 +116,8 @@ export function createInteriorExplorer({THREE,scene,camera,controls,getItems,get
     }else{
       const building=getItems().find(item=>item.id===key&&item.type==="building");
       if(!building)return;
+      // Enter the real geometry view even when the photographic view was active.
+      if(photoView.state.enabled){photoView.state.enabled=false;photoView.update()}
       if(active==="outside"){
         cameraBefore.position.copy(camera.position);
         cameraBefore.target.copy(controls.target);
@@ -144,7 +146,14 @@ export function createInteriorExplorer({THREE,scene,camera,controls,getItems,get
   }
   function refresh(){
     if(active==="outside")return;
-    const current=active;active="outside";restore();enter(current);
+    const current=active;
+    const beforePosition=cameraBefore.position.clone();
+    const beforeTarget=cameraBefore.target.clone();
+    const beforeFov=cameraBefore.fov;
+    active="outside";restore();enter(current);
+    cameraBefore.position.copy(beforePosition);
+    cameraBefore.target.copy(beforeTarget);
+    cameraBefore.fov=beforeFov;
   }
   for(const [id,b] of buttons)b.setAttribute("aria-pressed",String(id==="outside"));
   return {enter,refresh,get active(){return active}};
