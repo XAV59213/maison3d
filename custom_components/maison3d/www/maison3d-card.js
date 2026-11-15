@@ -1,7 +1,7 @@
 // Cache-busting: the ?v=<version> of this module's URL is passed to its own imports.
 const VERSION=new URL(import.meta.url).searchParams.get("v")||"";
 const V=VERSION?"?v="+encodeURIComponent(VERSION):"";
-const [,{IMAGE_KEYS},{createStorageBridge},{createMediaResolver},{createHassTracker,isWeather},{readSensor,precipitation,sensorIssues,windKmh,menuChoice,effectiveEntities,entityOptions,ENTITY_KEYS}]=await Promise.all(["./maison3d-card-editor.js", "./photo-source.js", "./storage-bridge.js", "./media-resolver.js", "./hass-tracker.js", "./sensor-values.js"].map(m=>import(m+V)));
+const [,{IMAGE_KEYS},{createStorageBridge},{createMediaResolver},{createHassTracker,isWeather},{readSensor,precipitation,sensorIssues,windKmh,menuChoice,effectiveEntities,entityOptions,ENTITY_KEYS},{createLightBridge,lightOptions}]=await Promise.all(["./maison3d-card-editor.js", "./photo-source.js", "./storage-bridge.js", "./media-resolver.js", "./hass-tracker.js", "./sensor-values.js", "./lights.js"].map(m=>import(m+V)));
 /**
  * Maison 3D interactive Lovelace card.
  * Load as a JavaScript module resource: /maison3d-assets/maison3d-card.js
@@ -10,6 +10,8 @@ class Maison3DCard extends HTMLElement {
   constructor() {
     super();
     this._tracker=createHassTracker();
+    // Outdoor lights of the view: their states, and the optional click to toggle.
+    this._lights=createLightBridge({getHass:()=>this._hass,getFrame:()=>this._frame,onChange:()=>this._updateStates(true)});
   }
   setConfig(config) {
     if (!config || (config.type && config.type !== "custom:maison3d-card")) {
@@ -81,9 +83,10 @@ class Maison3DCard extends HTMLElement {
     // Unsaved changes in the view (draft): warn before leaving the page.
     if (event.data?.type==="maison3d:dirty") {this._dirty=event.data.dirty===true;return}
     if (event.data?.type==="maison3d:entity-options-request") {
-      if (this._hass) this._frame.contentWindow.postMessage({type:"maison3d:entity-options",options:entityOptions(this._hass.states||{})},window.location.origin);
+      if (this._hass) this._frame.contentWindow.postMessage({type:"maison3d:entity-options",options:{...entityOptions(this._hass.states||{}),lights:lightOptions(this._hass.states||{})}},window.location.origin);
       return;
     }
+    if (this._lights.onMessage(event.data)) return;
     if (event.data?.type!=="maison3d:entity-selection") return;
     this._menu=Object.fromEntries(ENTITY_KEYS.map(key=>[key,menuChoice(key,event.data[key])]));
     this._updateStates(true);
@@ -163,6 +166,7 @@ class Maison3DCard extends HTMLElement {
     const keys=["temperature_entity","wind_entity","rain_entity","snow_entity","cloud_entity","weather_entity","sun_entity","moon_entity"];
     const dirty=this._tracker.changed([
       ["config",this._hass.config],["diagnostic",diagnostic],["weather",weather],["sun",sun],["moon",moon],
+      ["user",this._hass.user],...this._lights.entries(states),
       ...keys.map(key=>[key,states[choice(key)]])
     ]);
     if (!force && !dirty) return;
@@ -190,6 +194,9 @@ class Maison3DCard extends HTMLElement {
       frost_enabled:this._config.frost_enabled??(diagnostic?.attributes?.frost_enabled!==false),
       weather_photos:this._config.weather_photos??(diagnostic?.attributes?.weather_photos_enabled===true),
       time_zone:this._hass.config?.time_zone??"UTC",
+      language:this._hass.locale?.language||this._hass.language||"",
+      user_is_admin:this._hass.user?.is_admin===true,
+      light_states:this._lights.states(states),
       weather:weather?.state??null,
       temperature,
       temperatureUnit:states[choice("temperature_entity")]?.attributes?.unit_of_measurement??attrs.temperature_unit??"",

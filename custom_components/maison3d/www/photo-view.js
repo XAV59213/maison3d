@@ -12,6 +12,7 @@ import {createFrostEffects,frostLevel,toCelsius} from "./frost-effects.js";
 import {onHaData,saveToHa,uploadToHa} from "./ha-storage.js";
 import {registerSection,markSaved,changed,createSaveControls,SAVE_STYLE} from "./draft.js";
 import {MOTION_MODES,motionLevel,motionCount,motionMode,setMotionMode,systemReduced,onMotionChange,motionLocale} from "./motion-level.js";
+import {cleanLights,cleanToggle,toggleAllowed,coverPercent,createLightOverlay,isLightEntity,langOf,say,DEFAULT_COLOR,MAX_LIGHTS,TOGGLE_MODES,LIGHT_STYLE} from "./lights.js";
 import {moonPhase,weatherKind,issueText,toKmh,menuChoice,SOURCE_LABELS,ENTITY_KEYS as SENSOR_KEYS} from "./sensor-values.js";
 export function createPhotoView({ensureScene=null}={}) {
   // ensureScene(): loads the 3D scene (three.js) on demand; the photo never needs it.
@@ -28,7 +29,9 @@ export function createPhotoView({ensureScene=null}={}) {
     images:defaults(),base_image_url:"",moon_entity:"",
     weather_entity:"",sun_entity:"",
     temperature_entity:"",wind_entity:"",rain_entity:"",snow_entity:"",cloud_entity:"",
-    enabled:true,model_view:"3d",mode:"auto",effect:true,effect_override:null,frost:true,frost_override:null,frost_preview:false,season:"auto",effect_intensity:1,motion:"auto",moon_preview:"auto",use_weather_photos:false,weather_photos_override:null
+    enabled:true,model_view:"3d",mode:"auto",effect:true,effect_override:null,frost:true,frost_override:null,frost_preview:false,season:"auto",effect_intensity:1,motion:"auto",moon_preview:"auto",use_weather_photos:false,weather_photos_override:null,
+    // Outdoor lights (lights.js): [{entity_id,name,x,y,color,intensity}] + click to toggle (off by default).
+    lights:[],light_toggle:"off"
   };
   // Apply saved settings (Home Assistant or this browser), keeping only valid values.
   const ENTITY_KEYS=["moon_entity","weather_entity","sun_entity","temperature_entity","wind_entity","rain_entity","snow_entity","cloud_entity"];
@@ -55,12 +58,13 @@ export function createPhotoView({ensureScene=null}={}) {
       setMotionMode(state.motion);
       if(typeof saved.mode==="string"&&["auto",...AMBIANCES].includes(saved.mode))state.mode=saved.mode;
       if(typeof saved.season==="string"&&["auto","spring","summer","autumn","winter"].includes(saved.season))state.season=saved.season;
+      state.lights=cleanLights(saved.lights);state.light_toggle=cleanToggle(saved.light_toggle);
       if(typeof saved.moon_preview==="string"&&["auto","new_moon","waxing_crescent","first_quarter","waxing_gibbous","full_moon","waning_gibbous","last_quarter","waning_crescent"].includes(saved.moon_preview))state.moon_preview=saved.moon_preview;
   }
   try{applySaved(JSON.parse(localStorage.getItem(STORAGE)))}catch{}
   setMotionMode(state.motion);
   // Saved in Home Assistant (shared) when possible; this browser keeps a cache / offline copy.
-  const saveable=()=>{const copy={...state,images:{...state.images}};delete copy.frost_preview;delete copy.effect;delete copy.frost;return copy};
+  const saveable=()=>{const copy={...state,images:{...state.images},lights:state.lights.map(l=>({...l}))};delete copy.frost_preview;delete copy.effect;delete copy.frost;return copy};
   // Draft: a change is shown immediately but only saved by « 💾 Enregistrer » (draft.js).
   const persist=()=>changed();
   const refreshers=[];
@@ -94,6 +98,11 @@ export function createPhotoView({ensureScene=null}={}) {
   error.className="photo-error";error.hidden=true;
   error.textContent="Image inaccessible : corrigez son URL dans les réglages Photo.";
   section.append(image,tint,cinematicCanvas,seasonalCanvas,canvas,frostCanvas,status,moon,error);
+  // Outdoor lights: halos (night, entity on) between the photo and the weather animations.
+  const lightOverlay=createLightOverlay({container:section,image,after:tint,onToggle:id=>requestToggle(id)});
+  const placingBanner=document.createElement("div");
+  placingBanner.className="light-placing";placingBanner.hidden=true;placingBanner.setAttribute("role","status");
+  section.append(placingBanner);
   const frost=createFrostEffects(frostCanvas);
   const seasonalEffects=createSeasonEffects(seasonalCanvas);
   const skyMoon=createMoonOverlay({container:section});
@@ -468,6 +477,123 @@ export function createPhotoView({ensureScene=null}={}) {
     moonPreview.value="auto";persist();update();
   });
   testSection.append(resetTest);settings.append(testSection);
+  // 💡 Outdoor lights: add / remove light.* or switch.*, name, halo colour, intensity,
+  // position by a click on the photo, optional click to toggle. Everything is a draft change.
+  let lang=langOf(navigator.language),lightCandidates=null,lightLive={},userIsAdmin=false,placing=null,lightNotice="";
+  const lightsBox=document.createElement("fieldset");lightsBox.className="maison3d-lights-settings";
+  const lightsLegend=document.createElement("legend");
+  const lightsNote=document.createElement("p");
+  const lightAdd=document.createElement("div");lightAdd.className="light-add";
+  const lightPick=document.createElement("select");lightPick.className="light-pick";
+  const lightAddBtn=document.createElement("button");lightAddBtn.type="button";lightAddBtn.className="light-add-btn";
+  lightAdd.append(lightPick,lightAddBtn);
+  const lightList=document.createElement("div");lightList.className="light-list";
+  const toggleLabel=document.createElement("label");
+  const toggleText=document.createTextNode("");
+  const toggleSelect=document.createElement("select");toggleSelect.className="light-toggle";
+  toggleLabel.append(toggleText,toggleSelect);
+  const lightStatus=document.createElement("small");lightStatus.className="light-status";lightStatus.setAttribute("role","status");
+  lightsBox.append(lightsLegend,lightsNote,lightAdd,lightList,toggleLabel,lightStatus);
+  settings.append(lightsBox);
+  const lightChanged=()=>{persist();watchLights();renderLightSettings();renderLights()};
+  lightAddBtn.addEventListener("click",()=>{
+    const id=lightPick.value;
+    if(!isLightEntity(id)||state.lights.some(l=>l.entity_id===id))return;
+    if(state.lights.length>=MAX_LIGHTS){lightNotice=say(lang,"full");renderLightSettings();return}
+    const name=lightCandidates?.find(o=>o.id===id)?.name;
+    state.lights=cleanLights([...state.lights,{entity_id:id,name:name&&name!==id?name:"",x:50,y:50,color:DEFAULT_COLOR,intensity:1}]);
+    lightChanged();
+    startPlacing(id);
+  });
+  toggleSelect.addEventListener("change",()=>{state.light_toggle=cleanToggle(toggleSelect.value);lightChanged()});
+  function renderLightSettings(){
+    lightsLegend.textContent=say(lang,"legend");lightsNote.textContent=say(lang,"note");
+    lightAddBtn.textContent=say(lang,"add");toggleText.textContent=say(lang,"toggle");
+    const used=new Set(state.lights.map(l=>l.entity_id));
+    const free=(lightCandidates||[]).filter(o=>!used.has(o.id));
+    const first=document.createElement("option");first.value="";first.textContent=say(lang,"choose");
+    lightPick.replaceChildren(first,...free.map(o=>{const opt=document.createElement("option");opt.value=o.id;opt.textContent=o.name===o.id?o.id:o.name+" — "+o.id;return opt}));
+    lightAddBtn.disabled=!free.length||state.lights.length>=MAX_LIGHTS;
+    toggleSelect.replaceChildren(...TOGGLE_MODES.map(mode=>{const opt=document.createElement("option");opt.value=mode;
+      opt.textContent=say(lang,{off:"toggleOff",admins:"toggleAdmins",users:"toggleUsers"}[mode]);return opt}));
+    toggleSelect.value=state.light_toggle;
+    lightStatus.textContent=lightNotice;lightStatus.hidden=!lightNotice;
+    const focused=document.activeElement;
+    if(focused&&lightList.contains(focused)&&focused.type==="text")return; // typing a name
+    if(!state.lights.length){const empty=document.createElement("small");empty.textContent=say(lang,"none");lightList.replaceChildren(empty);return}
+    lightList.replaceChildren(...state.lights.map(light=>{
+      const row=document.createElement("div");row.className="light-row";row.dataset.entity=light.entity_id;
+      const live=lightLive[light.entity_id];
+      const id=document.createElement("span");id.className="light-id";
+      id.textContent=light.entity_id+" · "+say(lang,live?.state==="on"?"on":live?.state==="off"?"off":live?.state==="missing"||!live?"missing":"unavailable")+
+        " · "+say(lang,"position")+" "+light.x+" % / "+light.y+" %";
+      const nameLabel=document.createElement("label");nameLabel.textContent=say(lang,"name");
+      const name=document.createElement("input");name.type="text";name.className="light-name";name.maxLength=60;
+      name.value=light.name;name.placeholder=live?.name||light.entity_id;
+      name.addEventListener("change",()=>{light.name=name.value.trim().slice(0,60);persist();renderLights()});
+      nameLabel.append(name);
+      const colorLabel=document.createElement("label");colorLabel.textContent=say(lang,"color")+" ";
+      const color=document.createElement("input");color.type="color";color.className="light-color";color.value=light.color;
+      color.addEventListener("input",()=>{light.color=color.value.toLowerCase();persist();renderLights()});
+      colorLabel.append(color);
+      const intensityLabel=document.createElement("label");intensityLabel.textContent=say(lang,"intensity")+" ";
+      const intensity=document.createElement("input");intensity.type="range";intensity.className="light-intensity";
+      intensity.min="0.2";intensity.max="2";intensity.step="0.1";intensity.value=String(light.intensity);
+      const pct=document.createElement("span");pct.textContent=Math.round(light.intensity*100)+" %";
+      intensity.addEventListener("input",()=>{light.intensity=Number(intensity.value);pct.textContent=Math.round(light.intensity*100)+" %";persist();renderLights()});
+      intensityLabel.append(intensity,pct);
+      const actions=document.createElement("div");actions.className="light-actions";
+      const place=document.createElement("button");place.type="button";place.className="light-place";place.textContent=say(lang,"place");
+      place.addEventListener("click",()=>startPlacing(light.entity_id));
+      const remove=document.createElement("button");remove.type="button";remove.className="light-remove";remove.textContent=say(lang,"remove");
+      remove.addEventListener("click",()=>{state.lights=state.lights.filter(l=>l.entity_id!==light.entity_id);if(placing===light.entity_id)stopPlacing();lightChanged()});
+      actions.append(place,remove);
+      row.append(id,nameLabel,colorLabel,intensityLabel,actions);
+      return row;
+    }));
+  }
+  // Placement: the settings close, the next click / tap on the photo sets x / y (in % of the photo).
+  function startPlacing(id){
+    const light=state.lights.find(l=>l.entity_id===id);if(!light)return;
+    placing=id;settings.hidden=true;
+    placingBanner.textContent=say(lang,"placing",{name:light.name||lightLive[id]?.name||id});
+    placingBanner.hidden=false;section.classList.add("placing-light");renderLights();
+  }
+  function stopPlacing(reopen=true){
+    if(!placing)return;
+    placing=null;placingBanner.hidden=true;section.classList.remove("placing-light");
+    if(reopen)settings.hidden=false;
+    renderLights();
+  }
+  section.addEventListener("click",event=>{
+    if(!placing)return;
+    const r=section.getBoundingClientRect();
+    const point=coverPercent(event.clientX-r.left,event.clientY-r.top,{naturalWidth:image.naturalWidth||1286,
+      naturalHeight:image.naturalHeight||914,width:r.width,height:r.height});
+    const light=state.lights.find(l=>l.entity_id===placing);
+    if(light){light.x=point.x;light.y=point.y;persist()}
+    stopPlacing();renderLightSettings();
+  });
+  addEventListener("keydown",event=>{if(event.key==="Escape"&&placing)stopPlacing()});
+  function renderLights(){
+    const clickable=!placing&&state.enabled&&toggleAllowed(state.light_toggle,userIsAdmin)&&window.parent!==window;
+    lightOverlay.render({lights:state.lights,live:lightLive,night:isNight(),markers:Boolean(placing)||!settings.hidden,clickable,lang});
+  }
+  // The card / panel sends the state of these entities (light_states) with the conditions.
+  let lastWatch="";
+  function watchLights(force=false){
+    if(window.parent===window)return;
+    const message={type:"maison3d:lights-watch",entity_ids:state.lights.map(l=>l.entity_id),toggle:state.light_toggle};
+    const key=JSON.stringify(message);
+    if(!force&&key===lastWatch)return;
+    lastWatch=key;
+    window.parent.postMessage(message,window.location.origin);
+  }
+  function requestToggle(id){
+    if(!toggleAllowed(state.light_toggle,userIsAdmin)||window.parent===window)return;
+    window.parent.postMessage({type:"maison3d:light-toggle",entity_id:id},window.location.origin);
+  }
+  renderLightSettings();
   for(const key of KEYS){
     bind(makeField("Image "+LABELS[key],state.images[key],(v,input)=>{
       if(v&&!allowedUrl(v)){input.setCustomValidity("Utilise /local/…, /maison3d-media/…, /maison3d-assets/…, /api/… ou HTTPS.");input.reportValidity();return}
@@ -647,7 +773,7 @@ export function createPhotoView({ensureScene=null}={}) {
     "@media(max-width:700px){#maison3d-photo-controls{top:auto;bottom:8px;left:8px}",
     "#maison3d-photo-status{top:8px;right:8px;font-size:11px}}"
   ].join("");
-  style.textContent+=SAVE_STYLE+
+  style.textContent+=SAVE_STYLE+LIGHT_STYLE+
     "#maison3d-photo-controls .maison3d-save button{padding:9px 11px}"+
     "#maison3d-photo-settings .settings-head{display:flex;align-items:center;gap:6px;flex-wrap:wrap}"+
     "#maison3d-photo-settings .settings-head strong{flex:1 1 auto}"+
@@ -775,6 +901,7 @@ export function createPhotoView({ensureScene=null}={}) {
     if(!state.enabled){section.style.display="none"}else{section.style.display="block"}
     document.documentElement.classList.toggle("photo-active",state.enabled);
     if(!state.enabled)withScene(()=>{});
+    renderLights();
   }
   photoBtn.addEventListener("click",()=>{state.enabled=true;persist();update()});
   // ☾ / ☀ preview night or day immediately (test mode, not saved); ◉ Auto returns to real data.
@@ -790,8 +917,8 @@ export function createPhotoView({ensureScene=null}={}) {
   };
   planBtn.addEventListener("click",()=>setModelView("2d"));
   modelBtn.addEventListener("click",()=>setModelView("3d"));
-  optionsBtn.addEventListener("click",()=>{settings.hidden=!settings.hidden;if(!settings.hidden)requestEntityOptions()});
-  close.addEventListener("click",()=>{settings.hidden=true});
+  optionsBtn.addEventListener("click",()=>{stopPlacing(false);settings.hidden=!settings.hidden;if(!settings.hidden)requestEntityOptions();renderLights()});
+  close.addEventListener("click",()=>{settings.hidden=true;renderLights()});
   image.addEventListener("error",()=>{
     if(currentSrc!==DEFAULT){
       failedImages.add(currentSrc);
@@ -841,7 +968,7 @@ export function createPhotoView({ensureScene=null}={}) {
       selectMode.value=state.mode;seasonSelect.value=state.season;moonPreview.value=state.moon_preview;
       strengthValue.textContent=Math.round(state.effect_intensity*100)+" %";
       for(const key of SENSOR_KEYS)renderEntityField(key,true);
-      requestEntities();
+      requestEntities();watchLights();renderLightSettings();
       update();
       markSaved("photo_settings");
     }else if(canSave&&localStorage.getItem(STORAGE)){
@@ -857,9 +984,31 @@ export function createPhotoView({ensureScene=null}={}) {
         .filter(o=>o&&typeof o.id==="string"&&o.id.length<150).slice(0,300)
         .map(o=>({id:o.id,name:typeof o.name==="string"&&o.name?o.name.slice(0,80):o.id}))]));
       for(const key of SENSOR_KEYS)renderEntityField(key,true);
+      lightCandidates=(Array.isArray(list.lights)?list.lights:[]).filter(o=>o&&isLightEntity(o.id)).slice(0,300)
+        .map(o=>({id:o.id,name:typeof o.name==="string"&&o.name?o.name.slice(0,80):o.id}));
+      renderLightSettings();
+      return;
+    }
+    if(event.data?.type==="maison3d:light-toggle-result"){
+      lightNotice=event.data.ok===true?"":say(lang,"denied")+(typeof event.data.error==="string"?" ("+event.data.error.slice(0,80)+")":"");
+      renderLightSettings();
+      if(!event.data.ok){status.textContent="💡 "+lightNotice}
       return;
     }
     if(event.data?.type!=="maison3d:conditions")return;
+    if(typeof event.data.language==="string"&&langOf(event.data.language)!==lang){lang=langOf(event.data.language);renderLightSettings()}
+    userIsAdmin=event.data.user_is_admin===true;
+    const lightStates=event.data.light_states&&typeof event.data.light_states==="object"?event.data.light_states:{};
+    lightLive={};
+    for(const light of state.lights){
+      const item=lightStates[light.entity_id];
+      if(!item||typeof item!=="object")continue;
+      lightLive[light.entity_id]={state:typeof item.state==="string"?item.state.slice(0,20):"",
+        rgb:Array.isArray(item.rgb)&&item.rgb.length===3&&item.rgb.every(Number.isFinite)?item.rgb:null,
+        brightness:Number.isFinite(item.brightness)?item.brightness:null,
+        name:typeof item.name==="string"?item.name.slice(0,60):""};
+    }
+    if(!settings.hidden)renderLightSettings();
     globals={effects:event.data.effects_enabled!==false,frost:event.data.frost_enabled!==false,
       weather_photos:event.data.weather_photos===true};
     applyOverrides();
@@ -1018,8 +1167,9 @@ export function createPhotoView({ensureScene=null}={}) {
     strengthValue.textContent=Math.round(state.effect_intensity*100)+" %";
     if(!MOTION_MODES.includes(state.motion))state.motion="auto";
     setMotionMode(state.motion);
+    state.lights=cleanLights(saved.lights);state.light_toggle=cleanToggle(saved.light_toggle);
     for(const key of SENSOR_KEYS)renderEntityField(key,true);
-    requestEntities();update();
+    requestEntities();watchLights();renderLightSettings();update();
   }
   registerSection("photo_settings",{
     get:saveable,
@@ -1027,7 +1177,7 @@ export function createPhotoView({ensureScene=null}={}) {
     apply:restoreSaved,
     writeLocal:v=>localStorage.setItem(STORAGE,JSON.stringify(v))
   });
-  requestEntities();
+  requestEntities();watchLights(true);
   update();
   if(!state.enabled && state.model_view==="2d"){
     withScene(()=>document.getElementById("topview")?.click());

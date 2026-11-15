@@ -324,6 +324,26 @@ class TestMaison3D(unittest.TestCase):
         fr = json.loads((COMPONENT / "translations" / "fr.json").read_text(encoding="utf-8"))
         self.assertEqual(fr["entity"]["sensor"]["sensors_status"]["name"], "État des capteurs")
 
+    def test_outdoor_lights(self):
+        """Lights are photo settings (draft), toggle off by default, parents check the toggle."""
+        www = COMPONENT / "www"
+        lights = (www / "lights.js").read_text(encoding="utf-8")
+        self.assertIn('export const DEFAULT_TOGGLE="off";', lights)
+        self.assertIn('export const LIGHT_DOMAINS=["light","switch"];', lights)
+        self.assertNotIn("three", lights.split("*/", 1)[1])
+        view = (www / "photo-view.js").read_text(encoding="utf-8")
+        self.assertIn('lights:[],light_toggle:"off"', view)
+        self.assertIn("state.lights=cleanLights(saved.lights)", view)
+        self.assertIn("lights:state.lights.map(l=>({...l}))", view)
+        for name in ("maison3d-card.js", "maison3d-panel.js"):
+            source = (www / name).read_text(encoding="utf-8")
+            self.assertIn("createLightBridge", source, name)
+            self.assertIn("light_states:", source.replace("light_states: ", "light_states:"), name)
+            self.assertIn("lights:", source.replace("lights: ", "lights:"), name)
+        workflow = (ROOT / ".github" / "workflows" / "validate.yml").read_text(encoding="utf-8")
+        self.assertIn("node tests/test_lights.mjs", workflow)
+        self.assertIn("node --check custom_components/maison3d/www/lights.js", workflow)
+
     def test_set_hass_is_cheap(self):
         """Card and panel memoise the tracked entities and skip unrelated updates."""
         www = COMPONENT / "www"
