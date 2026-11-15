@@ -124,5 +124,5 @@ jobs:
       - name: Setup, reload and legacy photo redirects with HTTP started
         run: |
           python -m pip install --upgrade pip
-          python -m pip install pytest pytest-homeassistant-custom-component
+          python -m pip install pytest pytest-homeassistant-custom-component home-assistant-frontend
           PYTHONPATH=. pytest tests_ha/test_legacy_photos.py -q
