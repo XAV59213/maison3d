@@ -110,25 +110,47 @@ class TestMaison3D(unittest.TestCase):
 
     def test_clean_photos_and_right_menu_layout(self):
         """Bundled photos carry no drawn interface; the seasons menu never covers the status or bottom bar."""
-        def jpeg_size(path):
+        def webp_size(path):
             data = path.read_bytes()
-            i = 2
-            while i < len(data):
-                marker, length = data[i + 1], int.from_bytes(data[i + 2:i + 4], "big")
-                if marker in (0xC0, 0xC1, 0xC2):
-                    return int.from_bytes(data[i + 7:i + 9], "big"), int.from_bytes(data[i + 5:i + 7], "big")
-                i += 2 + length
+            assert data[:4] == b"RIFF" and data[8:12] == b"WEBP", path.name
+            kind = data[12:16]
+            if kind == b"VP8 ":
+                return (int.from_bytes(data[26:28], "little") & 0x3FFF,
+                        int.from_bytes(data[28:30], "little") & 0x3FFF)
+            if kind == b"VP8L":
+                bits = int.from_bytes(data[21:25], "little")
+                return (bits & 0x3FFF) + 1, ((bits >> 14) & 0x3FFF) + 1
+            if kind == b"VP8X":
+                return (int.from_bytes(data[24:27], "little") + 1,
+                        int.from_bytes(data[27:30], "little") + 1)
             raise AssertionError(path.name)
 
         www = COMPONENT / "www"
-        for path in [www / "maison3d-reference.jpg", *sorted((www / "images").glob("*.jpg"))]:
-            self.assertEqual(jpeg_size(path), (1286, 914), path.name)
+        photos = [www / "maison3d-reference.webp", *sorted((www / "images").glob("*.webp"))]
+        self.assertEqual(len(photos), 19)
+        for path in photos:
+            self.assertEqual(webp_size(path), (1286, 914), path.name)
+        # Bundled photos are WebP only (no JPEG copies left behind).
+        self.assertEqual(sorted(p.name for p in www.rglob("*.jpg")), [])
+        self.assertFalse((ROOT / "assets" / "maison3d-reference.jpg").exists())
         photo = (www / "photo-view.js").read_text(encoding="utf-8")
         self.assertIn("function placeSeasons(){", photo)
         self.assertIn("const top=Math.max(st.bottom+8,innerHeight*.12);", photo)
         self.assertIn('seasonalNav.classList.toggle("compact",bottom-top<215);', photo)
         panel = (www / "maison3d-panel.js").read_text(encoding="utf-8")
         self.assertIn("min-height:240px", panel)
+
+    def test_set_hass_is_cheap(self):
+        """Card and panel memoise the tracked entities and skip unrelated updates."""
+        www = COMPONENT / "www"
+        tracker = (www / "hass-tracker.js").read_text(encoding="utf-8")
+        self.assertIn("export function createHassTracker(", tracker)
+        for name in ("maison3d-card.js", "maison3d-panel.js"):
+            source = (www / name).read_text(encoding="utf-8")
+            self.assertIn("createHassTracker", source, name)
+            self.assertIn("if (!force && !dirty) return;", source, name)
+            self.assertNotIn("Object.values(states)", source, name)
+            self.assertNotIn("Object.values(this._hass", source, name)
 
     def test_scene_bars_never_overlap(self):
         """Edit-mode floating bars are laid out by scene-layout.js (brand no longer hidden)."""
@@ -146,7 +168,7 @@ class TestMaison3D(unittest.TestCase):
         for path in ROOT.rglob("*"):
             if ".git" in path.parts or "__pycache__" in path.parts or not path.is_file():
                 continue
-            if path.suffix in {".jpg", ".png", ".zip", ".pyc"}:
+            if path.suffix in {".jpg", ".png", ".webp", ".zip", ".pyc"}:
                 continue
             text = path.read_text(encoding="utf-8", errors="ignore")
             self.assertNotIn("Mar" + "ly", text, str(path))
@@ -216,7 +238,9 @@ class TestMaison3D(unittest.TestCase):
     def test_panel_bridge(self):
         panel = (COMPONENT / "www" / "maison3d-panel.js").read_text(encoding="utf-8")
         self.assertIn("postMessage", panel)
-        self.assertIn("weather.", panel)
+        tracker = (COMPONENT / "www" / "hass-tracker.js").read_text(encoding="utf-8")
+        self.assertIn("isWeather", panel)
+        self.assertIn('"weather."', tracker)
         self.assertIn("sun.sun", panel)
 
     def test_interactive_lovelace_card(self):
@@ -284,7 +308,7 @@ class TestMaison3D(unittest.TestCase):
         html = (COMPONENT / "www" / "index.html").read_text(encoding="utf-8")
         panel = (COMPONENT / "www" / "maison3d-panel.js").read_text(encoding="utf-8")
         card = (COMPONENT / "www" / "maison3d-card.js").read_text(encoding="utf-8")
-        self.assertTrue((COMPONENT / "www" / "maison3d-reference.jpg").is_file())
+        self.assertTrue((COMPONENT / "www" / "maison3d-reference.webp").is_file())
         for key in ("day","night","cloudy","rain","snow","wind","storm","spring","summer","autumn","winter"):
             self.assertIn('"' + key + '"', photo)
         self.assertIn('from "./photo-view.js"', html)
@@ -313,8 +337,10 @@ class TestMaison3D(unittest.TestCase):
         self.assertIn("Maison3DSourceStatusSensor",sensors)
         self.assertIn("config-changed",editor)
         self.assertIn("static getConfigElement()",card)
-        self.assertIn("maison3d_config",panel)
-        self.assertIn("maison3d_config",card)
+        tracker = (COMPONENT / "www" / "hass-tracker.js").read_text(encoding="utf-8")
+        self.assertIn("maison3d_config",tracker)
+        self.assertIn("this._tracker.diagnostic(states)",panel)
+        self.assertIn("this._tracker.diagnostic(states)",card)
         for language in ("fr","en"):
             translation = json.loads((COMPONENT / "translations" / f"{language}.json").read_text(encoding="utf-8"))
             self.assertIn("options",translation)
@@ -342,26 +368,28 @@ class TestMaison3D(unittest.TestCase):
         from hashlib import sha256
         images = COMPONENT / "www" / "images"
         source = (COMPONENT / "www" / "photo-source.js").read_text(encoding="utf-8")
-        generated = [f"{w}-{t}.jpg" for w in ("clair", "nuageux", "pluie", "neige", "vent", "orage", "brouillard")
+        generated = [f"{w}-{t}.webp" for w in ("clair", "nuageux", "pluie", "neige", "vent", "orage", "brouillard")
                      for t in ("jour", "nuit")]
-        for name in ("jour.jpg", "nuageux.jpg", "pluie.jpg", "neige.jpg", *generated):
+        for name in ("jour.webp", "nuageux.webp", "pluie.webp", "neige.webp", *generated):
             path = images / name
             self.assertTrue(path.is_file(), f"Missing bundled photo: {name}")
             data = path.read_bytes()
-            self.assertGreater(len(data), 30000)
+            self.assertGreater(len(data), 20000)
             if name in generated:
                 self.assertLess(len(data), 400000)
-            self.assertTrue(data.startswith(bytes.fromhex("ffd8ff")))
-            self.assertTrue(data.endswith(bytes.fromhex("ffd9")))
+            self.assertEqual(data[:4], b"RIFF")
+            self.assertEqual(data[8:12], b"WEBP")
+            self.assertEqual(int.from_bytes(data[4:8], "little") + 8, len(data))
         for word in ("clair", "nuageux", "pluie", "neige", "vent", "orage", "brouillard"):
             self.assertIn(f'"{word}"', source)
-        self.assertIn('"-jour.jpg"', source)
-        self.assertIn('"-nuit.jpg"', source)
+        self.assertIn('"-jour.webp"', source)
+        self.assertIn('"-nuit.webp"', source)
+        self.assertIn("export function bundledPhoto(", source)
         readme = (images / "README.md").read_text(encoding="utf-8")
         for name in generated:
             self.assertIn(name, readme)
         self.assertEqual(len({sha256((images / n).read_bytes()).hexdigest()
-            for n in ("jour.jpg", "nuageux.jpg", "pluie.jpg", "neige.jpg")}), 4)
+            for n in ("jour.webp", "nuageux.webp", "pluie.webp", "neige.webp")}), 4)
 
     def test_photo_weather_cinematics_and_import(self):
         module = (COMPONENT / "www" / "photo-cinematics.js").read_text(encoding="utf-8")
@@ -376,8 +404,9 @@ class TestMaison3D(unittest.TestCase):
         self.assertIn('type="range"', photo)
         self.assertIn("effect_intensity", photo)
         self.assertIn("fogBanks(", module)
-        for filename in ("jour.jpg", "nuageux.jpg", "pluie.jpg", "neige.jpg"):
+        for filename in ("jour.webp", "nuageux.webp", "pluie.webp", "neige.webp"):
             self.assertIn(filename, importer)
+        self.assertIn('"WEBP"', importer)
         self.assertIn("ZipFile", importer)
 
     def test_photo_night_day_auto_buttons_and_visible_night_filter(self):
@@ -410,7 +439,7 @@ class TestMaison3D(unittest.TestCase):
         self.assertIn("canvas.className=\"maison3d-sky-moon\"", moon)
         self.assertIn("canvas.getContext", moon)
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
-        for img in ("jour.jpg","nuageux.jpg","pluie.jpg","neige.jpg"):
+        for img in ("jour.webp","nuageux.webp","pluie.webp","neige.webp"):
             self.assertIn('src="custom_components/maison3d/www/images/'+img+'"', readme)
 
     def test_fixed_photo_is_default_and_weather_only_changes_overlays(self):
@@ -491,9 +520,10 @@ class TestMaison3D(unittest.TestCase):
             self.assertIn("effects_enabled", tr["options"]["step"]["init"]["data"])
 
     def test_exact_approved_readme_image(self):
-        self.assertTrue((ROOT / "assets" / "maison3d-reference.jpg").is_file())
+        """The README shows the bundled reference photo itself (no duplicate copy in assets/)."""
+        self.assertTrue((COMPONENT / "www" / "maison3d-reference.webp").is_file())
         content = (ROOT / "README.md").read_text(encoding="utf-8")
-        self.assertIn('src="assets/maison3d-reference.jpg"', content)
+        self.assertIn('src="custom_components/maison3d/www/maison3d-reference.webp"', content)
 
 if __name__ == "__main__":
     unittest.main()

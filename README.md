@@ -10,7 +10,7 @@
 [![Home Assistant](https://img.shields.io/badge/Home%20Assistant-Int%C3%A9gration-41BDF5?logo=homeassistant&logoColor=white)](https://www.home-assistant.io/)
 [![HACS](https://img.shields.io/badge/HACS-Int%C3%A9gration-1d89d7)](https://www.hacs.xyz/)
 
-<img src="assets/maison3d-reference.jpg" alt="Vue officielle de la propriété avec rampe, maison, jardin, abri métallique et garage" width="100%" />
+<img src="custom_components/maison3d/www/maison3d-reference.webp" alt="Vue officielle de la propriété avec rampe, maison, jardin, abri métallique et garage" width="100%" />
 
 *Image officielle de référence, validée par le propriétaire : maison au centre, rampe et voitures à gauche, abri métallique au premier plan, garage et jardin à droite.*
 
@@ -106,41 +106,41 @@ Pour les activer :
 
 | Météo | Jour | Nuit |
 |---|---|---|
-| ☀ Clair (et gel) | `clair-jour.jpg` | `clair-nuit.jpg` |
-| ☁ Nuageux | `nuageux-jour.jpg` | `nuageux-nuit.jpg` |
-| 🌧 Pluie | `pluie-jour.jpg` | `pluie-nuit.jpg` |
-| ⚡ Orage | `orage-jour.jpg` | `orage-nuit.jpg` |
-| ❄ Neige | `neige-jour.jpg` | `neige-nuit.jpg` |
-| 💨 Vent | `vent-jour.jpg` | `vent-nuit.jpg` |
-| 🌫 Brouillard | `brouillard-jour.jpg` | `brouillard-nuit.jpg` |
+| ☀ Clair (et gel) | `clair-jour.webp` | `clair-nuit.webp` |
+| ☁ Nuageux | `nuageux-jour.webp` | `nuageux-nuit.webp` |
+| 🌧 Pluie | `pluie-jour.webp` | `pluie-nuit.webp` |
+| ⚡ Orage | `orage-jour.webp` | `orage-nuit.webp` |
+| ❄ Neige | `neige-jour.webp` | `neige-nuit.webp` |
+| 💨 Vent | `vent-jour.webp` | `vent-nuit.webp` |
+| 🌫 Brouillard | `brouillard-jour.webp` | `brouillard-nuit.webp` |
 
-URL installée : `/maison3d-assets/images/<nom>`. Elles sont générées par `scripts/generate_variant_images.py` (retouche PIL de la photo de référence, aucune image externe) : ce sont des **approximations**, pas de vraies photos prises sous la neige ou l'orage. Si vous avez défini **votre propre photo principale**, ces photos de la maison de référence ne sont jamais utilisées.
+URL installée : `/maison3d-assets/images/<nom>`. Les photos fournies sont désormais au format **WebP** (même définition, environ 8 % plus légères) ; les anciennes adresses `…/maison3d-assets/….jpg` déjà enregistrées dans une configuration continuent de fonctionner (redirigées vers le fichier `.webp`). Elles sont générées par `scripts/generate_variant_images.py` (retouche PIL de la photo de référence, aucune image externe) : ce sont des **approximations**, pas de vraies photos prises sous la neige ou l'orage. Si vous avez défini **votre propre photo principale**, ces photos de la maison de référence ne sont jamais utilisées.
 
-Les quatre anciennes photos ci-dessous restent livrées pour compatibilité (URL `/maison3d-assets/images/jour.jpg`…), mais ne sont plus choisies automatiquement :
+Les quatre anciennes photos ci-dessous restent livrées pour compatibilité (URL `/maison3d-assets/images/jour.webp`…, l'ancienne adresse `jour.jpg` reste acceptée), mais ne sont plus choisies automatiquement :
 
 <table>
 <tr>
 <td align="center" width="50%">
   <strong>☀️ Jour ensoleillé</strong><br/>
-  <img src="custom_components/maison3d/www/images/jour.jpg" alt="Photo de la propriété par beau temps" width="100%"/><br/>
-  <sub>jour.jpg</sub>
+  <img src="custom_components/maison3d/www/images/jour.webp" alt="Photo de la propriété par beau temps" width="100%"/><br/>
+  <sub>jour.webp</sub>
 </td>
 <td align="center" width="50%">
   <strong>☁️ Ciel nuageux</strong><br/>
-  <img src="custom_components/maison3d/www/images/nuageux.jpg" alt="Photo de la propriété par ciel couvert" width="100%"/><br/>
-  <sub>nuageux.jpg</sub>
+  <img src="custom_components/maison3d/www/images/nuageux.webp" alt="Photo de la propriété par ciel couvert" width="100%"/><br/>
+  <sub>nuageux.webp</sub>
 </td>
 </tr>
 <tr>
 <td align="center">
   <strong>🌧️ Pluie</strong><br/>
-  <img src="custom_components/maison3d/www/images/pluie.jpg" alt="Photo de la propriété sous la pluie" width="100%"/><br/>
-  <sub>pluie.jpg</sub>
+  <img src="custom_components/maison3d/www/images/pluie.webp" alt="Photo de la propriété sous la pluie" width="100%"/><br/>
+  <sub>pluie.webp</sub>
 </td>
 <td align="center">
   <strong>❄️ Neige</strong><br/>
-  <img src="custom_components/maison3d/www/images/neige.jpg" alt="Photo de la propriété sous la neige" width="100%"/><br/>
-  <sub>neige.jpg</sub>
+  <img src="custom_components/maison3d/www/images/neige.webp" alt="Photo de la propriété sous la neige" width="100%"/><br/>
+  <sub>neige.webp</sub>
 </td>
 </tr>
 </table>
@@ -250,7 +250,7 @@ Dans le menu **⚙ Images / météo** (panneau **et** carte), la zone **« Mode 
 | 🌫 Brouillard | Bancs de brume |
 | 🧊 Gel | Givre sur les bords de la photo |
 
-Avec les photos météo activées, chaque test affiche aussi la photo `<météo>-<jour|nuit>.jpg` correspondante.
+Avec les photos météo activées, chaque test affiche aussi la photo `<météo>-<jour|nuit>.webp` correspondante.
 
 À droite de la vue photo, les boutons **Printemps, Été, Automne, Hiver et Saisons auto** donnent un accès direct aux saisons ; ce menu se place sous la bulle d'état et passe en 2 colonnes sur les écrans bas (téléphone à l'horizontale).
 
@@ -264,7 +264,7 @@ Les saisons suivent le calendrier local en mode Auto ; les boutons de droite per
 
 ## 🎨 Personnaliser les images
 
-**32 images peuvent être remplacées**, dans l'éditeur de la carte (`images:`) ou dans le menu ⚙ du panneau. Nom de fichier conseillé dans `/config/www/maison3d/` → URL `/local/maison3d/<fichier>` :
+**32 images peuvent être remplacées**, dans l'éditeur de la carte (`images:`) ou dans le menu ⚙ du panneau. Nom de fichier conseillé dans `/config/www/maison3d/` → URL `/local/maison3d/<fichier>` (vos photos peuvent être en `.jpg`, `.png` ou `.webp`) :
 
 | Clé | Fichier conseillé | Clé | Fichier conseillé |
 |---|---|---|---|
@@ -281,7 +281,7 @@ Les saisons suivent le calendrier local en mode Auto ; les boutons de droite per
 | `moon_full_moon` | `lune-full-moon.jpg` | `moon_waning_gibbous` | `lune-waning-gibbous.jpg` |
 | `moon_last_quarter` | `lune-last-quarter.jpg` | `moon_waning_crescent` | `lune-waning-crescent.jpg` |
 
-**Ordre de choix** (photos météo activées) : image perso `<météo>_<jour|nuit>` → image perso `<météo>` → photo fournie `<météo>-<jour|nuit>.jpg` → la nuit : image de la phase de lune → `night` → `clair-nuit.jpg` ; le jour : image de la saison → `day` → `clair-jour.jpg` → photo principale.
+**Ordre de choix** (photos météo activées) : image perso `<météo>_<jour|nuit>` → image perso `<météo>` → photo fournie `<météo>-<jour|nuit>.webp` → la nuit : image de la phase de lune → `night` → `clair-nuit.webp` ; le jour : image de la saison → `day` → `clair-jour.webp` → photo principale.
 
 Les réglages du menu ⚙ sont **enregistrés dans Home Assistant** (voir « Sauvegarde dans Home Assistant ») et donc partagés entre vos appareils. Les images définies dans une carte restent dans la configuration de cette carte.
 

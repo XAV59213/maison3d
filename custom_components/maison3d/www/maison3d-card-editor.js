@@ -1,4 +1,4 @@
-import {allowedPhotoUrl,DEFAULT_MAIN_PHOTO,IMAGE_SLOTS,suggestedFileName} from "./photo-source.js";
+import {allowedPhotoUrl,bundledPhoto,DEFAULT_MAIN_PHOTO,IMAGE_SLOTS,suggestedFileName} from "./photo-source.js";
 import {uploadPhoto} from "./storage-bridge.js";
 import {MEDIA_PREFIX} from "./media-resolver.js";
 const editorUrl=value=>allowedPhotoUrl(value)||(typeof value==="string"&&value.startsWith(MEDIA_PREFIX)&&value.length<500&&!/[\u0000-\u001f]/.test(value));
@@ -120,7 +120,7 @@ class Maison3DCardEditor extends HTMLElement {
     });
     button.addEventListener("click",()=>{
       if(!check())return;
-      const value=photoInput.value.trim()||DEFAULT_MAIN_PHOTO;
+      const value=bundledPhoto(photoInput.value.trim())||DEFAULT_MAIN_PHOTO;
       if(value.startsWith(MEDIA_PREFIX)){status.textContent="Média Home Assistant : aperçu dans la carte";return}
       status.textContent="Vérification…";preview.hidden=true;
       const probe=new Image();
