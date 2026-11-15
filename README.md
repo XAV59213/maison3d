@@ -173,7 +173,7 @@ Aller dans **Paramètres → Appareils et services → Maison 3D → Configurer*
 | ☀️ Soleil | `sun.sun` | Jour et nuit |
 | 🌙 Phase lunaire | `sensor.*` | Forme de la lune dessinée sur la photo (anglais ou français, ex. « Premier croissant ») |
 | 🌡️ Température | `sensor.*` | Relevé extérieur |
-| 💨 Vent | `sensor.*` | Rafales / mouvement |
+| 💨 Vent | `sensor.*` | Rafales / mouvement (unité lue sur le capteur : km/h, m/s, mph, nœuds, ft/s ou Beaufort) |
 | 🌧️ Pluie | `sensor.*` / `binary_sensor.*` | Pluie active (valeur, on/off ou vigilance Météo-France) |
 | ❄️ Neige | `sensor.*` / `binary_sensor.*` | Neige active (valeur, on/off ou vigilance Météo-France) |
 | ☁️ Nuages | `sensor.*` / `binary_sensor.*` | Couverture nuageuse |
@@ -187,12 +187,15 @@ Tous les capteurs supplémentaires sont facultatifs. La météo et le soleil peu
 | Vigilance | Capteur pluie (ex. `sensor.alerte_pluie_inondation`) | Capteur neige (ex. `sensor.alerte_neige_verglas`) |
 |---|---|---|
 | Vert | rien | rien |
-| Jaune / Orange | pluie | neige |
+| Jaune | rien si la météo est sèche (la pluie de l'entité météo reste affichée) | neige |
+| Orange | pluie | neige |
 | Rouge | orage | neige |
 
 Si l'identifiant ou le nom du capteur neige parle de **verglas** (ou *ice*) et que la température est **≤ 0 °C**, la vigilance donne l'effet **gel** à la place de la neige (si l'effet gel est activé).
 
-**Lune sans capteur choisi** : détection automatique d'un `sensor.*` dont l'identifiant contient `moon` ou `lune` (`moon_phase`, `phase_lune`, `phase_de_la_lune`…) ou dont l'état est une phase connue ; un identifiant anglais (`moon…`) est préféré s'il y en a plusieurs.
+**Vent** : la vitesse est convertie en **km/h** avant d'appliquer les seuils de la vue (rafales au-delà de 18 km/h, photo « vent » à partir de 25 km/h). L'unité vient de `unit_of_measurement` du capteur vent s'il y en a un, sinon de `wind_speed_unit` de l'entité météo ; m/s, mph, nœuds (kn), ft/s et Beaufort sont reconnus (unité inconnue = km/h).
+
+**Lune sans capteur choisi** : détection automatique d'un `sensor.*` dont l'**état est une phase de lune reconnue** (français ou anglais, ex. « Premier croissant », `waxing_crescent`) ; à état égal, un identifiant `moon…` / `lune…` (anglais de préférence) est choisi. Un capteur « lune » dont l'état n'est pas une phase (lever de lune, distance…) n'est pas utilisé.
 
 **Choisir les entités depuis la vue** (menu ⚙ Images / météo) : chaque capteur a un **sélecteur** rempli avec les entités de Home Assistant qui conviennent, avec leur nom et leur entity_id :
 
@@ -200,19 +203,20 @@ Si l'identifiant ou le nom du capteur neige parle de **verglas** (ou *ice*) et q
 |---|---|
 | Météo | `weather.*` |
 | Soleil | `sun.*` |
-| Lune | capteurs de phase de lune (même détection qu'en automatique) |
+| Lune | capteurs dont l'état est une phase de lune reconnue |
 | Température | `device_class: temperature` |
-| Vent | `device_class: wind_speed` |
-| Nuages | capteurs en % (sauf batteries) ou dont le nom parle de nuages |
-| Pluie / neige | `precipitation`, `binary_sensor` humidité (moisture), vigilances Météo-France |
+| Vent | `device_class: wind_speed` d'abord, puis une unité de vitesse (jamais une allure / *pace*) |
+| Nuages | nom contenant cloud / nuage / couverture **et** unité % (jamais humidité, disque ou batterie) |
+| Pluie | nom contenant pluie / inondation / rain / flood, ou `device_class: precipitation` (pas les détecteurs de fuite) |
+| Neige | nom contenant neige / verglas / snow / ice |
 
 Une recherche apparaît quand la liste est longue, et **✎ Autre (saisie libre)** reste disponible. Le choix **Automatique** reprend la valeur effective, et le menu indique toujours l'entité réellement utilisée et sa provenance. L'ordre de priorité est : configuration de la carte → choix du menu → configuration de l'intégration → détection automatique. Une valeur imposée par la carte se modifie dans l'éditeur de la carte, qui utilise le sélecteur d'entités de Home Assistant filtré de la même façon.
 
 Un capteur choisi dont la valeur n'est pas reconnue, `unavailable`, `unknown` ou introuvable est signalé par un petit avertissement dans le menu ⚙ Images / météo et dans l'éditeur de la carte (rien n'est affiché sur l'image).
 
-La page de l'appareil Maison 3D propose **un seul capteur de diagnostic, « État des capteurs »** (traduit en français et en anglais) : `OK`, `Non configuré` ou `Indisponible` (une source introuvable ou indisponible). Le détail de chaque source (météo, soleil, lune, température…) est dans son attribut **`sensor_statuses`** (`ok`, `not_configured`, `not_found`, `unknown`, `unavailable`). Il vérifie la disponibilité des entités, pas l'exactitude météorologique d'une mesure.
+La page de l'appareil Maison 3D propose **un seul capteur de diagnostic, « État des capteurs »** (traduit en français et en anglais) : `OK`, `Non configuré` ou `Dégradé` (`degraded` : une source introuvable, inconnue ou indisponible). Pendant les **30 secondes qui suivent le démarrage complet de Home Assistant**, une entité encore introuvable (Netatmo, Météo-France… chargées tard) ne rend pas le capteur `Dégradé`. Les attributs `sensor_statuses` et `entities` ne sont pas enregistrés dans l'historique (recorder). Le détail de chaque source (météo, soleil, lune, température…) est dans son attribut **`sensor_statuses`** (`ok`, `not_configured`, `not_found`, `unknown`, `unavailable`). Il vérifie la disponibilité des entités, pas l'exactitude météorologique d'une mesure.
 
-> **Mise à jour depuis une ancienne version :** les 8 anciens capteurs « … - état » (un par source) sont supprimés automatiquement au démarrage ; le capteur général garde son identifiant (`sensor.maison_3d_etat_des_capteurs`). Ses valeurs internes deviennent `ok` / `not_configured` / `unavailable` (affichées traduites) : adaptez les automatisations qui testaient `OK`, `Non configuré` ou `Indisponible`. Une seule intégration Maison 3D peut être ajoutée, comme avant.
+> **Mise à jour depuis une ancienne version :** les 8 anciens capteurs « … - état » (un par source) sont supprimés automatiquement au démarrage ; le capteur général garde son identifiant (`sensor.maison_3d_etat_des_capteurs`). Ses valeurs internes sont `ok` / `not_configured` / `degraded` (affichées traduites) : adaptez les automatisations qui testaient `OK`, `Non configuré`, `Indisponible` ou l'ancienne valeur `unavailable` (remplacée par `degraded`, pour ne plus être confondue avec l'état « indisponible » de Home Assistant). Une seule intégration Maison 3D peut être ajoutée, comme avant.
 
 ## 🖥️ Carte Lovelace prête à l'emploi
 
@@ -399,7 +403,7 @@ Dans **Paramètres → Appareils et services → Maison 3D → Configurer**, vé
 <details>
 <summary>Le bouton « Nuit réelle » n'a pas d'effet</summary>
 
-La correction de la commande Nuit réelle est incluse dans **v2.3.2**. Vérifier la version installée avec HACS, redémarrer Home Assistant, vider le cache navigateur si nécessaire. La photo doit s'assombrir, même sans fichier de nuit personnalisé.
+La correction de la commande Nuit réelle est incluse dans **v2.3.2**. Vérifier la version installée avec HACS, redémarrer Home Assistant, vider le cache navigateur si nécessaire (les fichiers sont désormais chargés avec `?v=<version>`, une mise à jour suffit en principe). La photo doit s'assombrir, même sans fichier de nuit personnalisé.
 
 </details>
 

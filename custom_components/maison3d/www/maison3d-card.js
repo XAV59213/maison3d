@@ -1,9 +1,7 @@
-import "./maison3d-card-editor.js";
-import {IMAGE_KEYS} from "./photo-source.js";
-import {createStorageBridge} from "./storage-bridge.js";
-import {createMediaResolver} from "./media-resolver.js";
-import {createHassTracker,isWeather} from "./hass-tracker.js";
-import {readSensor,precipitation,sensorIssues,menuChoice,effectiveEntities,entityOptions,ENTITY_KEYS} from "./sensor-values.js";
+// Cache-busting: the ?v=<version> of this module's URL is passed to its own imports.
+const VERSION=new URL(import.meta.url).searchParams.get("v")||"";
+const V=VERSION?"?v="+encodeURIComponent(VERSION):"";
+const [,{IMAGE_KEYS},{createStorageBridge},{createMediaResolver},{createHassTracker,isWeather},{readSensor,precipitation,sensorIssues,windKmh,menuChoice,effectiveEntities,entityOptions,ENTITY_KEYS}]=await Promise.all(["./maison3d-card-editor.js", "./photo-source.js", "./storage-bridge.js", "./media-resolver.js", "./hass-tracker.js", "./sensor-values.js"].map(m=>import(m+V)));
 /**
  * Maison 3D interactive Lovelace card.
  * Load as a JavaScript module resource: /maison3d-assets/maison3d-card.js
@@ -128,7 +126,7 @@ class Maison3DCard extends HTMLElement {
     const frame=document.createElement("iframe");
     frame.title="Maison 3D interactive";
     frame.loading="lazy";
-    frame.src="/maison3d-assets/index.html?mode=card";
+    frame.src="/maison3d-assets/index.html?mode=card"+(VERSION?"&v="+encodeURIComponent(VERSION):"");
     frame.style.height=this._config.height+"px";
     frame.addEventListener("load",()=>{
       this._loaded=true;
@@ -172,8 +170,8 @@ class Maison3DCard extends HTMLElement {
     };
     const temperature=numeric(choice("temperature_entity"),
       typeof attrs.temperature==="number"?attrs.temperature:null);
-    const windSpeed=numeric(choice("wind_entity"),
-      typeof attrs.wind_speed==="number"?attrs.wind_speed:null);
+    // km/h whatever the unit of the wind sensor or of the weather entity.
+    const windSpeed=windKmh(choice("wind_entity")?states[choice("wind_entity")]:null,attrs);
     const wet=precipitation(states[choice("rain_entity")],states[choice("snow_entity")]);
     const cloud=numeric(choice("cloud_entity"),null);
     const sensor_issues=sensorIssues({...Object.fromEntries(keys.map(key=>[key,choice(key)])),
@@ -202,7 +200,7 @@ class Maison3DCard extends HTMLElement {
         moon_entity:{entity_id:moon?.entity_id||"",source:"auto"},
         sun_entity:{entity_id:sun?"sun.sun":"",source:"default"}
       }),
-      windSpeedUnit:attrs.wind_speed_unit??"",
+      windSpeedUnit:"km/h",
       sun:sun?.state??null,
       moon:moon?.state??null,
       images:this._media.images(this._config.images)

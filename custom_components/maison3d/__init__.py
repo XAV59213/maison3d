@@ -38,10 +38,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: Maison3DConfigEntry) -> 
     state.setdefault("static_registered", False)
     runtime = entry.runtime_data = Maison3DRuntimeData()
     async_register_websocket(hass)
+    # Version from the manifest (already loaded by Home Assistant, no file I/O
+    # here): « ?v= » on every URL refreshes browser caches after an update.
+    integration = await async_get_integration(hass, DOMAIN)
+    version = str(integration.version or "0")
 
     if not state["static_registered"]:
         assets = Path(__file__).parent / "www"
-        if not (assets / "index.html").is_file() or not (assets / "maison3d-panel.js").is_file():
+
+        def _frontend_present() -> bool:
+            return (assets / "index.html").is_file() and (assets / "maison3d-panel.js").is_file()
+
+        if not await hass.async_add_executor_job(_frontend_present):
             _LOGGER.error("Maison 3D frontend files are missing: %s", assets)
             return False
         await hass.http.async_register_static_paths(
@@ -57,7 +65,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: Maison3DConfigEntry) -> 
             frontend_url_path=PANEL_PATH,
             sidebar_title="Maison 3D",
             sidebar_icon="mdi:home-city-outline",
-            module_url=f"{ASSETS_URL}/maison3d-panel.js",
+            module_url=f"{ASSETS_URL}/maison3d-panel.js?v={version}",
             require_admin=False,
             embed_iframe=False,
             config={},
@@ -73,8 +81,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: Maison3DConfigEntry) -> 
         # Load the Lovelace card on every dashboard so it shows up in
         # « Ajouter une carte » without a manual resource. The version query
         # refreshes browser caches after an update.
-        integration = await async_get_integration(hass, DOMAIN)
-        card_url = f"{CARD_URL}?v={integration.version}"
+        card_url = f"{CARD_URL}?v={version}"
         frontend.add_extra_js_url(hass, card_url)
         runtime.card_url = card_url
 

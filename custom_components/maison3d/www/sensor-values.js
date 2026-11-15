@@ -37,11 +37,15 @@ export function moonPhase(value){
   return MOON_PHASES[fold(value).replace(/[\s-]+/g,"_")]||null;
 }
 
-/** Moon sensor for automatic detection; rank prefers an English slug. */
+/**
+ * Moon sensor (automatic detection and ⚙ selector): a sensor whose state is a
+ * known phase (French or English). The id alone is not enough: « phase_lune_anecdote »
+ * or an illumination % are not phases. rank prefers an English slug.
+ */
 export function isMoon(entity){
   const id=entity?.entity_id;
-  if(typeof id!=="string"||!id.startsWith("sensor.")||["unavailable","unknown"].includes(entity.state))return false;
-  return /moon|lune/.test(id)||moonPhase(entity.state)!==null;
+  if(typeof id!=="string"||!id.startsWith("sensor."))return false;
+  return moonPhase(entity.state)!==null;
 }
 export function moonRank(entity){
   const id=String(entity?.entity_id||"");
@@ -75,13 +79,15 @@ export function readSensor(entity,{allowVigilance=true}={}){
 
 /**
  * Payload fields for the photo view from the chosen rain / snow / cloud sensors.
- * rain: Jaune/Orange → rain, Rouge → storm (storm_alert). snow: Jaune+ → snow;
+ * rain: Orange → rain, Rouge → storm (storm_alert), Jaune → only if the weather is rainy. snow: Jaune+ → snow;
  * ice_alert when the snow sensor talks about ice (verglas) and is at Jaune+.
  */
 export function precipitation(rainEntity,snowEntity){
   const rain=readSensor(rainEntity),snow=readSensor(snowEntity);
   return {
-    rain:rain.value,
+    // A yellow rain vigilance alone does not force rain (the weather decides);
+    // orange and red always do.
+    rain:rain.vigilance===1?0:rain.value,
     snow:snow.value,
     storm_alert:rain.vigilance!==null&&rain.vigilance>=3,
     ice_alert:snow.vigilance!==null&&snow.vigilance>=1&&mentionsIce(snowEntity)
@@ -190,9 +196,14 @@ const word=(text,re)=>re.test(fold(text));
 const deviceClass=entity=>fold(entity?.attributes?.device_class);
 const unit=entity=>fold(entity?.attributes?.unit_of_measurement);
 const domain=entity=>String(entity?.entity_id||"").split(".")[0];
+const label=entity=>String(entity?.entity_id||"")+" "+(entity?.attributes?.friendly_name||"");
 // Words at the start of a token only: « bermerain » (a place name) is not « rain ».
-const wetWords=/(?:^|[^a-z])(?:rain|pluie|pluvio|snow|neige|precip|verglas|grele|hail)/;
-const cloudWords=/(?:^|[^a-z])(?:cloud|nuage|nebulosit)/;
+const at=words=>new RegExp("(?:^|[^a-z])(?:"+words+")");
+const rainWords=at("rain|pluie|pluvio|inond|flood|precip");
+const snowWords=at("snow|neige|verglas|ice|icy");
+const cloudWords=at("cloud|nuage|nebulosit|couverture");
+const notCloud=at("humid|disk|disque|battery|batterie");
+const notWind=at("pace|allure");
 /** Does this entity fit the field? (filters of the ⚙ menu and of the card editor) */
 export function entityMatches(key,entity){
   const id=String(entity?.entity_id||"");
@@ -203,27 +214,47 @@ export function entityMatches(key,entity){
     case "sun_entity":return d==="sun";
     case "moon_entity":return isMoon(entity);
     case "temperature_entity":return d==="sensor"&&(dc==="temperature"||(!dc&&TEMP_UNITS.has(u)));
-    case "wind_entity":return d==="sensor"&&(dc==="wind_speed"||(!dc&&WIND_UNITS.has(u)));
+    // device_class wind_speed first; a speed unit alone is accepted, but never a pace (allure).
+    case "wind_entity":return d==="sensor"&&!word(label(entity),notWind)&&(dc==="wind_speed"||(!dc&&WIND_UNITS.has(u)));
+    // A cloud word AND a percentage (or on/off), never humidity, disk or battery.
     case "cloud_entity":
       if(d!=="sensor"&&d!=="binary_sensor")return false;
-      return word(id+" "+(entity.attributes?.friendly_name||""),cloudWords)||(d==="sensor"&&u==="%"&&dc!=="battery");
-    case "rain_entity":case "snow_entity":
-      if(d==="binary_sensor")return dc==="moisture"||word(id,wetWords);
-      if(d!=="sensor")return false;
-      if(dc==="precipitation"||dc==="precipitation_intensity")return true;
-      if(vigilanceLevel(entity.state)!==null||word(id,/(?:^|[^a-z])(?:alerte|vigilance|warning)/))return true;
-      return word(id+" "+(entity.attributes?.friendly_name||""),wetWords);
+      if(dc==="humidity"||dc==="battery"||word(label(entity),notCloud))return false;
+      return word(label(entity),cloudWords)&&(d==="binary_sensor"||u==="%");
+    // Rain: a rain / flood word or a precipitation device_class (never a leak / moisture
+    // detector, « alerte_canicule » or « Bermerain »).
+    case "rain_entity":
+      if(d==="binary_sensor")return word(label(entity),rainWords);
+      return d==="sensor"&&(dc==="precipitation"||dc==="precipitation_intensity"||word(label(entity),rainWords));
+    // Snow: a snow / ice word only.
+    case "snow_entity":
+      return (d==="sensor"||d==="binary_sensor")&&word(label(entity),snowWords);
     default:return false;
   }
 }
-// Best candidates first (the field's own words), then by name.
+// Best candidates first (the field's own words, the right device_class), then by name.
 function preference(key,entity){
-  const text=fold(entity.entity_id+" "+(entity.attributes?.friendly_name||""));
-  if(key==="rain_entity")return /(?:^|[^a-z])(?:rain|pluie|pluvio|inond|precip)/.test(text)?0:1;
+  const text=fold(label(entity));
+  if(key==="rain_entity")return /(?:^|[^a-z])(?:rain|pluie|pluvio|inond|flood)/.test(text)?0:1;
   if(key==="snow_entity")return /(?:^|[^a-z])(?:snow|neige|verglas)/.test(text)?0:1;
-  if(key==="cloud_entity")return cloudWords.test(text)?0:1;
+  if(key==="wind_entity")return deviceClass(entity)==="wind_speed"?0:1;
   if(key==="moon_entity")return -moonRank(entity);
   return 0;
+}
+
+/* ---------- Wind speed in km/h (thresholds of the view are in km/h) ---------- */
+const BEAUFORT_KMH=[0,3,9,16,24,34,45,56,68,81,95,110,120];
+/** Convert a wind speed to km/h from its unit (km/h, m/s, mph, kn, ft/s, Beaufort). Unknown unit = km/h. */
+export function toKmh(value,unitText=""){
+  const v=Number(value);
+  if(!Number.isFinite(v))return null;
+  const u=fold(unitText).replace(/\s+/g,"");
+  if(u==="m/s"||u==="ms")return v*3.6;
+  if(u==="mph"||u==="mi/h")return v*1.609344;
+  if(u==="kn"||u==="kt"||u==="kts"||u==="knot"||u==="knots"||u==="noeuds"||u==="nd")return v*1.852;
+  if(u==="ft/s"||u==="fps")return v*1.09728;
+  if(u==="bft"||u==="beaufort"||u==="bf"){const b=Math.max(0,Math.min(12,Math.round(v)));return BEAUFORT_KMH[b]}
+  return v;
 }
 /** {key: [{id, name}]} for every field; one pass over the states, on request only. */
 export function entityOptions(states,limit=300){
@@ -244,3 +275,13 @@ export const entityName=entity=>{
   const name=entity?.attributes?.friendly_name;
   return typeof name==="string"&&name.trim()?name.trim().slice(0,80):String(entity?.entity_id||"");
 };
+/**
+ * Wind for the view, always in km/h: the wind sensor (its own unit_of_measurement)
+ * when it has a number, otherwise the weather entity (its wind_speed_unit).
+ */
+export function windKmh(windEntity,weatherAttributes={}){
+  const own=windEntity?readSensor(windEntity,{allowVigilance:false}).value:null;
+  if(own!==null)return toKmh(own,windEntity.attributes?.unit_of_measurement||"");
+  const speed=weatherAttributes?.wind_speed;
+  return typeof speed==="number"?toKmh(speed,weatherAttributes.wind_speed_unit||""):null;
+}

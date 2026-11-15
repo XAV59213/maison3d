@@ -23,6 +23,16 @@ export function haCalendarDate(timeZone,now=new Date()){
     return {year,month,day,zone:"UTC"};
   }
 }
+/** Hour (0–23) in the Home Assistant time zone (UTC if the zone is unknown). */
+export function haHour(timeZone,now=new Date()){
+  const zone=typeof timeZone==="string"&&timeZone.trim()?timeZone:"UTC";
+  try{
+    const parts=new Intl.DateTimeFormat("en-GB",{timeZone:zone,hour:"2-digit",hourCycle:"h23"}).formatToParts(now);
+    const hour=Number(parts.find(x=>x.type==="hour")?.value);
+    if(Number.isFinite(hour))return hour%24;
+  }catch{}
+  return now.getUTCHours();
+}
 export function automaticSeason(timeZone,now=new Date()){
   const {month}=haCalendarDate(timeZone,now);
   return month>=3&&month<=5?"spring":

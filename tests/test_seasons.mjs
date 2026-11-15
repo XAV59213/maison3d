@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 
 const source=readFileSync("custom_components/maison3d/www/season-effects.js","utf8");
-const {automaticSeason,haCalendarDate}=await import(
+const {automaticSeason,haCalendarDate,haHour}=await import(
   "data:text/javascript;base64,"+Buffer.from(source).toString("base64")
 );
 const at=iso=>new Date(iso);
@@ -26,4 +26,10 @@ assert.equal(automaticSeason("Europe/Paris",at("2026-02-28T23:30:00Z")),"spring"
 assert.equal(haCalendarDate("Europe/Paris",at("2026-02-28T23:30:00Z")).day,1);
 assert.equal(automaticSeason("America/New_York",at("2026-03-01T01:00:00Z")),"winter");
 assert.equal(automaticSeason("America/New_York",at("2026-03-01T06:00:00Z")),"spring");
+// Night fallback without sun entity: hour of the HA time zone, not of the browser.
+assert.equal(haHour("Europe/Paris",at("2026-11-15T19:30:00Z")),20);
+assert.equal(haHour("America/New_York",at("2026-11-15T19:30:00Z")),14);
+assert.equal(haHour("Asia/Tokyo",at("2026-11-15T15:00:00Z")),0);
+assert.equal(haHour("",at("2026-11-15T19:30:00Z")),19,"unknown zone → UTC");
+assert.equal(haHour("Not/AZone",at("2026-11-15T05:00:00Z")),5);
 console.log("Season boundary and Home Assistant timezone tests: OK");

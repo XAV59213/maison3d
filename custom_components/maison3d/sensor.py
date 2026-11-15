@@ -9,7 +9,8 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity import EntityCategory
-from homeassistant.helpers.event import async_track_state_change_event
+from homeassistant.helpers.event import async_call_later, async_track_state_change_event
+from homeassistant.helpers.start import async_at_started
 
 from .config_flow import DEFAULT_ENTITIES
 from .const import DEFAULT_PROJECT_NAME, DOMAIN
@@ -19,8 +20,13 @@ _LOGGER = logging.getLogger(__name__)
 # Global state of the diagnostic sensor (translated in strings.json).
 STATE_OK = "ok"
 STATE_NOT_CONFIGURED = "not_configured"
-STATE_UNAVAILABLE = "unavailable"
-STATES = [STATE_OK, STATE_NOT_CONFIGURED, STATE_UNAVAILABLE]
+STATE_DEGRADED = "degraded"
+STATES = [STATE_OK, STATE_NOT_CONFIGURED, STATE_DEGRADED]
+
+# Integrations that load after Maison 3D (e.g. Netatmo) create their entities a
+# few seconds later: during this grace period after Home Assistant has started,
+# a source that does not exist yet (« not_found ») does not make the sensor degraded.
+STARTUP_GRACE_SECONDS = 30
 
 # Older versions had one diagnostic sensor per source slot; their status
 # is now in the « sensor_statuses » attribute of the single sensor.
@@ -56,10 +62,13 @@ class Maison3DConfigurationSensor(SensorEntity):
     _attr_options = STATES
     _attr_entity_category = EntityCategory.DIAGNOSTIC
     _attr_should_poll = False
+    # Large, rarely useful in the history: kept out of the recorder.
+    _unrecorded_attributes = frozenset({"sensor_statuses", "entities"})
 
     def __init__(self, entry: ConfigEntry) -> None:
         self._entry = entry
         self._attr_unique_id = f"{entry.entry_id}_sensors_status"
+        self._in_grace = True
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, "maison3d_local")},
             name="Maison 3D",
@@ -99,8 +108,9 @@ class Maison3DConfigurationSensor(SensorEntity):
         statuses = [s for s in self._statuses().values() if s["state"] != "not_configured"]
         if not statuses:
             return STATE_NOT_CONFIGURED
-        if any(s["state"] != "ok" for s in statuses):
-            return STATE_UNAVAILABLE
+        tolerated = {"ok", "not_found"} if self._in_grace else {"ok"}
+        if any(s["state"] not in tolerated for s in statuses):
+            return STATE_DEGRADED
         return STATE_OK
 
     @property
@@ -119,10 +129,22 @@ class Maison3DConfigurationSensor(SensorEntity):
             "sensor_statuses": statuses,
             "configured_count": sum(bool(v) for v in selected.values()),
             "available_count": sum(s["state"] == "ok" for s in statuses.values()),
+            "startup_grace": self._in_grace,
         }
 
     async def async_added_to_hass(self) -> None:
         """Update immediately when any of the configured sources change."""
+        # Grace period: until Home Assistant has started, then STARTUP_GRACE_SECONDS more.
+        @callback
+        def _end_grace(_now=None) -> None:
+            self._in_grace = False
+            self.async_write_ha_state()
+
+        @callback
+        def _started(_hass) -> None:
+            self.async_on_remove(async_call_later(self.hass, STARTUP_GRACE_SECONDS, _end_grace))
+
+        self.async_on_remove(async_at_started(self.hass, _started))
         entity_ids = [eid for eid in self._configured().values() if eid]
         if entity_ids:
             self.async_on_remove(
