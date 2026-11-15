@@ -2,7 +2,7 @@
 // Cache-busting: the ?v=<version> of this module's URL is passed to its own imports.
 const VERSION=new URL(import.meta.url).searchParams.get("v")||"";
 const V=VERSION?"?v="+encodeURIComponent(VERSION):"";
-const [{createStorageBridge},{createMediaResolver},{createHassTracker,isWeather},{readSensor,precipitation,sensorIssues,windKmh,menuChoice,effectiveEntities,entityOptions,ENTITY_KEYS}]=await Promise.all(["./storage-bridge.js", "./media-resolver.js", "./hass-tracker.js", "./sensor-values.js"].map(m=>import(m+V)));
+const [{createStorageBridge},{createMediaResolver},{createHassTracker,isWeather},{readSensor,precipitation,sensorIssues,windKmh,menuChoice,effectiveEntities,entityOptions,ENTITY_KEYS},{createLightBridge,lightOptions}]=await Promise.all(["./storage-bridge.js", "./media-resolver.js", "./hass-tracker.js", "./sensor-values.js", "./lights.js"].map(m=>import(m+V)));
 class Maison3DPanel extends HTMLElement {
   constructor() {
     super();
@@ -15,6 +15,8 @@ class Maison3DPanel extends HTMLElement {
     this._storage = createStorageBridge({getFrame:()=>this._frame,getHass:()=>this._hass});
     this._onStorageMessage = event => this._storage.onMessage(event);
     this._media = createMediaResolver({getHass:()=>this._hass,onResolved:()=>this.sendCurrentConditions(true)});
+    // Outdoor lights of the view: their states, and the optional click to toggle.
+    this._lights = createLightBridge({getHass:()=>this._hass,getFrame:()=>this._frame,onChange:()=>this.sendCurrentConditions(true)});
     this._dirty = false;
     this._onBeforeUnload = event => {if(this._dirty){event.preventDefault();event.returnValue=""}};
     this._onFrameMessage = event => {
@@ -22,6 +24,7 @@ class Maison3DPanel extends HTMLElement {
       // Unsaved changes in the view (draft): warn before leaving the page.
       if(event.data?.type==="maison3d:dirty"){this._dirty=event.data.dirty===true;return}
       if(event.data?.type==="maison3d:entity-options-request"){this._sendEntityOptions();return}
+      if(this._lights.onMessage(event.data))return;
       if(event.data?.type!=="maison3d:entity-selection")return;
       for(const key of ENTITY_KEYS)this._choices[key]=menuChoice(key,event.data[key]);
       this.sendCurrentConditions(true);
@@ -68,7 +71,7 @@ class Maison3DPanel extends HTMLElement {
   // Candidates for the entity selectors of the ⚙ menu (one scan, on request only).
   _sendEntityOptions() {
     if (!this._hass || !this._frame?.contentWindow) return;
-    this._frame.contentWindow.postMessage({type: "maison3d:entity-options", options: entityOptions(this._hass.states || {})}, window.location.origin);
+    this._frame.contentWindow.postMessage({type: "maison3d:entity-options", options: {...entityOptions(this._hass.states || {}), lights: lightOptions(this._hass.states || {})}}, window.location.origin);
   }
 
   sendCurrentConditions(force = false) {
@@ -89,6 +92,7 @@ class Maison3DPanel extends HTMLElement {
     const keys = ["temperature_entity","wind_entity","rain_entity","snow_entity","cloud_entity","weather_entity","sun_entity","moon_entity"];
     const dirty = this._tracker.changed([
       ["config", this._hass.config], ["diagnostic", diagnostic], ["weather", weather], ["sun", sun], ["moon", moonState],
+      ["user", this._hass.user], ...this._lights.entries(states),
       ...keys.map(key => [key, states[choice(key)]])
     ]);
     if (!force && !dirty) return;
@@ -111,6 +115,9 @@ class Maison3DPanel extends HTMLElement {
       frost_enabled: diagnostic?.attributes?.frost_enabled !== false,
       weather_photos: diagnostic?.attributes?.weather_photos_enabled === true,
       time_zone: this._hass.config?.time_zone ?? "UTC",
+      language: this._hass.locale?.language || this._hass.language || "",
+      user_is_admin: this._hass.user?.is_admin === true,
+      light_states: this._lights.states(states),
       weather: weather?.state ?? null,
       temperature: numeric("temperature_entity", typeof attributes.temperature === "number" ? attributes.temperature : null),
       temperatureUnit: states[choice("temperature_entity")]?.attributes?.unit_of_measurement ?? attributes.temperature_unit ?? "",

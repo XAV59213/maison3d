@@ -8,6 +8,44 @@
           "not_configured": "mdi:cog-outline",
           "degraded": "mdi:alert-circle-outline"
         }
+      },
+      "season_mode": {
+        "default": "mdi:calendar-sync",
+        "state": {
+          "fixed": "mdi:calendar-lock"
+        }
+      },
+      "season": {
+        "default": "mdi:leaf",
+        "state": {
+          "spring": "mdi:flower",
+          "summer": "mdi:white-balance-sunny",
+          "autumn": "mdi:leaf-maple",
+          "winter": "mdi:snowflake"
+        }
+      },
+      "photo": {
+        "default": "mdi:image"
+      },
+      "ambience": {
+        "default": "mdi:weather-partly-cloudy",
+        "state": {
+          "night": "mdi:weather-night",
+          "cloudy": "mdi:weather-cloudy",
+          "rain": "mdi:weather-rainy",
+          "snow": "mdi:weather-snowy",
+          "wind": "mdi:weather-windy",
+          "storm": "mdi:weather-lightning",
+          "fog": "mdi:weather-fog",
+          "day": "mdi:weather-sunny"
+        }
+      },
+      "day_night": {
+        "default": "mdi:theme-light-dark",
+        "state": {
+          "day": "mdi:white-balance-sunny",
+          "night": "mdi:weather-night"
+        }
       }
     }
   }

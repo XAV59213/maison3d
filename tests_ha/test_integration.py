@@ -47,8 +47,9 @@ async def test_single_translated_enum_sensor_and_cleanup(hass: HomeAssistant, tm
     await hass.async_block_till_done()
 
     registry, entries = _sensor(hass)
-    assert [e.unique_id for e in entries] == [f"{entry.entry_id}_sensors_status"]
-    main = entries[0]
+    assert sorted(e.unique_id for e in entries) == sorted(
+        f"{entry.entry_id}_{key}" for key in ("sensors_status", "season_mode", "season", "photo", "ambience", "day_night"))
+    main = registry.async_get(registry.async_get_entity_id("sensor", DOMAIN, f"{entry.entry_id}_sensors_status"))
     assert main.entity_id == "sensor.maison_3d_etat_des_capteurs"  # existing entity id kept
     assert main.translation_key == "sensors_status"
     state = hass.states.get(main.entity_id)
@@ -79,7 +80,8 @@ async def test_fresh_install_and_single_instance(hass: HomeAssistant, tmp_path) 
     entry = hass.config_entries.async_entries(DOMAIN)[0]
     assert entry.state is ConfigEntryState.LOADED
     _, entries = _sensor(hass)
-    assert len(entries) == 1
+    assert len(entries) == 6  # « Sensors status » + the 5 view sensors
+    entries = [e for e in entries if e.unique_id.endswith("_sensors_status")]
     state = hass.states.get(entries[0].entity_id)
     assert entries[0].entity_id == "sensor.maison_3d_sensors_status"
     # Only sun.sun is configured by default, and it does not exist in this test:

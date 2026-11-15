@@ -53,6 +53,8 @@ jobs:
           node tests/test_draft.mjs
           node --check custom_components/maison3d/www/frost-effects.js
           node tests/test_frost.mjs
+          node --check custom_components/maison3d/www/lights.js
+          node tests/test_lights.mjs
           node --check custom_components/maison3d/www/photo-cinematics.js
           node --check custom_components/maison3d/www/weather-effects.js
           node --check custom_components/maison3d/www/vendor/three/addons/controls/OrbitControls.js

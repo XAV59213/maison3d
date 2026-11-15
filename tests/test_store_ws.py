@@ -43,6 +43,7 @@ def load_store_module():
             Store.files[self.key] = data
 
     registered = []
+    signals = []
 
     def websocket_command(schema):
         def wrap(func):
@@ -72,6 +73,7 @@ def load_store_module():
     stub("homeassistant.components.websocket_api", **vars(ws))
     stub("homeassistant.core", HomeAssistant=object, callback=lambda func: func)
     stub("homeassistant.helpers")
+    stub("homeassistant.helpers.dispatcher", async_dispatcher_send=lambda hass, signal, *args: signals.append(signal))
     stub("homeassistant.helpers.storage", Store=Store)
     package = types.ModuleType("maison3d_stub")
     package.__path__ = [str(COMPONENT)]
@@ -87,6 +89,7 @@ def load_store_module():
             sys.modules.pop(name, None)
         else:
             sys.modules[name] = previous
+    module.signals = signals
     return module, Store, registered, components
 
 
@@ -134,6 +137,8 @@ class StoreWebsocketTest(unittest.TestCase):
         saved = self.Store.files["maison3d.data"]
         self.assertEqual(saved["layout"][0]["id"], "maison")
         self.assertIn("updated_at", saved)
+        # The diagnostic sensors are told after each successful save.
+        self.assertEqual(self.module.signals, ["maison3d_project_saved"])
         # Partial save keeps the other sections.
         self.run_ws(self.module.ws_save, {"type": "maison3d/save", "photo_settings": {"season": "winter"}})
         self.hass.data.clear()  # new HA run: read back from the Store file
@@ -147,6 +152,7 @@ class StoreWebsocketTest(unittest.TestCase):
         conn = self.run_ws(self.module.ws_save, {"type": "maison3d/save", "layout": [ITEM]}, admin=False)
         self.assertEqual(conn.errors[0][1], "unauthorized")
         self.assertNotIn("maison3d.data", self.Store.files)
+        self.assertEqual(self.module.signals, [])
 
     def test_invalid_layout_rejected(self):
         for bad in ([{"id": "x", "type": "spaceship", "x": 0, "z": 0, "w": 1, "d": 1, "h": 1, "r": 0}],
