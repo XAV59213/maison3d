@@ -4,6 +4,12 @@ Les notes de chaque version officielle. Lorsqu’un tag `vX.Y.Z` est poussé, le
 
 Les notes des versions antérieures à v2.10.1 restent sur la [page Releases](https://github.com/XAV59213/maison3d/releases).
 
+## v2.16.0 — i18n du reste de l’interface FR/EN
+
+- Les réglages détaillés du menu ⚙, le brouillon (💾, ↶, badges), le chrome de la 3D et du plan, les visites intérieures, la présentation, les toasts, alertes et tooltips, ainsi que les dates et heures, suivent la langue de Home Assistant (français ou anglais).
+- Le français reste la langue par défaut ; l’anglais est utilisé si Home Assistant est en anglais.
+- Un test vérifie que les clés FR et EN sont identiques ; un balayage headless refuse tout français résiduel sur les écrans principaux en anglais.
+
 ## v2.15.0 — Visites génériques et chrome mobile 390 px
 
 - Les bâtiments à visiter sont choisis parmi les objets du projet 3D ; les boutons des bâtiments absents sont masqués.
