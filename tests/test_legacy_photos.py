@@ -78,5 +78,31 @@ class StartupGraceMinutes(unittest.TestCase):
         self.assertEqual(const.startup_grace_minutes({"startup_grace_minutes": "nope"}), 15)
 
 
+
+init_src = (COMPONENT / "__init__.py").read_text(encoding="utf-8")
+legacy_src = (COMPONENT / "legacy_photos.py").read_text(encoding="utf-8")
+
+
+class LegacyPhotoRegistration(unittest.TestCase):
+    def test_does_not_touch_frozen_middlewares(self):
+        self.assertNotIn("middlewares", legacy_src)
+        self.assertNotIn("app.router", legacy_src)
+        self.assertNotIn("middlewares", init_src)
+        self.assertIn("register_legacy_photo_redirects(hass)", init_src)
+        self.assertIn("HomeAssistantView", legacy_src)
+        self.assertIn("requires_auth = False", legacy_src)
+        # Exact views are registered before the static prefix.
+        self.assertLess(
+            init_src.index("register_legacy_photo_redirects(hass)"),
+            init_src.index("async_register_static_paths("),
+        )
+
+    def test_exact_urls_cover_the_four_retired_photos(self):
+        self.assertIn('f"/maison3d-assets/images/{name}.{ext}"', legacy_src)
+        self.assertIn('for ext in ("jpg", "jpeg", "webp")', legacy_src)
+        for name in ("jour", "nuageux", "pluie", "neige"):
+            self.assertIn(f'"{name}"', (COMPONENT / "state_logic.py").read_text(encoding="utf-8"))
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -4,6 +4,12 @@ Les notes de chaque version officielle. Lorsqu’un tag `vX.Y.Z` est poussé, le
 
 Les notes des versions antérieures à v2.10.1 restent sur la [page Releases](https://github.com/XAV59213/maison3d/releases).
 
+## v2.16.1 — Correctif : démarrage (redirection des anciennes photos)
+
+- L’intégration ne plante plus au démarrage de Home Assistant (`RuntimeError: Cannot modify frozen list`) : les 4 anciennes URL de photos (`jour`, `nuageux`, `pluie`, `neige`) sont redirigées en 301 par une `HomeAssistantView` (chemins exacts, enregistrés une seule fois, avant le chemin statique), au lieu d’un middleware aiohttp.
+- Une erreur sur cette redirection est journalisée en avertissement et n’empêche plus le chargement de l’entrée.
+- Un test avec un vrai Home Assistant (setup, rechargement, déchargement, 301) couvre cette régression.
+
 ## v2.16.0 — i18n du reste de l’interface FR/EN
 
 - Les réglages détaillés du menu ⚙, le brouillon (💾, ↶, badges), le chrome de la 3D et du plan, les visites intérieures, la présentation, les toasts, alertes et tooltips, ainsi que les dates et heures, suivent la langue de Home Assistant (français ou anglais).
