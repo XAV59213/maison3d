@@ -24,17 +24,22 @@ class TestMaison3D(unittest.TestCase):
         self.assertIn('interior?.refresh()',page)
         for marker in (
             'add("outside","↩ Extérieur")',
-            'add("maison","🚪 Intérieur maison")',
-            'add("grange","🏚 Intérieur grange")',
+            'visitBuildings',
+            'isBarnInterior',
+            'syncVisitButtons',
             'getItems().find(item=>item.id===key&&item.type==="building")',
             'if(photoView.state.enabled){photoView.state.enabled=false;photoView.update()}',
             'exterior.visible=false',
             'hidden.clear();clear();',
             'cameraBefore.position.copy(beforePosition)',
             'presentation.cancel()',
-            'Volumes intérieurs provisoires',
+            'INTERIOR_DISCLAIMER',
+            'in-menu',
         ):
             self.assertIn(marker,module)
+        visits=(COMPONENT/"www"/"visits.js").read_text(encoding="utf-8")
+        self.assertIn("Volumes intérieurs provisoires",visits)
+        self.assertIn('visitButtonLabel',visits)
 
     def test_realistic_barn_interior(self):
         www=COMPONENT/"www"
@@ -55,9 +60,12 @@ class TestMaison3D(unittest.TestCase):
         self.assertLess(photo.stat().st_size,400_000)
         for marker in ("rack","bureau","table","canapé","écran de projection","bar","moto","volière","armoires","arcade"):
             self.assertIn(marker,barn.lower())
-        for marker in ("📷 Photo réelle","⬡ Vue 3D","maison3d-interior-photo","drawBarn(building)",
-                       "camera.layers.set(BARN_LAYER)","camera.layers.mask=layersBefore","interior-barn"):
+        for marker in ("📷 Photo de la grange","⬡ Vue 3D","maison3d-interior-photo","drawBarn(building)",
+                       "camera.layers.set(BARN_LAYER)","camera.layers.mask=layersBefore","interior-barn",
+                       "isBarnInterior(building)","hasInteriorPhoto"):
             self.assertIn(marker,module)
+        self.assertIn('interior:"barn"', (www/"scene3d.js").read_text(encoding="utf-8"))
+        self.assertIn("Aménagement réaliste (projet exemple)", (www/"scene3d.js").read_text(encoding="utf-8"))
 
     def test_three_loaded_on_demand(self):
         """The photo and the Lovelace card never load three.js: only the 3D view / plan / interior visits do."""
@@ -113,6 +121,11 @@ class TestMaison3D(unittest.TestCase):
         self.assertNotIn("persist()", block)
         self.assertIn("html.card-mode #maison3d-photo-controls.collapsed>:not(.bar-toggle):not(.maison3d-save.dirty){display:none!important}", photo)
         self.assertIn("#maison3d-photo-controls .bar-toggle{display:none}", photo)
+        page = app_page()
+        self.assertIn("#maison3d-photo-controls .bar-toggle{display:inline-block!important", page)
+        self.assertIn("#maison3d-photo-controls.collapsed>:not(.bar-toggle):not(.maison3d-save.dirty){display:none!important}", page)
+        self.assertIn("chrome-photo", photo)
+        self.assertIn("html:not(.photo-active).compact-scene #maison3d-photo-controls .chrome-photo{display:none!important}", page)
 
     def test_manifest(self):
         manifest = json.loads((COMPONENT / "manifest.json").read_text(encoding="utf-8"))

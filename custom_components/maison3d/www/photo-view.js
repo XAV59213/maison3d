@@ -124,16 +124,16 @@ export function createPhotoView({ensureScene=null}={}) {
   const optionsBtn=document.createElement("button");
   optionsBtn.type="button";optionsBtn.textContent="⚙ Images / météo";
   const nightBtn=document.createElement("button");
-  nightBtn.type="button";nightBtn.textContent="☾ Nuit réelle";
+  nightBtn.type="button";nightBtn.className="chrome-photo";nightBtn.textContent="☾ Nuit réelle";
   nightBtn.title="Prévisualiser immédiatement la nuit sur la photo";
   const dayBtn=document.createElement("button");
-  dayBtn.type="button";dayBtn.textContent="☀ Jour";
+  dayBtn.type="button";dayBtn.className="chrome-photo";dayBtn.textContent="☀ Jour";
   dayBtn.title="Prévisualiser immédiatement le jour sur la photo";
   const autoBtn=document.createElement("button");
-  autoBtn.type="button";autoBtn.textContent="◉ Auto";
+  autoBtn.type="button";autoBtn.className="chrome-photo";autoBtn.textContent="◉ Auto";
   autoBtn.title="Utiliser le soleil et la météo réels de Home Assistant";
   const effectsBtn=document.createElement("button");
-  effectsBtn.type="button";effectsBtn.title="Activer ou désactiver les effets animés";
+  effectsBtn.type="button";effectsBtn.className="chrome-photo";effectsBtn.title="Activer ou désactiver les effets animés";
   // « 💾 Enregistrer / ↶ Annuler » in the bar shared by the photo, the 2D plan and the 3D view.
   const saveControls=createSaveControls();
   nav.append(photoBtn,planBtn,modelBtn,nightBtn,dayBtn,autoBtn,effectsBtn,optionsBtn,saveControls);
@@ -144,7 +144,7 @@ export function createPhotoView({ensureScene=null}={}) {
   const barToggle=document.createElement("button");
   barToggle.type="button";barToggle.className="bar-toggle";
   barToggle.setAttribute("aria-controls","maison3d-photo-controls");
-  const narrowCard=()=>innerWidth<=600||(Math.min(screen.width,screen.height)<=600&&matchMedia("(pointer:coarse)").matches);
+  const narrowCard=()=>innerWidth<=600||innerHeight<=500||(Math.min(screen.width,screen.height)<=600&&matchMedia("(pointer:coarse)").matches);
   let barChoice=null;
   try{const v=localStorage.getItem(BAR_KEY);if(v==="collapsed"||v==="expanded")barChoice=v}catch{}
   const setBar=collapsed=>{

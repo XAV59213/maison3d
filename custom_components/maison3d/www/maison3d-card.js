@@ -139,7 +139,8 @@ class Maison3DCard extends HTMLElement {
       .card-title{padding:14px 16px 8px;font-size:18px;font-weight:500}
       iframe{display:block;width:100%;border:0;background:#111c2d}
       .footer{font-size:11px;color:var(--secondary-text-color,#889);
-        padding:7px 13px;text-align:right}
+        padding:7px 13px;text-align:right;line-height:1.35}
+      @media(max-width:430px){.footer{font-size:10px;padding:6px 10px;text-align:left}}
     `;
     const card = document.createElement("ha-card");
     const heading = document.createElement("div");

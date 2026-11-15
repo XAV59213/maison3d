@@ -35,7 +35,7 @@ export function startScene({photoView,interior,isOffscreen=()=>false}){
   architecture.landscape(scene);
   const defaultItems=[
   {id:"maison",name:"Maison principale",type:"building",x:7,z:-9,w:14,d:10,h:5,r:0},
-  {id:"grange",name:"Grange / salle de jeux indépendante",type:"building",x:-18,z:-12,w:9,d:7,h:3.3,r:0},
+  {id:"grange",name:"Grange / salle de jeux indépendante",type:"building",interior:"barn",x:-18,z:-12,w:9,d:7,h:3.3,r:0},
   {id:"garage",name:"Garage extrême droite",type:"garage",x:31,z:4,w:6,d:7,h:3,r:0},
   {id:"rampe",name:"Rampe véhicules gauche",type:"ramp",x:-18,z:13,w:3.5,d:23,h:2.5,r:-18},
   {id:"abri",name:"Petit abri métallique devant",type:"shed",x:-2,z:16,w:5.5,d:3.4,h:2.3,r:0},
@@ -71,7 +71,14 @@ export function startScene({photoView,interior,isOffscreen=()=>false}){
   // Free GPU memory of removed groups, but keep anything still used by the scene (shared materials).
   function disposeUnused(groups){const used=new Set();scene.traverse(o=>{if(o.geometry)used.add(o.geometry);for(const m of [].concat(o.material||[]))used.add(m)});for(const g of groups)g.traverse(o=>{if(o.geometry&&!used.has(o.geometry))o.geometry.dispose();for(const m of [].concat(o.material||[]))if(!used.has(m))m.dispose()})}
   function redraw(){if(outline){scene.remove(outline);outline.geometry.dispose();outline.material.dispose();outline=null}const old=[...meshes.values()];for(const g of old)scene.remove(g);meshes.clear();data.forEach(build);disposeUnused(old);refreshSelect();if(selected)choose(selected.id);interior?.refresh()}
-  const select=document.getElementById("objects"),ids=["x","z","w","d","h","r"];function refreshSelect(){select.replaceChildren(...data.map(o=>{const opt=document.createElement("option");opt.value=o.id;opt.textContent=o.name||o.id;return opt}));if(data.length){selected=data.find(o=>o.id===selected?.id)||data[0];select.value=selected.id;ids.forEach(k=>document.getElementById(k).value=selected[k])}else selected=null}
+  const select=document.getElementById("objects"),ids=["x","z","w","d","h","r"];
+  const barnRow=document.createElement("label");barnRow.id="barn-example-option";barnRow.style.cssText="display:block;margin-top:8px;font-size:12px;color:#d5dee7";
+  const barnCheck=document.createElement("input");barnCheck.type="checkbox";
+  barnRow.append(barnCheck,document.createTextNode(" Aménagement réaliste (projet exemple)"));
+  document.getElementById("editor")?.append(barnRow);
+  barnCheck.addEventListener("change",()=>{if(!selected||selected.type!=="building")return;selected.interior=barnCheck.checked?"barn":"off";save();interior?.refresh()});
+  function syncBarnOption(){const allow=selected?.type==="building";barnRow.hidden=!allow;if(allow)barnCheck.checked=selected.interior==="barn"||(selected.id==="grange"&&selected.interior!=="off");}
+  function refreshSelect(){select.replaceChildren(...data.map(o=>{const opt=document.createElement("option");opt.value=o.id;opt.textContent=o.name||o.id;return opt}));if(data.length){selected=data.find(o=>o.id===selected?.id)||data[0];select.value=selected.id;ids.forEach(k=>document.getElementById(k).value=selected[k]);syncBarnOption()}else{selected=null;syncBarnOption()}}
   function choose(id){selected=data.find(o=>o.id===id);refreshSelect();if(outline){scene.remove(outline);outline.geometry.dispose();outline.material.dispose();outline=null}if(selected&&meshes.get(id)){outline=new THREE.BoxHelper(meshes.get(id),0x00d8ff);scene.add(outline)}}
   // Saved in Home Assistant (shared by every device) when possible; localStorage stays as cache / offline fallback.
   const saveStatus=t=>{document.getElementById("save").textContent=t};
@@ -101,7 +108,7 @@ export function startScene({photoView,interior,isOffscreen=()=>false}){
   document.getElementById("topview").onclick=()=>{presentation.cancel();camera.position.set(0,60,.1);controls.target.set(0,0,0);controls.update()};
   document.getElementById("tab3d").onclick=document.getElementById("orbit").onclick=()=>{presentation.cancel();camera.position.set(31,23,35);controls.target.set(0,1,0);controls.update()};
   document.getElementById("export").onclick=()=>{let blob=new Blob([JSON.stringify({version:2,items:data},null,2)],{type:"application/json"});let a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=(projectName.normalize("NFKD").replace(/[\u0300-\u036f]/g,"").replace(/[^\w-]+/g,"-").replace(/^-+|-+$/g,"").toLowerCase()||"maison3d")+"-projet.json";a.click();URL.revokeObjectURL(a.href)};
-  document.getElementById("import").onclick=()=>document.getElementById("file").click();document.getElementById("file").onchange=async e=>{try{const obj=JSON.parse(await e.target.files[0].text());if(!Array.isArray(obj.items))throw Error("Format attendu : items[]");data=obj.items.filter(o=>o&&typeof o.id==="string"&&/^[a-z0-9_-]{1,80}$/i.test(o.id)&&typeof o.type==="string"&&["building","garage","ramp","shed","terrace","wall","gate","pool","swing","tree","furniture","steps","road"].includes(o.type)&&["x","z","w","d","h","r"].every(k=>Number.isFinite(Number(o[k])))&&o.w>0&&o.d>0&&o.h>0).map(o=>({...o,name:String(o.name||o.id).slice(0,120)}));if(!data.length)throw Error("Aucun objet valide");redraw();save()}catch(err){alert("Import impossible : "+err.message)}};
+  document.getElementById("import").onclick=()=>document.getElementById("file").click();document.getElementById("file").onchange=async e=>{try{const obj=JSON.parse(await e.target.files[0].text());if(!Array.isArray(obj.items))throw Error("Format attendu : items[]");data=obj.items.filter(o=>o&&typeof o.id==="string"&&/^[a-z0-9_-]{1,80}$/i.test(o.id)&&typeof o.type==="string"&&["building","garage","ramp","shed","terrace","wall","gate","pool","swing","tree","furniture","steps","road"].includes(o.type)&&["x","z","w","d","h","r"].every(k=>Number.isFinite(Number(o[k])))&&o.w>0&&o.d>0&&o.h>0).map(o=>({...o,name:String(o.name||o.id).slice(0,120),interior:o.interior==="barn"||o.interior==="off"?o.interior:undefined}));if(!data.length)throw Error("Aucun objet valide");redraw();save()}catch(err){alert("Import impossible : "+err.message)}};
   const atmosphere=createAtmosphere({scene,sun,renderer});
   const presentation=createPresentation({THREE,camera,controls});
   interior.attach({THREE,scene,camera,controls,getItems:()=>data,getMeshes:()=>meshes,presentation});

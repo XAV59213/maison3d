@@ -1,12 +1,16 @@
 /**
  * Explorateur des intérieurs.
- * - Grange : aménagement d'après la photo réelle (barn-interior.js) et bouton
- *   « 📷 Photo réelle » qui affiche cette photo.
- * - Maison : volumes 3D schématiques basés sur les dimensions du bâtiment ; pas
- *   de pièces attestées, un relevé ou des photos restent nécessaires.
+ * The buildings to visit come from the 3D project (type « building »).
+ * The realistic barn fit-out (barn-interior.js) is an optional example,
+ * on by default for the shipped grange, and only offered for a building.
+ * The 📷 photo button is shown only when that building has a photo.
  */
 import {buildBarnInterior,BARN_VIEW,BARN_PHOTO} from "./barn-interior.js";
 import {responsiveSrcset,photoSizes} from "./photo-source.js";
+import {
+  INTERIOR_DISCLAIMER,isBarnInterior,hasInteriorPhoto,visitBuildings,
+  visitButtonLabel,photoButtonLabel,photoButtonTitle,isCompactView
+} from "./visits.js";
 // The buttons exist from the start (photo view included); the 3D part is attached by
 // scene3d.js once loaded: entering a building first asks ensureScene() to load it.
 export function createInteriorExplorer({photoView,ensureScene=null}){
@@ -20,12 +24,16 @@ export function createInteriorExplorer({photoView,ensureScene=null}){
     paint=material(0xe7e0d4);floor=material(0xbca88c);accent=material(0x918b7d);
     timber=material(0x997050);dark=material(0x46443d);glass=material(0x9acbd4,.28);
     cameraBefore={position:new THREE.Vector3(),target:new THREE.Vector3(),fov:46};
+    syncVisitButtons();
+    placeNav();
   }
   function block(parent,w,h,d,mat,x,y,z){
     const mesh=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);
     mesh.position.set(x,y,z);mesh.receiveShadow=true;
     parent.add(mesh);return mesh;
   }
+  const items=()=>visitBuildings(getItems?.());
+  const buildingOf=key=>items().find(item=>item.id===key);
   const nav=document.createElement("nav");
   nav.id="maison3d-interior-navigation";
   nav.setAttribute("aria-label","Visites intérieures Maison 3D");
@@ -33,45 +41,50 @@ export function createInteriorExplorer({photoView,ensureScene=null}){
   function add(key,text){
     const b=document.createElement("button");b.type="button";b.textContent=text;
     b.setAttribute("aria-pressed","false");
+    b.dataset.visit=key;
     b.addEventListener("click",()=>{
       if(shell||key==="outside")return enter(key);
       ensureScene?.().then(()=>enter(key)).catch(()=>{});
     });
     nav.append(b);buttons.set(key,b);
+    return b;
   }
   add("outside","↩ Extérieur");
-  add("maison","🚪 Intérieur maison");
-  add("grange","🏚 Intérieur grange");
-  // Real photo of the barn interior (only while visiting the barn).
+  // Real interior photo (only while visiting a building that has one).
   const photoBtn=document.createElement("button");
-  photoBtn.type="button";photoBtn.textContent="📷 Photo réelle";photoBtn.className="interior-photo-btn";
-  photoBtn.title="Afficher la photo réelle de l'intérieur de la grange";
+  photoBtn.type="button";photoBtn.textContent="📷 Photo de la grange";photoBtn.className="interior-photo-btn";
+  photoBtn.title="Afficher la photo de l'intérieur de la grange";
   photoBtn.setAttribute("aria-pressed","false");photoBtn.hidden=true;
   nav.append(photoBtn);
   const realPhoto=document.createElement("figure");
   realPhoto.id="maison3d-interior-photo";realPhoto.hidden=true;
   const realImg=document.createElement("img");
-  realImg.alt="Photo réelle de l'intérieur de la grange";realImg.decoding="async";
+  realImg.alt="Photo de l'intérieur de la grange";realImg.decoding="async";
   const caption=document.createElement("figcaption");
-  caption.textContent="Photo réelle — intérieur de la grange · « ⬡ Vue 3D » pour revenir à la 3D";
+  caption.textContent="Photo de la grange · « ⬡ Vue 3D » pour revenir à la 3D";
   realPhoto.append(realImg,caption);
   const showPhoto=on=>{
+    const current=buildingOf(active);
     if(on){
       // 640 / 960 / 1500 px copies: the phone loads the lightest one that stays sharp.
-      const full=new URL(BARN_PHOTO,import.meta.url);
+      const href=typeof current?.interior_photo==="string"&&current.interior_photo?current.interior_photo:BARN_PHOTO;
+      const full=new URL(href,import.meta.url);
       realImg.sizes=photoSizes({width:innerWidth,height:innerHeight,ratio:1500/845,fit:"contain",dpr:devicePixelRatio||1});
-      if(!realImg.srcset)realImg.srcset=responsiveSrcset(full.pathname).replace(/\/maison3d-assets\/images\//g,new URL("./images/",import.meta.url).href);
+      if(!realImg.srcset&&href===BARN_PHOTO)realImg.srcset=responsiveSrcset(full.pathname).replace(/\/maison3d-assets\/images\//g,new URL("./images/",import.meta.url).href);
       if(!realImg.src)realImg.src=full.href;
     }
     realPhoto.hidden=!on;photoBtn.setAttribute("aria-pressed",String(on));
-    photoBtn.textContent=on?"⬡ Vue 3D":"📷 Photo réelle";
+    photoBtn.textContent=photoButtonLabel(current,on);
   };
   photoBtn.addEventListener("click",()=>showPhoto(realPhoto.hidden));
   const label=document.createElement("span");
   label.className="interior-disclaimer";
-  label.textContent="Volumes intérieurs provisoires — plans à confirmer";
+  label.textContent=INTERIOR_DISCLAIMER;
   label.hidden=true;
   nav.append(label);
+  function disclaimerEnabled(){
+    try{return localStorage.getItem("maison3d:interior-disclaimer")==="true"}catch{return false}
+  }
   const style=document.createElement("style");
   style.textContent=[
     "#maison3d-interior-navigation{position:fixed;top:66px;left:12px;z-index:10;",
@@ -84,21 +97,73 @@ export function createInteriorExplorer({photoView,ensureScene=null}){
     "#maison3d-interior-navigation button.interior-photo-btn{background:#7a4b12}",
     "#maison3d-interior-navigation button.interior-photo-btn[aria-pressed=true]{background:#1476dc}",
     "#maison3d-interior-navigation [hidden]{display:none!important}",
+    /* Compact (390 px portrait / landscape): the visit buttons live in « ☰ Menu ». */
+    "#maison3d-interior-navigation.in-menu{position:static;inset:auto;max-width:none;padding:0;",
+    "background:transparent;box-shadow:none;display:flex;flex-wrap:wrap;z-index:auto}",
+    "#maison3d-interior-navigation.in-menu button{padding:6px 7px;font-size:11px}",
     "html.interior-barn #maison3d-weather-overlay,html.interior-barn .season-overlay,html.interior-barn .frost-overlay,html.interior-barn .photo-cinematics{display:none!important}",
     "#maison3d-interior-photo{position:fixed;inset:0;margin:0;z-index:9;background:#0d141d;display:flex;align-items:center;justify-content:center}",
     "#maison3d-interior-photo[hidden]{display:none}",
     "#maison3d-interior-photo img{width:100%;height:100%;object-fit:contain}",
     "#maison3d-interior-photo figcaption{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);max-width:calc(100% - 20px);",
     "background:#101923dd;color:#fff;font:12px system-ui;padding:6px 10px;border-radius:8px;text-align:center}",
-    "html.card-mode #maison3d-interior-navigation{top:8px;left:6px}",
-    "html.photo-active #maison3d-interior-navigation{top:60px}",
-    "@media(max-width:710px){#maison3d-interior-navigation{top:52px;left:6px;right:6px;max-width:none}",
-    "#maison3d-interior-navigation button{padding:6px;font-size:11px}",
+    "html.card-mode #maison3d-interior-navigation:not(.in-menu){top:8px;left:6px}",
+    "html.photo-active #maison3d-interior-navigation:not(.in-menu){top:60px}",
+    "@media(max-width:710px){#maison3d-interior-navigation:not(.in-menu){top:52px;left:6px;right:6px;max-width:none}",
+    "#maison3d-interior-navigation:not(.in-menu) button{padding:6px;font-size:11px}",
     "#maison3d-interior-navigation .interior-disclaimer{font-size:10px}}"
   ].join("");
   document.head.append(style);document.body.append(realPhoto,nav);
   let active="outside";
   const hidden=new Map();
+  function syncVisitButtons(){
+    const wanted=new Set(["outside",...items().map(item=>item.id)]);
+    for(const [key,b] of [...buttons]){
+      if(key==="outside")continue;
+      if(!wanted.has(key)){b.remove();buttons.delete(key)}
+    }
+    for(const item of items()){
+      let b=buttons.get(item.id);
+      if(!b){
+        // Insert before the photo button so 📷 stays at the end of the visit group.
+        b=add(item.id,visitButtonLabel(item));
+        nav.insertBefore(b,photoBtn);
+      }else{
+        b.textContent=visitButtonLabel(item);
+      }
+      b.setAttribute("aria-pressed",String(item.id===active));
+    }
+    buttons.get("outside")?.setAttribute("aria-pressed",String(active==="outside"));
+    if(active!=="outside"&&!wanted.has(active))enter("outside");
+    else applyVisitChrome();
+  }
+  function applyVisitChrome(){
+    const current=buildingOf(active);
+    const showNotice=active!=="outside"&&!isBarnInterior(current)&&disclaimerEnabled();
+    label.hidden=!showNotice;
+    label.textContent=INTERIOR_DISCLAIMER;
+    const showPic=active!=="outside"&&hasInteriorPhoto(current);
+    photoBtn.hidden=!showPic;
+    if(!showPic)showPhoto(false);
+    else{
+      photoBtn.textContent=photoButtonLabel(current,!realPhoto.hidden);
+      photoBtn.title=photoButtonTitle(current);
+      realImg.alt="Photo de l'intérieur de "+(current?current.name||current.id:"bâtiment");
+      caption.textContent=photoButtonLabel(current,false).replace(/^📷 /,"")+" · « ⬡ Vue 3D » pour revenir à la 3D";
+    }
+  }
+  function placeNav(){
+    const bar=document.getElementById("maison3d-photo-controls");
+    const compact=isCompactView(innerWidth,innerHeight);
+    if(compact&&bar){
+      if(nav.parentNode!==bar)bar.append(nav);
+      nav.classList.add("in-menu");
+    }else{
+      if(nav.parentNode!==document.body)document.body.append(nav);
+      nav.classList.remove("in-menu");
+    }
+  }
+  addEventListener("resize",placeNav);
   function clear(){
     if(!shell)return;
     for(const mesh of [...shell.children]){
@@ -190,7 +255,7 @@ export function createInteriorExplorer({photoView,ensureScene=null}){
       // Hide only the chosen exterior mesh. Do not delete or alter saved geometry.
       const exterior=getMeshes().get(key);
       if(exterior){hidden.set(exterior,exterior.visible);exterior.visible=false}
-      const volume=key==="grange"?drawBarn(building):drawFloor(building,false);
+      const volume=isBarnInterior(building)?drawBarn(building):drawFloor(building,false);
       active=key;
       presentation.cancel();
       const angle=THREE.MathUtils.degToRad(building.r||0);
@@ -212,14 +277,10 @@ export function createInteriorExplorer({photoView,ensureScene=null}){
         camera.fov=65;camera.updateProjectionMatrix();controls.update();
       }
     }
-    for(const [id,b] of buttons)b.setAttribute("aria-pressed",String(id===active));
-    label.hidden=active==="outside";
-    label.textContent=active==="grange"?"Grange : aménagement d'après la photo réelle · mesures approximatives":
-      "Volumes intérieurs provisoires — plans à confirmer";
-    photoBtn.hidden=active!=="grange";
-    if(active!=="grange")showPhoto(false);
+    syncVisitButtons();
   }
   function refresh(){
+    syncVisitButtons();
     if(active==="outside")return;
     const current=active;
     const beforePosition=cameraBefore.position.clone();
@@ -230,6 +291,7 @@ export function createInteriorExplorer({photoView,ensureScene=null}){
     cameraBefore.target.copy(beforeTarget);
     cameraBefore.fov=beforeFov;
   }
-  for(const [id,b] of buttons)b.setAttribute("aria-pressed",String(id==="outside"));
-  return {attach,enter,refresh,showPhoto,get active(){return active}};
+  syncVisitButtons();
+  placeNav();
+  return {attach,enter,refresh,showPhoto,syncVisitButtons,get active(){return active}};
 }
