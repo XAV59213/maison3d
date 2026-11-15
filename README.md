@@ -346,6 +346,16 @@ Les commandes **▣ Photo réelle**, **▤ Plan 2D** et **⬡ 3D éditable** res
 
 Le choix entre plan 2D et vue 3D est mémorisé localement. Il n'est plus nécessaire de rechercher le bouton derrière la photo ; la barre d'outils 3D reste disponible selon le mode présentation ou édition.
 
+## 🚪 Visite 3D de la maison et de la grange (première étape)
+
+Trois commandes permettent d'ouvrir directement les volumes **Intérieur maison**, **Intérieur grange** et **Extérieur** depuis le moteur 3D.
+
+Les nouvelles vues sont de **véritables géométries Three.js**, avec sols, murs, éclairages et quelques éléments d'ameublement de démonstration. Les dimensions de départ reprennent celles des objets déjà enregistrés dans le projet, y compris si vous les avez modifiées.
+
+**Important :** faute de plans et de photographies intérieures, les pièces visibles sont des **volumes provisoires**, pas une reconstitution fidèle de la maison ou de la grange. Le mode intérieur n'efface pas vos bâtiments ni vos données : le bâtiment extérieur concerné est seulement masqué le temps de la visite et réapparaît lorsque vous revenez dehors. Les caméras intérieures sont distinctes de la vue photo météo.
+
+Pour obtenir une visite **réaliste et exacte**, il faudra ensuite relever les dimensions et la distribution des pièces, les emplacements des portes/fenêtres, les étages, les escaliers et, si possible, disposer de photographies des deux intérieurs.
+
 ## 🏗️ Vue 3D et édition
 
 La scène Three.js distincte propose les vues **Façade, Aérienne, Jardin et Garage**, ainsi que la rotation, le zoom, le déplacement et le redimensionnement des objets. Dans le panneau complet, elle permet également l'**export et l'import JSON**.
