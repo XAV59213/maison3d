@@ -7,7 +7,8 @@
       }
     },
     "abort": {
-      "already_configured": "Already configured"
+      "already_configured": "Already configured",
+      "single_instance_allowed": "Maison 3D is already configured. Only one instance is allowed."
     }
   },
   "options": {
@@ -34,6 +35,32 @@
     },
     "error": {
       "invalid_image_url": "Invalid image URL: use /local/, /maison3d-assets/, /api/ or HTTPS."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "sensors_status": {
+        "name": "Sensors status",
+        "state": {
+          "ok": "OK",
+          "not_configured": "Not configured",
+          "unavailable": "Unavailable"
+        },
+        "state_attributes": {
+          "sensor_statuses": {
+            "name": "Source statuses"
+          },
+          "configured_count": {
+            "name": "Configured sources"
+          },
+          "available_count": {
+            "name": "Available sources"
+          },
+          "project_name": {
+            "name": "Project name"
+          }
+        }
+      }
     }
   }
 }

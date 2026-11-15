@@ -140,6 +140,35 @@ class TestMaison3D(unittest.TestCase):
         panel = (www / "maison3d-panel.js").read_text(encoding="utf-8")
         self.assertIn("min-height:240px", panel)
 
+    def test_clean_home_assistant_integration(self):
+        """One translated ENUM diagnostic sensor, single config entry, runtime_data, unload order."""
+        manifest = json.loads((COMPONENT / "manifest.json").read_text(encoding="utf-8"))
+        self.assertIs(manifest["single_config_entry"], True)
+        keys = list(manifest)
+        self.assertEqual(keys[:2], ["domain", "name"])
+        self.assertEqual(keys[2:], sorted(keys[2:]))
+        flow = (COMPONENT / "config_flow.py").read_text(encoding="utf-8")
+        self.assertNotIn("async_set_unique_id", flow)
+        sensors = (COMPONENT / "sensor.py").read_text(encoding="utf-8")
+        self.assertIn('_attr_translation_key = "sensors_status"', sensors)
+        self.assertIn("SensorDeviceClass.ENUM", sensors)
+        self.assertIn("registry.async_remove(entity_id)", sensors)
+        self.assertNotIn("_attr_name", sensors)
+        self.assertEqual(sensors.count("(SensorEntity)"), 1)
+        init = (COMPONENT / "__init__.py").read_text(encoding="utf-8")
+        self.assertIn("entry.runtime_data = Maison3DRuntimeData()", init)
+        unload = init.split("async def async_unload_entry")[1]
+        self.assertLess(unload.index("async_unload_platforms"), unload.index("async_remove_panel"))
+        icons = json.loads((COMPONENT / "icons.json").read_text(encoding="utf-8"))
+        self.assertIn("sensors_status", icons["entity"]["sensor"])
+        for name in ("strings.json", "translations/en.json", "translations/fr.json"):
+            data = json.loads((COMPONENT / name).read_text(encoding="utf-8"))
+            sensor = data["entity"]["sensor"]["sensors_status"]
+            self.assertEqual(set(sensor["state"]), {"ok", "not_configured", "unavailable"}, name)
+            self.assertIn("single_instance_allowed", data["config"]["abort"], name)
+        fr = json.loads((COMPONENT / "translations" / "fr.json").read_text(encoding="utf-8"))
+        self.assertEqual(fr["entity"]["sensor"]["sensors_status"]["name"], "État des capteurs")
+
     def test_set_hass_is_cheap(self):
         """Card and panel memoise the tracked entities and skip unrelated updates."""
         www = COMPONENT / "www"
@@ -328,13 +357,16 @@ class TestMaison3D(unittest.TestCase):
         editor = (COMPONENT / "www" / "maison3d-card-editor.js").read_text(encoding="utf-8")
         for key in ("weather_entity","sun_entity","moon_entity","temperature_entity","wind_entity","rain_entity","snow_entity","cloud_entity"):
             self.assertIn(key, flow)
-            self.assertIn(key, sensors)
             self.assertIn(key, editor)
+        # The diagnostic sensor covers every option slot (and the legacy entities to remove).
+        self.assertIn("from .config_flow import DEFAULT_ENTITIES", sensors)
+        self.assertIn("LEGACY_SOURCE_SENSORS = tuple(DEFAULT_ENTITIES)", sensors)
         self.assertIn("OptionsFlowWithReload",flow)
         self.assertIn("async_get_options_flow",flow)
-        self.assertIn('async_forward_entry_setups(entry, ["sensor"])', setup)
+        self.assertIn('PLATFORMS = ["sensor"]', setup)
+        self.assertIn('async_forward_entry_setups(entry, PLATFORMS)', setup)
         self.assertIn("maison3d_config",sensors)
-        self.assertIn("Maison3DSourceStatusSensor",sensors)
+        self.assertNotIn("Maison3DSourceStatusSensor",sensors)
         self.assertIn("config-changed",editor)
         self.assertIn("static getConfigElement()",card)
         tracker = (COMPONENT / "www" / "hass-tracker.js").read_text(encoding="utf-8")

@@ -66,8 +66,8 @@ class Maison3DConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     VERSION = 1
 
     async def async_step_user(self, user_input=None):
-        await self.async_set_unique_id("maison3d_local")
-        self._abort_if_unique_id_configured()
+        # Only one instance: enforced by « single_config_entry » in manifest.json.
+        # Entries created by older versions keep their unique_id and work as before.
         if user_input is not None:
             return self.async_create_entry(title="Maison 3D", data={})
         return self.async_show_form(step_id="user", data_schema=vol.Schema({}))
