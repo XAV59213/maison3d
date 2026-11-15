@@ -3,7 +3,7 @@ import {IMAGE_KEYS} from "./photo-source.js";
 import {createStorageBridge} from "./storage-bridge.js";
 import {createMediaResolver} from "./media-resolver.js";
 import {createHassTracker,isWeather} from "./hass-tracker.js";
-import {readSensor,precipitation,sensorIssues} from "./sensor-values.js";
+import {readSensor,precipitation,sensorIssues,menuChoice,effectiveEntities,entityOptions,ENTITY_KEYS} from "./sensor-values.js";
 /**
  * Maison 3D interactive Lovelace card.
  * Load as a JavaScript module resource: /maison3d-assets/maison3d-card.js
@@ -57,7 +57,10 @@ class Maison3DCard extends HTMLElement {
     // overrides stay in the card configuration.
     if (!this._storage) {
       this._storage = createStorageBridge({getFrame:()=>this._frame,getHass:()=>this._hass});
-      this._onStorageMessage = event => this._storage.onMessage(event);
+      this._onStorageMessage = event => {
+        this._storage.onMessage(event);
+        this._onFrameMessage(event);
+      };
       this._media = createMediaResolver({getHass:()=>this._hass,onResolved:()=>this._updateStates(true)});
     }
     window.addEventListener("message", this._onStorageMessage);
@@ -70,6 +73,18 @@ class Maison3DCard extends HTMLElement {
       });
       this._observer.observe(this);
     }
+  }
+
+  // ⚙ menu of the view: entity choices and the list of candidates for its selectors.
+  _onFrameMessage(event) {
+    if (event.origin!==window.location.origin || !this._frame || event.source!==this._frame.contentWindow) return;
+    if (event.data?.type==="maison3d:entity-options-request") {
+      if (this._hass) this._frame.contentWindow.postMessage({type:"maison3d:entity-options",options:entityOptions(this._hass.states||{})},window.location.origin);
+      return;
+    }
+    if (event.data?.type!=="maison3d:entity-selection") return;
+    this._menu=Object.fromEntries(ENTITY_KEYS.map(key=>[key,menuChoice(key,event.data[key])]));
+    this._updateStates(true);
   }
 
   disconnectedCallback() {
@@ -135,7 +150,9 @@ class Maison3DCard extends HTMLElement {
     // Memoised lookups: no scan of every entity on each Home Assistant update.
     const diagnostic=this._tracker.diagnostic(states);
     const integration = diagnostic?.attributes?.entities || {};
-    const choice = key => this._config[key] || integration[key] || "";
+    // Card option → ⚙ menu choice (shared view settings) → integration option → detection.
+    const menu=this._menu||{};
+    const choice = key => this._config[key] || menu[key] || integration[key] || "";
     const weather=(choice("weather_entity") && states[choice("weather_entity")]) || this._tracker.find("weather",states,isWeather);
     const sun=states[choice("sun_entity") || "sun.sun"];
     const moon=states[choice("moon_entity")] || this._tracker.moon(states);
@@ -180,6 +197,11 @@ class Maison3DCard extends HTMLElement {
       ice_alert:wet.ice_alert,
       cloud,
       sensor_issues,
+      entities_effective:effectiveEntities([["card",this._config],["menu",menu],["integration",integration]],{
+        weather_entity:{entity_id:weather?.entity_id||"",source:"auto"},
+        moon_entity:{entity_id:moon?.entity_id||"",source:"auto"},
+        sun_entity:{entity_id:sun?"sun.sun":"",source:"default"}
+      }),
       windSpeedUnit:attrs.wind_speed_unit??"",
       sun:sun?.state??null,
       moon:moon?.state??null,

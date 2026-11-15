@@ -10,7 +10,7 @@ import {automaticSeason,SEASON_LABELS,createSeasonEffects} from "./season-effect
 import {DEFAULT_MAIN_PHOTO,allowedPhotoUrl,bundledPhoto,resolveMainPhoto,IMAGE_SLOTS,IMAGE_KEYS,pickWeatherPhoto,suggestedFileName} from "./photo-source.js";
 import {createFrostEffects,frostLevel,toCelsius} from "./frost-effects.js";
 import {onHaData,saveToHa,uploadToHa} from "./ha-storage.js";
-import {moonPhase,weatherKind,issueText} from "./sensor-values.js";
+import {moonPhase,weatherKind,issueText,menuChoice,SOURCE_LABELS,ENTITY_KEYS as SENSOR_KEYS} from "./sensor-values.js";
 export function createPhotoView() {
   const KEYS=IMAGE_KEYS;
   const LABELS={...Object.fromEntries(IMAGE_SLOTS),fog:"Brouillard",clear:"Clair",frost:"Gel"};
@@ -21,8 +21,8 @@ export function createPhotoView() {
   const allowedUrl=allowedPhotoUrl;
   const defaults=()=>Object.fromEntries(KEYS.map(k=>[k,""]));
   const state={
-    images:defaults(),base_image_url:"",moon_entity:"sensor.moon_phase",
-    weather_entity:"",sun_entity:"sun.sun",
+    images:defaults(),base_image_url:"",moon_entity:"",
+    weather_entity:"",sun_entity:"",
     temperature_entity:"",wind_entity:"",rain_entity:"",snow_entity:"",cloud_entity:"",
     enabled:true,model_view:"3d",mode:"auto",effect:true,effect_override:null,frost:true,frost_override:null,frost_preview:false,season:"auto",effect_intensity:1,moon_preview:"auto",use_weather_photos:false,weather_photos_override:null
   };
@@ -35,7 +35,8 @@ export function createPhotoView() {
         if(allowedUrl(saved.images?.[k]))state.images[k]=saved.images[k];
       }
       for(const key of ENTITY_KEYS){
-        if(typeof saved[key]==="string")state[key]=saved[key].slice(0,150);
+        // "" = inherit; old placeholders (sensor.moon_phase, sun.sun) are not real choices.
+        if(key in saved)state[key]=menuChoice(key,saved[key]);
       }
       if(allowedUrl(saved.base_image_url))state.base_image_url=saved.base_image_url;
       if(typeof saved.enabled==="boolean")state.enabled=saved.enabled;
@@ -275,19 +276,86 @@ export function createPhotoView() {
     warn.className="sensor-warning";warn.dataset.key=key;warn.hidden=true;warn.setAttribute("role","status");
     input.parentElement.append(warn);sensorWarnings.set(key,warn);return input;
   };
-  bind(warnable("weather_entity",makeField("Entité météo",state.weather_entity,v=>{state.weather_entity=v;persist();requestEntities()},
-    "weather.ma_maison (vide = première disponible)")),()=>state.weather_entity);
-  bind(warnable("sun_entity",makeField("Entité soleil",state.sun_entity,v=>{state.sun_entity=v||"sun.sun";persist();requestEntities()},"sun.sun")),()=>state.sun_entity);
-  bind(warnable("moon_entity",makeField("Entité lune",state.moon_entity,v=>{state.moon_entity=v;persist();requestEntities()},"sensor.moon_phase (vide = détection automatique)")),()=>state.moon_entity);
-  for(const [key,label] of [
-    ["temperature_entity","Capteur température extérieure"],
-    ["wind_entity","Capteur vitesse du vent"],
-    ["rain_entity","Capteur pluie (valeur, on/off ou vigilance)"],
-    ["snow_entity","Capteur neige (valeur, on/off ou vigilance)"],
-    ["cloud_entity","Capteur nuages (pourcentage ou on/off)"]
-  ]){
-    bind(warnable(key,makeField(label,state[key],v=>{state[key]=v;persist();requestEntities()},"sensor.exemple")),()=>state[key]);
+  // Entity selectors: candidates sent by the card / panel (filtered per field),
+  // « Automatique » = effective value (card → menu → integration → detection),
+  // free typing as a fallback. The source of the value in use is always shown.
+  const entityFields=new Map();
+  let entityOptions=null,effective={};
+  const CUSTOM="__custom__";
+  function entityField(key,title,placeholder){
+    const label=document.createElement("label");
+    label.className="entity-field";label.dataset.key=key;
+    label.append(document.createTextNode(title));
+    const used=document.createElement("small");used.className="entity-source";
+    const search=document.createElement("input");
+    search.type="search";search.className="entity-search";search.placeholder="🔍 Rechercher (nom ou entity_id)";search.hidden=true;
+    const select=document.createElement("select");select.className="entity-select";
+    const input=document.createElement("input");
+    input.type="text";input.className="entity-free";input.placeholder=placeholder;input.value=state[key];input.hidden=true;
+    label.append(used,search,select,input);settings.append(label);
+    const field={label,used,search,select,input,signature:""};
+    const choose=value=>{state[key]=menuChoice(key,value);persist();requestEntities();renderEntityField(key,true)};
+    select.addEventListener("change",()=>{
+      if(select.value===CUSTOM){input.hidden=false;input.focus();return}
+      input.value=select.value;choose(select.value);
+    });
+    input.addEventListener("change",()=>choose(input.value));
+    search.addEventListener("input",()=>renderEntityField(key,true));
+    entityFields.set(key,field);
+    warnable(key,input);
+    bind(input,()=>state[key]);
+    renderEntityField(key,true);
   }
+  const describe=item=>{
+    if(!item?.entity_id)return "aucune entité";
+    const found=entityOptions?.[item.key]?.find(o=>o.id===item.entity_id);
+    return (found&&found.name!==item.entity_id?found.name+" · ":"")+item.entity_id;
+  };
+  function renderEntityField(key,force=false){
+    const field=entityFields.get(key);if(!field)return;
+    const item={...(effective[key]||{entity_id:"",source:"none"}),key};
+    const options=entityOptions?.[key]||[];
+    const term=field.search.value.trim().toLowerCase();
+    const signature=JSON.stringify([item,state[key],options.length,term,entityOptions?1:0]);
+    if(!force&&signature===field.signature)return;
+    field.signature=signature;
+    const byCard=item.source==="card";
+    field.used.textContent=item.entity_id
+      ?"Utilisée : "+describe(item)+" — "+(SOURCE_LABELS[item.source]||item.source)
+      :"Aucune entité utilisée";
+    const opts=[];
+    const add=(value,text)=>{const o=document.createElement("option");o.value=value;o.textContent=text;opts.push(o)};
+    const inherited=state[key]?null:item;
+    // Short label (the full name, entity_id and source are written just above).
+    const SHORT={integration:"intégration",auto:"détection auto",default:"défaut"};
+    const shortName=it=>entityOptions?.[key]?.find(o=>o.id===it.entity_id)?.name||it.entity_id;
+    add("","Automatique"+(inherited?.entity_id&&!byCard?" · "+shortName(inherited)+" ("+(SHORT[inherited.source]||inherited.source)+")":
+      byCard?" (valeur de la carte)":""));
+    const shown=options.filter(o=>!term||o.name.toLowerCase().includes(term)||o.id.includes(term));
+    for(const o of shown)add(o.id,o.name===o.id?o.id:o.name+" — "+o.id);
+    if(state[key]&&!options.some(o=>o.id===state[key]))add(state[key],state[key]+(entityOptions?" (introuvable)":""));
+    add(CUSTOM,"✎ Autre (saisie libre)…");
+    field.select.replaceChildren(...opts);
+    field.select.value=state[key]||"";
+    field.select.disabled=byCard;
+    field.select.title=byCard?"Imposée par la carte : la modifier dans l'éditeur de la carte":"";
+    field.search.hidden=options.length<=8;
+    // Free typing only as a fallback: no candidate, or a value outside the list.
+    if(document.activeElement!==field.input)
+      field.input.hidden=Boolean(entityOptions)&&options.length>0&&(!state[key]||options.some(o=>o.id===state[key]));
+    field.input.value=state[key];
+  }
+  function requestEntityOptions(){
+    if(window.parent!==window)window.parent.postMessage({type:"maison3d:entity-options-request"},window.location.origin);
+  }
+  entityField("weather_entity","Entité météo","weather.ma_maison");
+  entityField("sun_entity","Entité soleil","sun.sun");
+  entityField("moon_entity","Entité lune","sensor.phase_de_la_lune");
+  entityField("temperature_entity","Capteur température extérieure","sensor.temperature_exterieure");
+  entityField("wind_entity","Capteur vitesse du vent","sensor.vent");
+  entityField("rain_entity","Capteur pluie (valeur, on/off ou vigilance)","sensor.alerte_pluie_inondation");
+  entityField("snow_entity","Capteur neige (valeur, on/off ou vigilance)","sensor.alerte_neige_verglas");
+  entityField("cloud_entity","Capteur nuages (pourcentage ou on/off)","sensor.nuages");
   const selectMode=selectField("Ambiance",[
     ["auto","Automatique (Home Assistant)"],...AMBIANCES.map(k=>[k,LABELS[k]])
   ],state.mode,v=>{state.mode=v;persist();update();});
@@ -490,6 +558,11 @@ export function createPhotoView() {
     "#maison3d-photo-settings label{display:block;font:12px system-ui;margin:10px 0;color:#dbe6f0}",
     "#maison3d-photo-settings .sensor-warning{display:block;margin-top:3px;font-size:11px;color:#f3c77a}",
     "#maison3d-photo-settings .sensor-warning[hidden]{display:none}",
+    "#maison3d-photo-settings .entity-source{display:block;margin:3px 0 2px;font-size:11px;color:#a9c4de;overflow-wrap:anywhere}",
+    "#maison3d-photo-settings .entity-field input[hidden]{display:none!important}",
+    "#maison3d-photo-settings .entity-field input[type=search]{display:block;width:100%;box-sizing:border-box;margin-top:4px;padding:8px;",
+    "color:white;background:#1d2e43;border:1px solid #72869a;border-radius:7px}",
+    "#maison3d-photo-settings select:disabled{opacity:.7}",
     "#maison3d-photo-settings label input[type=text],#maison3d-photo-settings select{display:block;width:100%;",
     "box-sizing:border-box;margin-top:4px;padding:9px;color:white;background:#273c56;border:1px solid #72869a;border-radius:7px}",
     "#maison3d-photo-settings .checkbox{display:flex;align-items:center;gap:9px}",
@@ -628,7 +701,7 @@ export function createPhotoView() {
   };
   planBtn.addEventListener("click",()=>setModelView("2d"));
   modelBtn.addEventListener("click",()=>setModelView("3d"));
-  optionsBtn.addEventListener("click",()=>{settings.hidden=!settings.hidden});
+  optionsBtn.addEventListener("click",()=>{settings.hidden=!settings.hidden;if(!settings.hidden)requestEntityOptions()});
   close.addEventListener("click",()=>{settings.hidden=true});
   image.addEventListener("error",()=>{
     if(currentSrc!==DEFAULT){
@@ -678,11 +751,21 @@ export function createPhotoView() {
       for(const refresh of refreshers)refresh();
       selectMode.value=state.mode;seasonSelect.value=state.season;moonPreview.value=state.moon_preview;
       strengthValue.textContent=Math.round(state.effect_intensity*100)+" %";
+      for(const key of SENSOR_KEYS)renderEntityField(key,true);
+      requestEntities();
       update();
     }else if(canSave&&localStorage.getItem(STORAGE))saveToHa({photo_settings:saveable()});
   });
   window.addEventListener("message",event=>{
     if(event.source!==window.parent||event.origin!==window.location.origin)return;
+    if(event.data?.type==="maison3d:entity-options"){
+      const list=event.data.options&&typeof event.data.options==="object"?event.data.options:{};
+      entityOptions=Object.fromEntries(SENSOR_KEYS.map(key=>[key,(Array.isArray(list[key])?list[key]:[])
+        .filter(o=>o&&typeof o.id==="string"&&o.id.length<150).slice(0,300)
+        .map(o=>({id:o.id,name:typeof o.name==="string"&&o.name?o.name.slice(0,80):o.id}))]));
+      for(const key of SENSOR_KEYS)renderEntityField(key,true);
+      return;
+    }
     if(event.data?.type!=="maison3d:conditions")return;
     globals={effects:event.data.effects_enabled!==false,frost:event.data.frost_enabled!==false,
       weather_photos:event.data.weather_photos===true};
@@ -712,6 +795,14 @@ export function createPhotoView() {
       ice_alert:event.data.ice_alert===true
     };
     showSensorWarnings(event.data.sensor_issues);
+    const eff=event.data.entities_effective;
+    effective={};
+    if(eff&&typeof eff==="object")for(const key of SENSOR_KEYS){
+      const item=eff[key];
+      if(item&&typeof item.entity_id==="string"&&typeof item.source==="string")
+        effective[key]={entity_id:item.entity_id.slice(0,150),source:item.source.slice(0,20)};
+    }
+    for(const key of SENSOR_KEYS)renderEntityField(key);
     update();
   });
   let actual=0;

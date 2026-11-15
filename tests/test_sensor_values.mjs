@@ -108,4 +108,56 @@ assert.equal(pick({"sensor.phase_de_la_lune":s("sensor.phase_de_la_lune","Premie
 assert.equal(pick({"sensor.astro":s("sensor.astro","Pleine lune"),"sensor.lune":s("sensor.lune","Pleine lune")}),"sensor.lune");
 assert.equal(pick({"sensor.astro":s("sensor.astro","Pleine lune")}),"sensor.astro");
 assert.equal(pick({"sensor.temperature":s("sensor.temperature","3")}),undefined);
+// Entity choice: menu placeholders, effective value + source, candidates per field.
+assert.equal(V.menuChoice("moon_entity","sensor.moon_phase"),"");
+assert.equal(V.menuChoice("sun_entity","sun.sun"),"");
+assert.equal(V.menuChoice("moon_entity"," sensor.phase_de_la_lune "),"sensor.phase_de_la_lune");
+assert.equal(V.menuChoice("weather_entity",42),"");
+const integ={weather_entity:"weather.bermerain",moon_entity:"sensor.phase_de_la_lune",temperature_entity:"sensor.bermerain_temperature_2"};
+let eff=V.effectiveEntities([["card",{temperature_entity:"sensor.salon"}],["menu",{weather_entity:"weather.autre",moon_entity:""}],["integration",integ]],
+  {weather_entity:{entity_id:"weather.x",source:"auto"},sun_entity:{entity_id:"sun.sun",source:"default"},moon_entity:{entity_id:"sensor.moon",source:"auto"}});
+assert.deepEqual(eff.temperature_entity,{entity_id:"sensor.salon",source:"card"});
+assert.deepEqual(eff.weather_entity,{entity_id:"weather.autre",source:"menu"});
+assert.deepEqual(eff.moon_entity,{entity_id:"sensor.phase_de_la_lune",source:"integration"});
+assert.deepEqual(eff.sun_entity,{entity_id:"sun.sun",source:"default"});
+assert.deepEqual(eff.wind_entity,{entity_id:"",source:"none"});
+eff=V.effectiveEntities([["menu",{}],["integration",{}]],{moon_entity:{entity_id:"sensor.phase_de_la_lune",source:"auto"}});
+assert.deepEqual(eff.moon_entity,{entity_id:"sensor.phase_de_la_lune",source:"auto"});
+const cand={
+  "weather.bermerain":s("weather.bermerain","cloudy",{friendly_name:"Bermerain"}),
+  "sun.sun":s("sun.sun","above_horizon"),
+  "sensor.phase_de_la_lune":s("sensor.phase_de_la_lune","Premier croissant"),
+  "sensor.t":s("sensor.t","5",{device_class:"temperature",unit_of_measurement:"°C",friendly_name:"Bermerain Température"}),
+  "sensor.t_old":s("sensor.t_old","5",{unit_of_measurement:"°F"}),
+  "sensor.hum":s("sensor.hum","60",{device_class:"humidity",unit_of_measurement:"%"}),
+  "sensor.bat":s("sensor.bat","60",{device_class:"battery",unit_of_measurement:"%"}),
+  "sensor.couverture_nuageuse":s("sensor.couverture_nuageuse","80",{unit_of_measurement:"%"}),
+  "sensor.vent":s("sensor.vent","12",{device_class:"wind_speed",unit_of_measurement:"km/h"}),
+  "sensor.rafales":s("sensor.rafales","20",{unit_of_measurement:"km/h"}),
+  "sensor.alerte_pluie_inondation":rainVig("Vert"),
+  "sensor.alerte_neige_verglas":snowVig("Jaune"),
+  "sensor.pluie_1h":s("sensor.pluie_1h","0",{device_class:"precipitation",unit_of_measurement:"mm"}),
+  "binary_sensor.fuite":s("binary_sensor.fuite","off",{device_class:"moisture"}),
+  "binary_sensor.porte":s("binary_sensor.porte","off",{device_class:"door"}),
+  "light.salon":s("light.salon","on")
+};
+const O=V.entityOptions(cand);
+const ids=key=>O[key].map(o=>o.id);
+assert.deepEqual(ids("weather_entity"),["weather.bermerain"]);
+assert.deepEqual(ids("sun_entity"),["sun.sun"]);
+assert.deepEqual(ids("moon_entity"),["sensor.phase_de_la_lune"]);
+assert.deepEqual(ids("temperature_entity").sort(),["sensor.t","sensor.t_old"]);
+assert.deepEqual(ids("wind_entity").sort(),["sensor.rafales","sensor.vent"]);
+assert.equal(ids("cloud_entity")[0],"sensor.couverture_nuageuse");
+assert.ok(!ids("cloud_entity").includes("sensor.bat"));
+assert.equal(ids("rain_entity")[0],"sensor.alerte_pluie_inondation");
+assert.equal(ids("snow_entity")[0],"sensor.alerte_neige_verglas");
+for(const id of ["sensor.pluie_1h","binary_sensor.fuite","sensor.alerte_neige_verglas"])assert.ok(ids("rain_entity").includes(id),id);
+assert.ok(!ids("rain_entity").includes("binary_sensor.porte"));
+assert.ok(!ids("rain_entity").includes("sensor.t"),"« Bermerain » is a place, not rain");
+assert.ok(V.entityMatches("rain_entity",s("sensor.rain_rate","0.2")));
+assert.ok(V.entityMatches("snow_entity",s("sensor.hauteur_neige","3")));
+assert.ok(!V.entityMatches("snow_entity",s("sensor.bermerain_temperature_2","5",{friendly_name:"Bermerain Température"})));
+assert.equal(O.weather_entity[0].name,"Bermerain");
+assert.equal(V.entityName(s("sensor.x","1")),"sensor.x");
 console.log("Sensor values (vigilance Vert/Jaune/Orange/Rouge, on/off, unknown text, warnings, moon detection) OK");

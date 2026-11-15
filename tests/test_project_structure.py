@@ -88,9 +88,9 @@ class TestMaison3D(unittest.TestCase):
         self.assertIn("frost.frame(time,frostTarget())", photo)
         self.assertIn("frost.frame(time,0)", photo)
         self.assertIn("prefers-reduced-motion", frost)
-        for key in ("temperature_entity", "wind_entity", "rain_entity", "snow_entity", "cloud_entity"):
-            self.assertIn(key + ':""', panel)
-        self.assertIn("for(const key of Object.keys(this._choices))", panel)
+        # Every sensor key is accepted from the ⚙ menu ("" = inherit).
+        self.assertIn('this._choices = Object.fromEntries(ENTITY_KEYS.map(key => [key, ""]));', panel)
+        self.assertIn("for(const key of ENTITY_KEYS)this._choices[key]=menuChoice(key,event.data[key]);", panel)
         for language in ("fr", "en"):
             tr = json.loads((COMPONENT / "translations" / f"{language}.json").read_text(encoding="utf-8"))
             self.assertIn("frost_enabled", tr["options"]["step"]["init"]["data"])
@@ -580,6 +580,33 @@ class TestMaison3D(unittest.TestCase):
         tracker = (www / "hass-tracker.js").read_text(encoding="utf-8")
         self.assertIn("moonRank", tracker)
         self.assertIn("node tests/test_sensor_values.mjs", (ROOT / ".github/workflows/validate.yml").read_text(encoding="utf-8"))
+    def test_entity_selectors_and_effective_values(self):
+        www = COMPONENT / "www"
+        photo = (www / "photo-view.js").read_text(encoding="utf-8")
+        panel = (www / "maison3d-panel.js").read_text(encoding="utf-8")
+        card = (www / "maison3d-card.js").read_text(encoding="utf-8")
+        editor = (www / "maison3d-card-editor.js").read_text(encoding="utf-8")
+        values = (www / "sensor-values.js").read_text(encoding="utf-8")
+        # No fictitious defaults in the ⚙ menu: "" = inherit, old placeholders cleaned.
+        self.assertNotIn('moon_entity:"sensor.moon_phase"', photo)
+        self.assertNotIn('sun_entity:"sun.sun"', photo)
+        self.assertNotIn('moon_entity:"sensor.moon_phase"', panel)
+        self.assertIn('LEGACY_MENU_DEFAULTS={moon_entity:"sensor.moon_phase",sun_entity:"sun.sun"}', values)
+        self.assertIn("state[key]=menuChoice(key,saved[key])", photo)
+        # Selectors filled by the parent, effective value and its source shown.
+        self.assertIn('"maison3d:entity-options-request"', photo)
+        self.assertIn('"maison3d:entity-options"', photo)
+        self.assertIn("entities_effective", photo)
+        for src, name in ((panel, "panel"), (card, "card")):
+            self.assertIn('"maison3d:entity-options-request"', src, name)
+            self.assertIn("entityOptions(", src, name)
+            self.assertIn("entities_effective", src, name)
+        self.assertIn('[["card",this._config],["menu",menu],["integration",integration]]', card)
+        self.assertIn('[["menu", this._choices], ["integration", configured]]', panel)
+        self.assertIn("const choice = key => this._choices[key] || configured[key] || \"\";", panel)
+        # Lovelace editor: HA picker filtered per field, native fallback.
+        self.assertIn("control.entityFilter=entity=>entityMatches(key,entity);", editor)
+        self.assertIn('customElements.get("ha-entity-picker")', editor)
 
 if __name__ == "__main__":
     unittest.main()

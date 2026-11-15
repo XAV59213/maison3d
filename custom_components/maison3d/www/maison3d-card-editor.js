@@ -1,7 +1,7 @@
 import {allowedPhotoUrl,bundledPhoto,DEFAULT_MAIN_PHOTO,IMAGE_SLOTS,suggestedFileName} from "./photo-source.js";
 import {uploadPhoto} from "./storage-bridge.js";
 import {MEDIA_PREFIX} from "./media-resolver.js";
-import {sensorIssue,issueText} from "./sensor-values.js";
+import {sensorIssue,issueText,entityMatches,entityOptions,SOURCE_LABELS} from "./sensor-values.js";
 import {createHassTracker} from "./hass-tracker.js";
 const editorUrl=value=>allowedPhotoUrl(value)||(typeof value==="string"&&value.startsWith(MEDIA_PREFIX)&&value.length<500&&!/[\u0000-\u001f]/.test(value));
 /**
@@ -20,7 +20,10 @@ class Maison3DCardEditor extends HTMLElement {
     this._render();
   }
   set hass(hass) {
+    const firstStates=!this._hass?.states&&hass?.states;
     this._hass=hass;
+    // Native selectors are filled from the states: build them again once they arrive.
+    if(firstStates&&this._fallbackPickers){this._render();return}
     this.shadowRoot.querySelectorAll("ha-entity-picker").forEach(picker => picker.hass=hass);
     this.shadowRoot.querySelectorAll(".tools ha-selector").forEach(picker => picker.hass=hass);
     this.shadowRoot.querySelectorAll(".tools > button").forEach(button => {button.disabled=hass?.user?.is_admin!==true});
@@ -31,6 +34,13 @@ class Maison3DCardEditor extends HTMLElement {
     const states=this._hass?.states;
     if(!states||!this.shadowRoot)return;
     const integration=this._tracker.diagnostic(states)?.attributes?.entities||{};
+    this.shadowRoot.querySelectorAll(".entity-source").forEach(note=>{
+      const key=note.dataset.key;
+      const own=this._config[key];
+      const id=own||integration[key]||"";
+      note.textContent=own?"":id?"Hérité : "+id+" — "+SOURCE_LABELS.integration:"Vide : détection automatique";
+      note.hidden=Boolean(own);
+    });
     this.shadowRoot.querySelectorAll(".sensor-warning").forEach(warn=>{
       const key=warn.dataset.key;
       const id=this._config[key]||integration[key]||"";
@@ -73,6 +83,8 @@ class Maison3DCardEditor extends HTMLElement {
       "border:1px solid var(--divider-color,#999);border-radius:7px;padding:8px}",
       "p{color:var(--secondary-text-color,#777);font-size:12px;line-height:1.5}",
       ".help{font-size:11px;color:var(--secondary-text-color)}",
+      ".entity-source{display:block;margin-top:4px;font-size:11px;color:var(--secondary-text-color)}.entity-source[hidden]{display:none}",
+      ".entity-fallback input[hidden]{display:none}.entity-fallback input{margin-top:6px}",
       ".sensor-warning{display:block;margin-top:4px;font-size:11px;color:var(--warning-color,#b26a00)}.sensor-warning[hidden]{display:none}",
       ".row{display:flex;align-items:center;gap:10px}",
       ".row input{width:auto;min-height:auto}",
@@ -195,20 +207,48 @@ class Maison3DCardEditor extends HTMLElement {
       ["snow_entity","Neige (intensité, présence ou vigilance Météo-France)",["sensor","binary_sensor"]],
       ["cloud_entity","Nuages (pourcentage ou présence)",["sensor","binary_sensor"]]
     ];
+    // Home Assistant's own picker (with search) when the frontend provides it,
+    // filtered per field; otherwise a native selector + free typing.
+    const nativePicker=customElements.get("ha-entity-picker");
+    const options=nativePicker?null:entityOptions(this._hass?.states||{});
+    this._fallbackPickers=!nativePicker;
     for(const [key,labelText,domains] of entities){
       const label=document.createElement("label");label.textContent=labelText;
-      const picker=document.createElement("ha-entity-picker");
-      picker.hass=this._hass;
-      picker.includeDomains=domains;
-      picker.allowCustomEntity=true;
-      picker.value=this._config[key]??"";
-      picker.addEventListener("value-changed",event=>{
-        this._changed(key,event.detail?.value||"");
-        this._showSensorWarnings();
-      });
+      const inherited=document.createElement("small");
+      inherited.className="entity-source";inherited.dataset.key=key;
+      let control;
+      if(nativePicker){
+        control=document.createElement("ha-entity-picker");
+        control.hass=this._hass;
+        control.includeDomains=domains;
+        control.entityFilter=entity=>entityMatches(key,entity);
+        control.allowCustomEntity=true;
+        control.value=this._config[key]??"";
+        control.addEventListener("value-changed",event=>{
+          this._changed(key,event.detail?.value||"");
+          this._showSensorWarnings();
+        });
+      }else{
+        control=document.createElement("div");control.className="entity-fallback";
+        const select=document.createElement("select");
+        const free=document.createElement("input");free.type="text";free.placeholder="sensor.exemple";
+        const current=this._config[key]??"";
+        const add=(value,text)=>{const o=document.createElement("option");o.value=value;o.textContent=text;select.append(o)};
+        add("","Hériter de l'intégration / détection automatique");
+        for(const o of options[key])add(o.id,o.name===o.id?o.id:o.name+" — "+o.id);
+        if(current&&!options[key].some(o=>o.id===current))add(current,current+" (introuvable)");
+        add("__custom__","✎ Autre (saisie libre)…");
+        select.value=current;free.value=current;free.hidden=options[key].length>0;
+        select.addEventListener("change",()=>{
+          if(select.value==="__custom__"){free.hidden=false;free.focus();return}
+          free.value=select.value;this._changed(key,select.value);this._showSensorWarnings();
+        });
+        free.addEventListener("change",()=>{this._changed(key,free.value.trim());this._showSensorWarnings()});
+        control.append(select,free);
+      }
       const warn=document.createElement("small");
       warn.className="sensor-warning";warn.dataset.key=key;warn.hidden=true;warn.setAttribute("role","status");
-      pickers.append(label,picker,warn);
+      pickers.append(label,control,inherited,warn);
     }
     this._showSensorWarnings();
     const images=section("Images personnalisées (facultatif)",
