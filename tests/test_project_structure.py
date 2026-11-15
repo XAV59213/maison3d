@@ -235,10 +235,10 @@ class TestMaison3D(unittest.TestCase):
         photo = (COMPONENT / "www" / "photo-view.js").read_text(encoding="utf-8")
         for key in ("clear", "cloudy", "rain", "storm", "snow", "wind", "fog", "frost"):
             self.assertIn('["' + key + '",', photo)
-        self.assertIn('const test={weather:"auto",time:"auto"};', photo)
+        self.assertIn('const test={weather:"auto",time:"auto",season:"auto",moon:"auto"};', photo)
         self.assertIn('if(test.time!=="auto")return test.time==="night";', photo)
         self.assertIn('test.weather="auto";test.time="auto";', photo)
-        self.assertIn('status.classList.toggle("testing",testing())', photo)
+        self.assertIn('status.classList.toggle("testing",testing()||previewing())', photo)
         self.assertNotIn("test:", photo.split("const persist=")[0].split("const state={")[1])
 
     def test_clean_photos_and_right_menu_layout(self):
@@ -285,7 +285,7 @@ class TestMaison3D(unittest.TestCase):
         self.assertIn("nav.append(seasonBreak,seasonalNav);", photo)
         self.assertIn("document.body.append(section,nav,settings);", photo)
         self.assertIn('"html.photo-active #maison3d-photo-controls{top:auto;bottom:10px}"', photo)
-        self.assertIn('seasonPick.addEventListener("change",()=>chooseSeason(seasonPick.value));', photo)
+        self.assertIn('seasonPick.addEventListener("change",()=>seasonPick.value==="auto"?endPreview():chooseSeason(seasonPick.value));', photo)
         panel = (www / "maison3d-panel.js").read_text(encoding="utf-8")
         self.assertIn("min-height:240px", panel)
 
@@ -427,7 +427,7 @@ class TestMaison3D(unittest.TestCase):
         """3D layout, photo settings and view saved in HA through the parent bridge."""
         www = COMPONENT / "www"
         page = app_page()
-        self.assertIn('import {onHaData,saveToHa} from "./ha-storage.js";', page)
+        self.assertIn('import {onHaData,saveToHa,browserCopySections} from "./ha-storage.js";', page)
         self.assertIn('registerSection("layout",', page)
         photo = (www / "photo-view.js").read_text(encoding="utf-8")
         self.assertIn('registerSection("photo_settings",', photo)
@@ -638,8 +638,14 @@ class TestMaison3D(unittest.TestCase):
         self.assertIn("skyMoon.draw(", photo)
         self.assertIn('seasonalNav.id="maison3d-photo-seasons"', photo)
         self.assertIn("seasonButtons.set(key,btn)", photo)
-        self.assertIn("state.season=key", photo)
-        self.assertIn("moon_preview", photo)
+        # Season bubbles and moon phase: temporary previews (never saved, no draft change).
+        self.assertIn("test.season=key===\"auto\"?\"auto\":key;", photo)
+        self.assertIn("test.moon=v;state.enabled=true;armPreview();update();", photo)
+        self.assertIn("delete copy.moon_preview", photo)
+        self.assertNotIn("state.moon_preview", photo)
+        chooser = photo.split("const chooseSeason=key=>{", 1)[1].split("};", 1)[0]
+        self.assertNotIn("persist()", chooser)
+        self.assertIn("const PREVIEW_MS=120000;", photo)
         self.assertIn("testButtons.set(key,btn)", photo)
         self.assertIn('resetTest.textContent="◉ Revenir à la météo réelle"', photo)
         for phase in ("new_moon","waxing_crescent","first_quarter",
@@ -695,7 +701,8 @@ class TestMaison3D(unittest.TestCase):
         self.assertIn('lastAutoSeason=currentSeason;update()', photo)
         self.assertIn('time_zone: this._hass.config?.time_zone', panel)
         self.assertIn('time_zone:this._hass.config?.time_zone', card)
-        self.assertIn('state.season=key', photo)
+        # « Saison fixe » (saved, draft): only the season, not the ambience.
+        self.assertIn("state.season=v;state.enabled=true;\n    persist();update();", photo)
         self.assertIn('seasonalCanvas.className="season-overlay"', photo)
 
     def test_configurable_main_photo_and_effect_switches(self):

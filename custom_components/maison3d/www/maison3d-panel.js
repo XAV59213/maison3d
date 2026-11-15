@@ -47,6 +47,8 @@ class Maison3DPanel extends HTMLElement {
     const frame = document.createElement("iframe");
     frame.src = "/maison3d-assets/index.html" + V;
     frame.title = "Maison 3D";
+    // Instance name: the view keeps its unsaved changes per instance (sessionStorage).
+    frame.name = "maison3d-panel";
     frame.allow = "fullscreen";
     frame.addEventListener("load", () => {
       this._loaded = true;
