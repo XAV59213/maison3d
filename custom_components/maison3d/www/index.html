@@ -39,7 +39,7 @@ html.compact-scene #maison3d-photo-controls,html.compact-scene #maison3d-present
 <input type="file" id="file" accept="application/json" hidden>
 <script type="application/json" id="maison3d-importmap">{"imports":{"three":"./vendor/three/three.module.min.js","three/addons/":"./vendor/three/addons/"}}</script>
 <script>/* Cache-busting: index.html?v=<version> (set by the card / panel) adds ?v= to every module of this page, then the import map is inserted. */
-(()=>{const MODULES=["architecture.js","frost-effects.js","ha-storage.js","hass-tracker.js","maison3d-card-editor.js","maison3d-card.js","maison3d-panel.js","media-resolver.js","moon-effects.js","photo-cinematics.js","photo-source.js","photo-view.js","presentation.js","scene-layout.js","season-effects.js","sensor-values.js","storage-bridge.js","weather-effects.js","world-ambience.js"];
+(()=>{const MODULES=["architecture.js","frost-effects.js","ha-storage.js","hass-tracker.js","interior-view.js","maison3d-card-editor.js","maison3d-card.js","maison3d-panel.js","media-resolver.js","moon-effects.js","photo-cinematics.js","photo-source.js","photo-view.js","presentation.js","scene-layout.js","season-effects.js","sensor-values.js","storage-bridge.js","weather-effects.js","world-ambience.js"];
 const map=JSON.parse(document.getElementById("maison3d-importmap").textContent);const v=new URLSearchParams(location.search).get("v");
 if(v&&/^[\w.+-]{1,40}$/.test(v)){const q="?v="+encodeURIComponent(v),abs=u=>new URL(u,location.href).href;
 map.imports.three+=q;map.imports["three/addons/controls/OrbitControls.js"]="./vendor/three/addons/controls/OrbitControls.js"+q;
@@ -55,6 +55,7 @@ import {createWorldAmbience} from "./world-ambience.js";
 import {createArchitectureKit} from "./architecture.js";
 import {onHaData,onHaSaved,saveToHa} from "./ha-storage.js";
 import {createSceneLayout} from "./scene-layout.js";
+import {createInteriorExplorer} from "./interior-view.js";
 const KEY="maison3d-v2-layout";const view=document.getElementById("view");const scene=new THREE.Scene();scene.background=new THREE.Color(0x89b7e7);scene.fog=new THREE.Fog(0x89b7e7,45,115);
 const camera=new THREE.PerspectiveCamera(46,innerWidth/innerHeight,.1,230);camera.position.set(31,23,35);
 const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(innerWidth,innerHeight);renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;view.appendChild(renderer.domElement);
@@ -110,7 +111,7 @@ else if(o.type==="swing"){for(let s of [-1,1]){let l=box(g,.12,h,.12,wood,s*w*.4
 else{box(g,w,h,d,wood,0,h/2,0)}scene.add(g);meshes.set(o.id,g)}
 // Free GPU memory of removed groups, but keep anything still used by the scene (shared materials).
 function disposeUnused(groups){const used=new Set();scene.traverse(o=>{if(o.geometry)used.add(o.geometry);for(const m of [].concat(o.material||[]))used.add(m)});for(const g of groups)g.traverse(o=>{if(o.geometry&&!used.has(o.geometry))o.geometry.dispose();for(const m of [].concat(o.material||[]))if(!used.has(m))m.dispose()})}
-function redraw(){if(outline){scene.remove(outline);outline.geometry.dispose();outline.material.dispose();outline=null}const old=[...meshes.values()];for(const g of old)scene.remove(g);meshes.clear();data.forEach(build);disposeUnused(old);refreshSelect();if(selected)choose(selected.id)}
+function redraw(){if(outline){scene.remove(outline);outline.geometry.dispose();outline.material.dispose();outline=null}const old=[...meshes.values()];for(const g of old)scene.remove(g);meshes.clear();data.forEach(build);disposeUnused(old);refreshSelect();if(selected)choose(selected.id);interior?.refresh()}
 const select=document.getElementById("objects"),ids=["x","z","w","d","h","r"];function refreshSelect(){select.replaceChildren(...data.map(o=>{const opt=document.createElement("option");opt.value=o.id;opt.textContent=o.name||o.id;return opt}));if(data.length){selected=data.find(o=>o.id===selected?.id)||data[0];select.value=selected.id;ids.forEach(k=>document.getElementById(k).value=selected[k])}else selected=null}
 function choose(id){selected=data.find(o=>o.id===id);refreshSelect();if(outline){scene.remove(outline);outline.geometry.dispose();outline.material.dispose();outline=null}if(selected&&meshes.get(id)){outline=new THREE.BoxHelper(meshes.get(id),0x00d8ff);scene.add(outline)}}
 // Saved in Home Assistant (shared by every device) when possible; localStorage stays as cache / offline fallback.
@@ -143,6 +144,7 @@ document.getElementById("import").onclick=()=>document.getElementById("file").cl
 const atmosphere=createAtmosphere({scene,sun,renderer});
 const photoView=createPhotoView();
 const presentation=createPresentation({THREE,camera,controls});
+const interior=createInteriorExplorer({THREE,scene,camera,controls,getItems:()=>data,getMeshes:()=>meshes,presentation,photoView});
 // Floating bars of the 3D view never cover each other (desktop, mobile, landscape).
 createSceneLayout();
 const worldAmbience=createWorldAmbience({THREE,scene,sun});
