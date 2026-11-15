@@ -10,7 +10,8 @@ import {createAtmosphere} from "./weather-effects.js";
 import {createPresentation} from "./presentation.js";
 import {createWorldAmbience} from "./world-ambience.js";
 import {createArchitectureKit} from "./architecture.js";
-import {onHaData,saveToHa} from "./ha-storage.js";
+import {onHaData,saveToHa,browserCopySections} from "./ha-storage.js";
+import {t} from "./i18n.js";
 import {registerSection,markSaved,changed,onDraft} from "./draft.js";
 import {createSceneLayout} from "./scene-layout.js";
 export function startScene({photoView,interior,isOffscreen=()=>false}){
@@ -121,7 +122,7 @@ export function startScene({photoView,interior,isOffscreen=()=>false}){
       // Cache of the layout saved in Home Assistant (not a new change).
       try{localStorage.setItem(KEY,JSON.stringify(data))}catch{}
       markSaved("layout");
-      show("Enregistré dans Home Assistant");
+      show(browserCopySections().includes("layout")?t("browserCopy"):"Enregistré dans Home Assistant");
     }else if(canSave&&localStorage.getItem(KEY)){
       // One-time migration of the layout already saved in this browser.
       saveToHa({layout:data});show("Copie du projet de ce navigateur vers Home Assistant…");

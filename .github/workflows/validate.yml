@@ -57,6 +57,7 @@ jobs:
           node tests/test_lights.mjs
           node --check custom_components/maison3d/www/i18n.js
           node tests/test_i18n.mjs
+          node tests/test_review.mjs
           node --check custom_components/maison3d/www/photo-cinematics.js
           node --check custom_components/maison3d/www/weather-effects.js
           node --check custom_components/maison3d/www/vendor/three/addons/controls/OrbitControls.js

@@ -47,6 +47,8 @@ class Maison3DPanel extends HTMLElement {
     const frame = document.createElement("iframe");
     frame.src = "/maison3d-assets/index.html" + V;
     frame.title = "Maison 3D";
+    // Instance name: the view keeps its unsaved changes per instance (sessionStorage).
+    frame.name = "maison3d-panel";
     frame.allow = "fullscreen";
     frame.addEventListener("load", () => {
       this._loaded = true;
@@ -116,6 +118,14 @@ class Maison3DPanel extends HTMLElement {
       weather_photos: diagnostic?.attributes?.weather_photos_enabled === true,
       time_zone: this._hass.config?.time_zone ?? "UTC",
       language: this._hass.locale?.language || this._hass.language || "",
+      // Options of the integration (for « remplace l'option de l'intégration » in the ⚙ menu).
+      integration_options: {
+        effects_enabled: diagnostic?.attributes?.effects_enabled !== false,
+        frost_enabled: diagnostic?.attributes?.frost_enabled !== false,
+        weather_photos: diagnostic?.attributes?.weather_photos_enabled === true,
+        base_image_url: typeof diagnostic?.attributes?.base_image_url === "string" ? diagnostic.attributes.base_image_url : "",
+        entities: configured,
+      },
       user_is_admin: this._hass.user?.is_admin === true,
       light_states: this._lights.states(states),
       weather: weather?.state ?? null,

@@ -6,6 +6,13 @@ const [,{IMAGE_KEYS},{createStorageBridge},{createMediaResolver},{createHassTrac
  * Maison 3D interactive Lovelace card.
  * Load as a JavaScript module resource: /maison3d-assets/maison3d-card.js
  */
+/** Short stable id of a card (same dashboard view + same configuration = same id). */
+export function cardInstance(path,config){
+  const text=String(path||"")+"|"+JSON.stringify(config||{});
+  let h=2166136261;
+  for(let i=0;i<text.length;i++){h^=text.charCodeAt(i);h=Math.imul(h,16777619)}
+  return (h>>>0).toString(36);
+}
 class Maison3DCard extends HTMLElement {
   constructor() {
     super();
@@ -140,6 +147,9 @@ class Maison3DCard extends HTMLElement {
     heading.textContent=this._title();
     const frame=document.createElement("iframe");
     frame.title=t(this._lang(),"card_iframe_title");
+    // Instance name (dashboard path + card configuration): the view keeps its unsaved
+    // changes per card in sessionStorage and offers to restore them when it comes back.
+    frame.name="maison3d-card:"+cardInstance(location.pathname,this._config);
     frame.loading="lazy";
     frame.src="/maison3d-assets/index.html?mode=card"+(VERSION?"&v="+encodeURIComponent(VERSION):"");
     frame.style.height=this._config.height+"px";
@@ -202,6 +212,16 @@ class Maison3DCard extends HTMLElement {
       weather_photos:this._config.weather_photos??(diagnostic?.attributes?.weather_photos_enabled===true),
       time_zone:this._hass.config?.time_zone??"UTC",
       language:this._hass.locale?.language||this._hass.language||"",
+      // Integration options and this card's own options (« remplace l'option… » in the ⚙ menu).
+      integration_options:{
+        effects_enabled:diagnostic?.attributes?.effects_enabled!==false,
+        frost_enabled:diagnostic?.attributes?.frost_enabled!==false,
+        weather_photos:diagnostic?.attributes?.weather_photos_enabled===true,
+        base_image_url:typeof diagnostic?.attributes?.base_image_url==="string"?diagnostic.attributes.base_image_url:"",
+        entities:integration
+      },
+      card_options:{effects_enabled:this._config.effects_enabled,frost_enabled:this._config.frost_enabled,
+        weather_photos:this._config.weather_photos,base_image_url:this._config.base_image_url||""},
       user_is_admin:this._hass.user?.is_admin===true,
       light_states:this._lights.states(states),
       weather:weather?.state??null,

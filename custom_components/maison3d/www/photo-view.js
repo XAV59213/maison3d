@@ -8,7 +8,7 @@ import {createPhotoCinematics} from "./photo-cinematics.js";
 import {createMoonOverlay} from "./moon-effects.js";
 import {automaticSeason,haHour,SEASON_LABELS,createSeasonEffects} from "./season-effects.js";
 import {DEFAULT_MAIN_PHOTO,allowedPhotoUrl,bundledPhoto,resolveMainPhoto,IMAGE_SLOTS,IMAGE_KEYS,pickWeatherPhoto,suggestedFileName,responsiveSrcset,photoSizes,WEATHER_WAIT_MS,shouldDeferFirstPhoto} from "./photo-source.js";
-import {t,labelOf} from "./i18n.js";
+import {t,labelOf,onUiLang,SEASON_NAMES,uiLang,setUiLang} from "./i18n.js";
 import {createFrostEffects,frostLevel,toCelsius} from "./frost-effects.js";
 import {onHaData,saveToHa,uploadToHa} from "./ha-storage.js";
 import {registerSection,markSaved,changed,createSaveControls,SAVE_STYLE} from "./draft.js";
@@ -31,10 +31,13 @@ export function createPhotoView({ensureScene=null}={}) {
     images:defaults(),base_image_url:"",moon_entity:"",
     weather_entity:"",sun_entity:"",
     temperature_entity:"",wind_entity:"",rain_entity:"",snow_entity:"",cloud_entity:"",
-    enabled:true,model_view:"3d",mode:"auto",effect:true,effect_override:null,frost:true,frost_override:null,frost_preview:false,season:"auto",effect_intensity:1,motion:"auto",moon_preview:"auto",use_weather_photos:false,weather_photos_override:null,
+    enabled:true,model_view:"3d",mode:"auto",effect:true,effect_override:null,frost:true,frost_override:null,frost_preview:false,season:"auto",effect_intensity:1,motion:"auto",use_weather_photos:false,weather_photos_override:null,
     // Outdoor lights (lights.js): [{entity_id,name,x,y,color,intensity}] + click to toggle (off by default).
     lights:[],light_toggle:"off"
   };
+  // Inherited values sent by the card / panel (« remplace l'option de l'intégration » notes).
+  let integrationOpts={},cardOpts={};
+  const overrideNotes=[];
   // Apply saved settings (Home Assistant or this browser), keeping only valid values.
   const ENTITY_KEYS=["moon_entity","weather_entity","sun_entity","temperature_entity","wind_entity","rain_entity","snow_entity","cloud_entity"];
   function applySaved(saved){
@@ -61,12 +64,12 @@ export function createPhotoView({ensureScene=null}={}) {
       if(typeof saved.mode==="string"&&["auto",...AMBIANCES].includes(saved.mode))state.mode=saved.mode;
       if(typeof saved.season==="string"&&["auto","spring","summer","autumn","winter"].includes(saved.season))state.season=saved.season;
       state.lights=cleanLights(saved.lights);state.light_toggle=cleanToggle(saved.light_toggle);
-      if(typeof saved.moon_preview==="string"&&["auto","new_moon","waxing_crescent","first_quarter","waxing_gibbous","full_moon","waning_gibbous","last_quarter","waning_crescent"].includes(saved.moon_preview))state.moon_preview=saved.moon_preview;
+      // « moon_preview » (saved by versions ≤ 2.12) is now a temporary preview: ignored.
   }
   try{applySaved(JSON.parse(localStorage.getItem(STORAGE)))}catch{}
   setMotionMode(state.motion);
   // Saved in Home Assistant (shared) when possible; this browser keeps a cache / offline copy.
-  const saveable=()=>{const copy={...state,images:{...state.images},lights:state.lights.map(l=>({...l}))};delete copy.frost_preview;delete copy.effect;delete copy.frost;return copy};
+  const saveable=()=>{const copy={...state,images:{...state.images},lights:state.lights.map(l=>({...l}))};delete copy.frost_preview;delete copy.moon_preview;delete copy.effect;delete copy.frost;return copy};
   // Draft: a change is shown immediately but only saved by « 💾 Enregistrer » (draft.js).
   const persist=()=>changed();
   const refreshers=[];
@@ -164,34 +167,58 @@ export function createPhotoView({ensureScene=null}={}) {
   const seasonalNav=document.createElement("div");
   seasonalNav.id="maison3d-photo-seasons";
   seasonalNav.setAttribute("role","group");
-  seasonalNav.setAttribute("aria-label","Tester les saisons de la vue photo");
+  // « Tester » = temporary preview only: the season bubbles (and the moon phase preview)
+  // are never saved, never make the draft dirty, and end with « ↩ Revenir » or after
+  // PREVIEW_MS. The saved season is the « Saison fixe » setting of the ⚙ menu.
   const seasonButtons=new Map();
-  const SEASON_CHOICES=[
-    ["spring","🌸 Printemps"],["summer","☀ Été"],
-    ["autumn","🍂 Automne"],["winter","❄ Hiver"],["auto","◉ Saisons auto"]
-  ];
+  const SEASON_ICONS={spring:"🌸",summer:"☀",autumn:"🍂",winter:"❄"};
+  const SEASON_CHOICES=[["spring"],["summer"],["autumn"],["winter"],["auto"]];
+  const seasonLabel=key=>key==="auto"?t("previewBack"):SEASON_ICONS[key]+" "+SEASON_NAMES[uiLang()][key];
+  const PREVIEW_MS=Number(globalThis.__maison3dPreviewMs)||120000; // test hook (headless)
+  let previewTimer=null;
+  const previewing=()=>test.season!=="auto"||test.moon!=="auto";
+  function armPreview(){
+    clearTimeout(previewTimer);previewTimer=null;
+    if(previewing())previewTimer=setTimeout(endPreview,PREVIEW_MS);
+  }
+  function endPreview(){
+    clearTimeout(previewTimer);previewTimer=null;
+    test.season="auto";test.moon="auto";
+    moonPreview.value="auto";
+    update();
+  }
   const chooseSeason=key=>{
-    state.enabled=true;state.season=key;
-    state.mode=key==="auto"?"auto":key;
-    selectMode.value=state.mode;
-    seasonSelect.value=key;
-    persist();update();
+    state.enabled=true;
+    test.season=key==="auto"?"auto":key;
+    armPreview();update();
   };
-  for(const [key,label] of SEASON_CHOICES){
+  for(const [key] of SEASON_CHOICES){
     const btn=document.createElement("button");
-    btn.type="button";btn.textContent=label;
-    btn.title="Tester : "+label;
-    btn.addEventListener("click",()=>chooseSeason(key));
+    btn.type="button";btn.dataset.preview=key;
+    btn.addEventListener("click",()=>key==="auto"?endPreview():chooseSeason(key));
     seasonalNav.append(btn);seasonButtons.set(key,btn);
   }
   const seasonPickLabel=document.createElement("label");
   seasonPickLabel.className="season-select";
   const seasonPick=document.createElement("select");
   seasonPick.setAttribute("aria-label","Saison");
-  for(const [key,label] of SEASON_CHOICES){
-    const option=document.createElement("option");option.value=key;option.textContent=label;seasonPick.append(option);
+  for(const [key] of SEASON_CHOICES){
+    const option=document.createElement("option");option.value=key;seasonPick.append(option);
   }
-  seasonPick.addEventListener("change",()=>chooseSeason(seasonPick.value));
+  seasonPick.addEventListener("change",()=>seasonPick.value==="auto"?endPreview():chooseSeason(seasonPick.value));
+  onUiLang(()=>{
+    seasonalNav.setAttribute("aria-label",t("seasonBubbles"));
+    for(const [key,btn] of seasonButtons){btn.textContent=seasonLabel(key);btn.title=key==="auto"?t("previewBackTitle"):t("previewTitle",{what:seasonLabel(key)})}
+    for(const option of seasonPick.options)option.textContent=seasonLabel(option.value);
+    queueMicrotask(refreshSeasonPick); // after `test` exists (first call is synchronous)
+    seasonPick.setAttribute("aria-label",t("seasonBubbles"));
+  });
+  // Compact selector: « 👁 Aperçu saison » at rest, « ↩ Revenir » during a preview.
+  function refreshSeasonPick(){
+    const back=seasonPick.querySelector('option[value="auto"]');
+    if(back)back.textContent=test.season==="auto"?t("seasonPickIdle"):t("previewBack");
+    if(seasonPick.value!==test.season)seasonPick.value=test.season;
+  }
   seasonPickLabel.append(seasonPick);
   seasonalNav.append(seasonPickLabel);
   const seasonBreak=document.createElement("span");
@@ -199,7 +226,8 @@ export function createPhotoView({ensureScene=null}={}) {
   nav.append(seasonBreak,seasonalNav);
   const TEST_WEATHERS=[["clear","☀ Clair"],["cloudy","☁ Nuageux"],["rain","🌧 Pluie"],
     ["storm","⚡ Orage (éclairs)"],["snow","❄ Neige"],["wind","💨 Vent"],["fog","🌫 Brouillard"],["frost","🧊 Gel"]];
-  const test={weather:"auto",time:"auto"};
+  // In memory only (never saved): test weather / time, season and moon previews.
+  const test={weather:"auto",time:"auto",season:"auto",moon:"auto"};
   const testing=()=>test.weather!=="auto"||test.time!=="auto";
   function setTest(change){
     Object.assign(test,change);state.enabled=true;
@@ -334,14 +362,19 @@ export function createPhotoView({ensureScene=null}={}) {
     label.className="entity-field";label.dataset.key=key;
     label.append(document.createTextNode(title));
     const used=document.createElement("small");used.className="entity-source";
+    const over=document.createElement("small");over.className="override-note";over.dataset.key=key;over.hidden=true;
+    const overText=document.createElement("span");
+    const overBack=document.createElement("button");overBack.type="button";overBack.className="override-back";
+    over.append(overText,overBack);
     const search=document.createElement("input");
     search.type="search";search.className="entity-search";search.placeholder="🔍 Rechercher (nom ou entity_id)";search.hidden=true;
     const select=document.createElement("select");select.className="entity-select";
     const input=document.createElement("input");
     input.type="text";input.className="entity-free";input.placeholder=placeholder;input.value=state[key];input.hidden=true;
-    label.append(used,search,select,input);settings.append(label);
-    const field={label,used,search,select,input,signature:""};
+    label.append(used,over,search,select,input);settings.append(label);
+    const field={label,used,over,overText,overBack,search,select,input,signature:""};
     const choose=value=>{state[key]=menuChoice(key,value);persist();requestEntities();renderEntityField(key,true)};
+    overBack.addEventListener("click",event=>{event.preventDefault();input.value="";choose("")});
     select.addEventListener("change",()=>{
       if(select.value===CUSTOM){input.hidden=false;input.focus();return}
       input.value=select.value;choose(select.value);
@@ -361,6 +394,13 @@ export function createPhotoView({ensureScene=null}={}) {
   function renderEntityField(key,force=false){
     const field=entityFields.get(key);if(!field)return;
     const item={...(effective[key]||{entity_id:"",source:"none"}),key};
+    // This menu's choice replaces the integration option (unless the card imposes its own).
+    const integrationEntity=typeof integrationOpts?.entities?.[key]==="string"?integrationOpts.entities[key]:"";
+    field.over.hidden=!state[key]||item.source==="card";
+    if(!field.over.hidden){
+      field.overText.textContent="⚠ "+t("overrides")+" ("+t("integrationValue",{value:integrationEntity||t("none")})+") ";
+      field.overBack.textContent=t("backToIntegration");
+    }
     const options=entityOptions?.[key]||[];
     const term=field.search.value.trim().toLowerCase();
     const signature=JSON.stringify([item,state[key],options.length,term,entityOptions?1:0]);
@@ -406,15 +446,18 @@ export function createPhotoView({ensureScene=null}={}) {
   const selectMode=selectField("Ambiance",[
     ["auto","Automatique (Home Assistant)"],...AMBIANCES.map(k=>[k,LABELS[k]])
   ],state.mode,v=>{state.mode=v;persist();update();});
-  const seasonSelect=selectField("Saison",[
-    ["auto","Automatique (calendrier)"],
+  // « Saison fixe »: the saved season (draft 💾); Auto = Home Assistant calendar.
+  const seasonSelect=selectField(t("fixedSeason"),[
+    ["auto",t("fixedAuto")],
     ["spring","Printemps"],["summer","Été"],["autumn","Automne"],["winter","Hiver"]
   ],state.season,v=>{
-    state.season=v;
-    state.enabled=true;
-    if(v!=="auto"){state.mode=v;selectMode.value=v}
-    else{state.mode="auto";selectMode.value="auto"}
+    state.season=v;state.enabled=true;
     persist();update();
+  });
+  seasonSelect.classList.add("fixed-season");
+  onUiLang(lang=>{
+    seasonSelect.parentElement.firstChild.textContent=t("fixedSeason");
+    for(const option of seasonSelect.options)option.textContent=option.value==="auto"?t("fixedAuto"):SEASON_NAMES[lang][option.value];
   });
   const testSection=document.createElement("fieldset");
   testSection.className="maison3d-test-states";
@@ -422,7 +465,7 @@ export function createPhotoView({ensureScene=null}={}) {
   legend.textContent="Tester chaque état (sans changer les capteurs)";
   testSection.append(legend);
   // Test mode: forces a weather and/or day/night over the real Home Assistant data.
-  // (The season « Tester » buttons below change the saved season: part of the draft.)
+  // (The season buttons below are temporary previews, like the moon phase: not saved.)
   // Kept in memory only (never saved): a reload or « Revenir à la météo réelle » ends it.
   const testWeatherSelect=selectField("Météo forcée",[["auto","Météo réelle (Home Assistant)"],
     ...TEST_WEATHERS.map(([key,label])=>[key,label])],test.weather,v=>setTest({weather:v}));
@@ -447,9 +490,7 @@ export function createPhotoView({ensureScene=null}={}) {
   for(const [key,label] of [["spring","🌸 Printemps"],["summer","☀ Été"],["autumn","🍂 Automne"],["winter","❄ Hiver"]]){
     const btn=document.createElement("button");
     btn.type="button";btn.textContent=label;
-    btn.addEventListener("click",()=>{
-      state.enabled=true;state.season=key;seasonSelect.value=key;persist();update();
-    });
+    btn.addEventListener("click",()=>chooseSeason(test.season===key?"auto":key));
     testGrid.append(btn);seasonTests.set(key,btn);
   }
   testSection.append(testGrid);
@@ -460,23 +501,25 @@ export function createPhotoView({ensureScene=null}={}) {
     state.enabled=true;state.frost_preview=!state.frost_preview;update();
   });
   testGrid.append(frostTest);
-  const moonPreview=selectField("Tester la phase de lune (jour ou nuit)",[
-    ["auto","Depuis le capteur Home Assistant"],
+  const moonPreview=selectField(t("moonPreview"),[
+    ["auto",t("moonFromSensor")],
     ["new_moon","Nouvelle lune"],["waxing_crescent","Premier croissant"],
     ["first_quarter","Premier quartier"],["waxing_gibbous","Gibbeuse croissante"],
     ["full_moon","Pleine lune"],["waning_gibbous","Gibbeuse décroissante"],
     ["last_quarter","Dernier quartier"],["waning_crescent","Dernier croissant"]
-  ],state.moon_preview,v=>{state.moon_preview=v;persist();update();});
+  ],"auto",v=>{test.moon=v;state.enabled=true;armPreview();update();});
+  moonPreview.classList.add("moon-preview");
+  onUiLang(()=>{moonPreview.parentElement.firstChild.textContent=t("moonPreview");moonPreview.options[0].textContent=t("moonFromSensor")});
   // Move the lunar selector below the test controls in the settings panel.
   const moonLabel=moonPreview.parentElement;
   testSection.append(moonLabel);
   const resetTest=document.createElement("button");
   resetTest.type="button";resetTest.textContent="◉ Revenir à la météo réelle";
+  // Ends every test and preview; the saved settings (ambience, fixed season) are kept.
   resetTest.addEventListener("click",()=>{
-    state.mode="auto";state.season="auto";state.moon_preview="auto";state.frost_preview=false;
+    state.frost_preview=false;
     test.weather="auto";test.time="auto";testWeatherSelect.value="auto";testTimeSelect.value="auto";
-    state.enabled=true;selectMode.value="auto";seasonSelect.value="auto";
-    moonPreview.value="auto";persist();update();
+    state.enabled=true;endPreview();
   });
   testSection.append(resetTest);settings.append(testSection);
   // 💡 Outdoor lights: add / remove light.* or switch.*, name, halo colour, intensity,
@@ -679,6 +722,35 @@ export function createPhotoView({ensureScene=null}={}) {
   settings.append(motionLabel);
   refreshers.push(()=>{motionSelect.value=state.motion;refreshMotionHint()});
   onMotionChange(refreshMotionHint);refreshMotionHint();
+  // Settings of this menu that replace an integration (or card) option: a note next to
+  // each one, with « Revenir à l'intégration » (back to inheriting: a draft change).
+  function overrideNote(anchor,{key,active,source,value,clear}){
+    const box=document.createElement("small");box.className="override-note";box.dataset.key=key;box.hidden=true;
+    const text=document.createElement("span");
+    const back=document.createElement("button");back.type="button";back.className="override-back";
+    back.addEventListener("click",()=>{clear();persist();applyOverrides();for(const refresh of refreshers)refresh();update();renderOverrides()});
+    box.append(text,back);anchor.after(box);
+    overrideNotes.push(()=>{
+      const on=active();box.hidden=!on;if(!on)return;
+      const card=source()==="card";
+      text.textContent="⚠ "+t(card?"overridesCard":"overrides")+" ("+t(card?"cardValue":"integrationValue",{value:value()})+") ";
+      back.textContent=t("backToIntegration");
+    });
+  }
+  const onOff=v=>t(v?"on":"off");
+  const boolOption=(cardKey,integrationKey,fallback)=>({
+    source:()=>typeof cardOpts[cardKey]==="boolean"?"card":"integration",
+    value:()=>onOff(typeof cardOpts[cardKey]==="boolean"?cardOpts[cardKey]:typeof integrationOpts[integrationKey]==="boolean"?integrationOpts[integrationKey]:fallback)
+  });
+  overrideNote(checkbox,{key:"effect_override",active:()=>typeof state.effect_override==="boolean",...boolOption("effects_enabled","effects_enabled",true),clear:()=>{state.effect_override=null}});
+  overrideNote(frostLabel,{key:"frost_override",active:()=>typeof state.frost_override==="boolean",...boolOption("frost_enabled","frost_enabled",true),clear:()=>{state.frost_override=null}});
+  overrideNote(swapLabel,{key:"weather_photos_override",active:()=>typeof state.weather_photos_override==="boolean",...boolOption("weather_photos","weather_photos",false),clear:()=>{state.weather_photos_override=null}});
+  overrideNote(mainPhotoInput.parentElement,{key:"base_image_url",active:()=>Boolean(state.base_image_url),
+    source:()=>cardOpts.base_image_url?"card":"integration",
+    value:()=>(cardOpts.base_image_url||integrationOpts.base_image_url||t("none")).split("?")[0].slice(-60),
+    clear:()=>{state.base_image_url=""}});
+  function renderOverrides(){for(const fn of overrideNotes)fn()}
+  onUiLang(()=>{renderOverrides();for(const key of SENSOR_KEYS)renderEntityField(key,true)});
   const reset=document.createElement("button");reset.type="button";reset.textContent="Réinitialiser les images";
   reset.addEventListener("click",()=>{
     if(!confirm("Réinitialiser toutes les URLs personnalisées ?"))return;
@@ -689,7 +761,7 @@ export function createPhotoView({ensureScene=null}={}) {
       const text=l.firstChild?.textContent||"";
       if(text.startsWith("Image "))input.value="";
     });
-    selectMode.value="auto";seasonSelect.value="auto";state.moon_preview="auto";moonPreview.value="auto";update();
+    selectMode.value="auto";seasonSelect.value="auto";endPreview();
   });settings.append(reset);
   const style=document.createElement("style");
   style.textContent=[
@@ -778,6 +850,10 @@ export function createPhotoView({ensureScene=null}={}) {
     "#maison3d-photo-status{top:8px;right:8px;font-size:11px}}"
   ].join("");
   style.textContent+=SAVE_STYLE+LIGHT_STYLE+
+    "#maison3d-photo-settings .override-note{display:block;margin:-6px 0 8px;font:11px system-ui;color:#f3c77a}"+
+    "#maison3d-photo-settings .entity-field .override-note{margin:2px 0 3px}"+
+    "#maison3d-photo-settings .override-note[hidden]{display:none}"+
+    "#maison3d-photo-settings .override-note button{padding:3px 7px;font-size:11px;margin-left:4px;background:#4a3a1c}"+
     "#maison3d-photo-controls .maison3d-save button{padding:9px 11px}"+
     "#maison3d-photo-settings .settings-head{display:flex;align-items:center;gap:6px;flex-wrap:wrap}"+
     "#maison3d-photo-settings .settings-head strong{flex:1 1 auto}"+
@@ -817,7 +893,8 @@ export function createPhotoView({ensureScene=null}={}) {
   let parentImages={};
   const images=()=>({...state.images,...parentImages});
   let particles=[];
-  const seasonNow=()=>state.season!=="auto"?state.season:automaticSeason(haTimeZone);
+  // Season preview (temporary) → « Saison fixe » (saved) → Home Assistant calendar.
+  const seasonNow=()=>test.season!=="auto"?test.season:state.season!=="auto"?state.season:automaticSeason(haTimeZone);
   const nighttime=()=>{
     if(test.time!=="auto")return test.time==="night";
     if(live.sun==="below_horizon")return true;
@@ -826,10 +903,12 @@ export function createPhotoView({ensureScene=null}={}) {
     const hour=haHour(haTimeZone);return hour<7||hour>=20;
   };
   // Night for the current view: test mode first, then the saved ambience, then Home Assistant.
-  const isNight=()=>test.time!=="auto"?test.time==="night":
+  // A season preview is a day view (like a seasonal ambience).
+  const isNight=()=>test.time!=="auto"?test.time==="night":test.season!=="auto"?false:
     state.mode==="night"||(state.mode==="auto"&&nighttime());
   function weatherKey(){
     if(test.weather!=="auto")return ["clear","frost"].includes(test.weather)?(isNight()?"night":"day"):test.weather;
+    if(test.season!=="auto")return test.season;
     if(state.mode!=="auto")return state.mode;
     // Shared rules (numbers, on/off, Météo-France vigilance): sensor-values.js.
     const kind=liveKind();
@@ -867,6 +946,7 @@ export function createPhotoView({ensureScene=null}={}) {
     setBar(nav.classList.contains("collapsed"));
   }
   function update(){
+    refreshSeasonPick();
     const selected=weatherKey();
     active=selected;
     const night=isNight();
@@ -903,33 +983,35 @@ export function createPhotoView({ensureScene=null}={}) {
     tint.style.opacity=night?"1":"0.8";
     section.classList.toggle("photo-night",night);
     section.classList.toggle("effects-off",!state.effect);
-    const currentMoon=state.moon_preview==="auto"?live.moon:state.moon_preview;
+    const currentMoon=test.moon==="auto"?live.moon:test.moon;
     const phaseName=skyMoon.normalize(currentMoon);
     skyMoon.draw(phaseName,night,state.effect&&Boolean(phaseName),state.effect_intensity);
     moon.textContent=""; // The phase is rendered on the sky, including daytime.
-    for(const [key,btn] of seasonButtons)btn.setAttribute("aria-pressed",String(state.season===key));
-    seasonPick.value=state.season;
+    for(const [key,btn] of seasonButtons)btn.setAttribute("aria-pressed",String(test.season===key));
+    seasonPick.value=test.season;
+    seasonalNav.classList.toggle("previewing",test.season!=="auto");
     for(const [key,btn] of testButtons)btn.setAttribute("aria-pressed",String(test.weather===key));
     for(const [key,btn] of timeButtons)btn.setAttribute("aria-pressed",String(test.time===key));
-    for(const [key,btn] of seasonTests)btn.setAttribute("aria-pressed",String(state.season===key));
+    for(const [key,btn] of seasonTests)btn.setAttribute("aria-pressed",String(test.season===key));
     const effectLabel=labelOf(lang,selected)||LABELS[selected]||selected;
     const seasonLabel=labelOf(lang,seasonNow())||SEASON_LABELS[seasonNow()]||seasonNow();
     const testWeather=test.weather!=="auto"?labelOf(lang,test.weather)||LABELS[test.weather]:effectLabel;
-    const testLabel=testing()?t(lang,"status_test")+" · "+testWeather+" · "+t(lang,night?"status_night":"status_day"):"";
-    status.classList.toggle("testing",testing());
+    const testLabel=testing()?t(lang,"status_test")+" · "+testWeather+" · "+t(lang,night?"status_night":"status_day"):
+      test.season!=="auto"?t("previewStatus")+" · "+(SEASON_NAMES[uiLang()][test.season]||test.season):"";
+    status.classList.toggle("testing",testing()||previewing());
     // Same word twice in a row (« Été · Été », « Nuit · Nuit ») is shown once.
     const head=(testLabel||((state.mode==="auto"?t(lang,"status_auto"):t(lang,"status_manual"))+" · "+effectLabel)).split(" · ");
     if(!head.includes(seasonLabel))head.push(seasonLabel);
     status.textContent=head.filter((w,i)=>w!==head[i-1]).join(" · ")+
       (typeof live.temperature==="number"?" · "+live.temperature+(live.temperatureUnit||"°C"):"")+
       (phaseName?" · "+t(lang,"status_moon")+" : "+String(currentMoon):"")+
-      (state.moon_preview!=="auto"?" · "+t(lang,"status_moon_test"):"")+
+      (test.moon!=="auto"?" · "+t("moonPreviewStatus"):"")+
       (frostTarget()>0?" · "+t(lang,(state.frost_preview||test.weather==="frost")?"status_frost_test":"status_frost"):"");
     frostInput.checked=state.frost;
     frostTest.setAttribute("aria-pressed",String(state.frost_preview));
     nightBtn.setAttribute("aria-pressed",String(test.time==="night"));
     dayBtn.setAttribute("aria-pressed",String(test.time==="day"));
-    autoBtn.setAttribute("aria-pressed",String(state.mode==="auto"&&!testing()));
+    autoBtn.setAttribute("aria-pressed",String(state.mode==="auto"&&!testing()&&!previewing()));
     effectsBtn.textContent=state.effect?t(lang,"effects_on"):t(lang,"effects_off");
     effectsBtn.setAttribute("aria-pressed",String(state.effect));
     photoBtn.setAttribute("aria-pressed",String(state.enabled));
@@ -939,7 +1021,7 @@ export function createPhotoView({ensureScene=null}={}) {
     if(!state.enabled){section.style.display="none"}else{section.style.display="block"}
     document.documentElement.classList.toggle("photo-active",state.enabled);
     if(!state.enabled)withScene(()=>{});
-    renderLights();
+    renderLights();renderOverrides();
   }
   photoBtn.addEventListener("click",()=>{state.enabled=true;persist();update()});
   // ☾ / ☀ preview night or day immediately (test mode, not saved); ◉ Auto returns to real data.
@@ -1003,7 +1085,7 @@ export function createPhotoView({ensureScene=null}={}) {
       applySaved(saved);applyOverrides();
       try{localStorage.setItem(STORAGE,JSON.stringify(state))}catch{}
       for(const refresh of refreshers)refresh();
-      selectMode.value=state.mode;seasonSelect.value=state.season;moonPreview.value=state.moon_preview;
+      selectMode.value=state.mode;seasonSelect.value=state.season;
       strengthValue.textContent=Math.round(state.effect_intensity*100)+" %";
       for(const key of SENSOR_KEYS)renderEntityField(key,true);
       requestEntities();watchLights();renderLightSettings();
@@ -1049,6 +1131,14 @@ export function createPhotoView({ensureScene=null}={}) {
     if(!settings.hidden)renderLightSettings();
     globals={effects:event.data.effects_enabled!==false,frost:event.data.frost_enabled!==false,
       weather_photos:event.data.weather_photos===true};
+    // Where the inherited values come from (integration options, card configuration).
+    const io=event.data.integration_options&&typeof event.data.integration_options==="object"?event.data.integration_options:{};
+    integrationOpts={effects_enabled:io.effects_enabled,frost_enabled:io.frost_enabled,weather_photos:io.weather_photos,
+      base_image_url:typeof io.base_image_url==="string"?io.base_image_url.slice(0,500):"",
+      entities:io.entities&&typeof io.entities==="object"?Object.fromEntries(SENSOR_KEYS.map(k=>[k,typeof io.entities[k]==="string"?io.entities[k].slice(0,150):""])):{}};
+    const co=event.data.card_options&&typeof event.data.card_options==="object"?event.data.card_options:{};
+    cardOpts={effects_enabled:co.effects_enabled,frost_enabled:co.frost_enabled,weather_photos:co.weather_photos,
+      base_image_url:typeof co.base_image_url==="string"?co.base_image_url.slice(0,500):""};
     applyOverrides();
     const supplied=event.data.base_image_url;
     parentBasePhoto=allowedUrl(supplied)?supplied:"";
@@ -1085,6 +1175,7 @@ export function createPhotoView({ensureScene=null}={}) {
     }
     for(const key of SENSOR_KEYS)renderEntityField(key);
     markWeatherReady();
+    renderOverrides();
     update();
   });
   let actual=0;
@@ -1201,8 +1292,8 @@ export function createPhotoView({ensureScene=null}={}) {
     state.images={...defaults(),...saved.images};
     applyOverrides();
     for(const refresh of refreshers)refresh();
-    selectMode.value=state.mode;seasonSelect.value=state.season;seasonPick.value=state.season;
-    moonPreview.value=state.moon_preview;frostInput.checked=state.frost;
+    selectMode.value=state.mode;seasonSelect.value=state.season;seasonPick.value=test.season;
+    frostInput.checked=state.frost;
     strengthValue.textContent=Math.round(state.effect_intensity*100)+" %";
     if(!MOTION_MODES.includes(state.motion))state.motion="auto";
     setMotionMode(state.motion);

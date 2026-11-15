@@ -80,6 +80,8 @@ function ensureScene(){
   return loading;
 }
 loader.addEventListener("click",()=>{if(loader.classList.contains("failed"))ensureScene().catch(()=>{})});
+// « Restaurer les modifications non enregistrées » with a 3D layout change: load the 3D (draft.js).
+addEventListener("maison3d:section-needed",e=>{if(e.detail==="layout")ensureScene().catch(()=>{})});
 const photoView=createPhotoView({ensureScene});
 const interior=createInteriorExplorer({photoView,ensureScene});
 // One-time migration of a 3D layout saved only in this browser (older versions): the 3D

@@ -107,6 +107,35 @@ class ComputeViewTest(unittest.TestCase):
         self.assertEqual(len(set(logic.AMBIANCES)), 12)
 
 
+class MenuOverridesTest(unittest.TestCase):
+    """Review point 3: the options flow lists the ⚙ menu settings that replace an option."""
+
+    def test_none(self):
+        self.assertEqual(logic.menu_overrides({}, {}), [])
+        self.assertIn("Aucun réglage", logic.overrides_text([], "fr"))
+        self.assertIn("No setting", logic.overrides_text([], "en"))
+
+    def test_effects_override_of_xavier(self):
+        saved = {"effect_override": True, "frost_override": None, "weather_photos_override": False,
+                 "base_image_url": "/local/maison.jpg", "weather_entity": "weather.home", "sun_entity": "sun.sun"}
+        items = logic.menu_overrides(saved, {"effects_enabled": False, "weather_photos_enabled": True})
+        self.assertEqual([i["key"] for i in items], ["effects_enabled", "weather_photos_enabled", "base_image_url",
+                                                     "weather_entity"])
+        self.assertEqual(items[0], {"key": "effects_enabled", "menu": True, "integration": False})
+        fr = logic.overrides_text(items, "fr")
+        self.assertIn("`effects_enabled` : activé (≠ désactivé)", fr)
+        self.assertIn("`base_image_url` : /local/maison.jpg (≠ vide)", fr)
+        self.assertIn("cartes Lovelace", fr)
+        self.assertIn("`effects_enabled` : on (≠ off)", logic.overrides_text(items, "en"))
+
+    def test_saved_fixed_season_only(self):
+        # Season bubbles and moon phase are temporary previews: only « Saison fixe » counts.
+        v = logic.compute_view({"season": "winter", "moon_preview": "full_moon"}, {}, lambda _: None, month=7, hour=12)
+        self.assertEqual((v["season_mode"], v["fixed_season"], v["season"]), ("fixed", "winter", "winter"))
+        v = logic.compute_view({"season": "auto"}, {}, lambda _: None, month=7, hour=12)
+        self.assertEqual((v["season_mode"], v["season"]), ("auto", "summer"))
+
+
 @unittest.skipIf(shutil.which("node") is None, "node missing")
 class ParityWithJavaScriptTest(unittest.TestCase):
     """Same inputs through the JS modules of the panel and the Python port."""
