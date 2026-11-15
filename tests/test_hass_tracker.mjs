@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
-const text=readFileSync("custom_components/maison3d/www/hass-tracker.js","utf8");
-const {createHassTracker,isWeather,isDiagnostic,RESCAN_MS}=await import("data:text/javascript;base64,"+Buffer.from(text).toString("base64"));
+import {pathToFileURL} from "node:url";
+// File URL import: hass-tracker.js imports ./sensor-values.js.
+const {createHassTracker,isWeather,isDiagnostic,RESCAN_MS}=await import(pathToFileURL("custom_components/maison3d/www/hass-tracker.js").href);
 let clock=0;const t=createHassTracker({now:()=>clock});
 // A states object that counts how many times it is scanned.
 let scans=0;

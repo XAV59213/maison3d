@@ -10,6 +10,7 @@ import {automaticSeason,SEASON_LABELS,createSeasonEffects} from "./season-effect
 import {DEFAULT_MAIN_PHOTO,allowedPhotoUrl,bundledPhoto,resolveMainPhoto,IMAGE_SLOTS,IMAGE_KEYS,pickWeatherPhoto,suggestedFileName} from "./photo-source.js";
 import {createFrostEffects,frostLevel,toCelsius} from "./frost-effects.js";
 import {onHaData,saveToHa,uploadToHa} from "./ha-storage.js";
+import {moonPhase,weatherKind,issueText} from "./sensor-values.js";
 export function createPhotoView() {
   const KEYS=IMAGE_KEYS;
   const LABELS={...Object.fromEntries(IMAGE_SLOTS),fog:"Brouillard",clear:"Clair",frost:"Gel"};
@@ -249,18 +250,25 @@ export function createPhotoView() {
     uploadStatus.textContent=canSave?"La photo est enregistrée dans /config/www/maison3d/ (jpg, png, webp · 10 Mo max).":
       "Envoi de photos : administrateur Home Assistant requis.";
   });
-  bind(makeField("Entité météo",state.weather_entity,v=>{state.weather_entity=v;persist();requestEntities()},
-    "weather.ma_maison (vide = première disponible)"),()=>state.weather_entity);
-  bind(makeField("Entité soleil",state.sun_entity,v=>{state.sun_entity=v||"sun.sun";persist();requestEntities()},"sun.sun"),()=>state.sun_entity);
-  bind(makeField("Entité lune",state.moon_entity,v=>{state.moon_entity=v;persist();requestEntities()},"sensor.moon_phase"),()=>state.moon_entity);
+  // Discreet warning under a sensor field (unknown value, unavailable…); never on the photo.
+  const sensorWarnings=new Map();
+  const warnable=(key,input)=>{
+    const warn=document.createElement("small");
+    warn.className="sensor-warning";warn.dataset.key=key;warn.hidden=true;warn.setAttribute("role","status");
+    input.parentElement.append(warn);sensorWarnings.set(key,warn);return input;
+  };
+  bind(warnable("weather_entity",makeField("Entité météo",state.weather_entity,v=>{state.weather_entity=v;persist();requestEntities()},
+    "weather.ma_maison (vide = première disponible)")),()=>state.weather_entity);
+  bind(warnable("sun_entity",makeField("Entité soleil",state.sun_entity,v=>{state.sun_entity=v||"sun.sun";persist();requestEntities()},"sun.sun")),()=>state.sun_entity);
+  bind(warnable("moon_entity",makeField("Entité lune",state.moon_entity,v=>{state.moon_entity=v;persist();requestEntities()},"sensor.moon_phase (vide = détection automatique)")),()=>state.moon_entity);
   for(const [key,label] of [
     ["temperature_entity","Capteur température extérieure"],
     ["wind_entity","Capteur vitesse du vent"],
-    ["rain_entity","Capteur pluie (valeur ou on/off)"],
-    ["snow_entity","Capteur neige (valeur ou on/off)"],
+    ["rain_entity","Capteur pluie (valeur, on/off ou vigilance)"],
+    ["snow_entity","Capteur neige (valeur, on/off ou vigilance)"],
     ["cloud_entity","Capteur nuages (pourcentage ou on/off)"]
   ]){
-    bind(makeField(label,state[key],v=>{state[key]=v;persist();requestEntities()},"sensor.exemple"),()=>state[key]);
+    bind(warnable(key,makeField(label,state[key],v=>{state[key]=v;persist();requestEntities()},"sensor.exemple")),()=>state[key]);
   }
   const selectMode=selectField("Ambiance",[
     ["auto","Automatique (Home Assistant)"],...AMBIANCES.map(k=>[k,LABELS[k]])
@@ -457,6 +465,8 @@ export function createPhotoView() {
     "#maison3d-photo-settings .settings-head{display:flex;justify-content:space-between;align-items:center;gap:10px}",
     "#maison3d-photo-settings p{font:12px system-ui;line-height:1.4;color:#d8e0e8}",
     "#maison3d-photo-settings label{display:block;font:12px system-ui;margin:10px 0;color:#dbe6f0}",
+    "#maison3d-photo-settings .sensor-warning{display:block;margin-top:3px;font-size:11px;color:#f3c77a}",
+    "#maison3d-photo-settings .sensor-warning[hidden]{display:none}",
     "#maison3d-photo-settings label input[type=text],#maison3d-photo-settings select{display:block;width:100%;",
     "box-sizing:border-box;margin-top:4px;padding:9px;color:white;background:#273c56;border:1px solid #72869a;border-radius:7px}",
     "#maison3d-photo-settings .checkbox{display:flex;align-items:center;gap:9px}",
@@ -469,11 +479,16 @@ export function createPhotoView() {
   ].join("");
   document.head.append(style);
   document.body.append(section,nav,seasonalNav,settings);
-  let live={weather:null,sun:null,temperature:null,temperatureUnit:"",windSpeed:0,moon:null,rain:null,snow:null,cloud:null};
+  let live={weather:null,sun:null,temperature:null,temperatureUnit:"",windSpeed:0,moon:null,rain:null,snow:null,cloud:null,storm_alert:false,ice_alert:false};
+  // Ambience from Home Assistant only (null = no weather signal); see sensor-values.js.
+  const liveKind=()=>weatherKind({...live,stormAlert:live.storm_alert,iceAlert:live.ice_alert,
+    celsius:toCelsius(live.temperature,live.temperatureUnit),frostEnabled:state.effect&&state.frost});
   // 0..1 frost strength: forced by the test button, otherwise from the temperature.
   const frostTarget=()=>{
     if(!state.effect||!state.frost)return 0;
-    const level=state.frost_preview||test.weather==="frost"?1:frostLevel(toCelsius(live.temperature,live.temperatureUnit));
+    // Ice vigilance (verglas) at ≤ 0 °C: full frost, as with the test button.
+    const iceFrost=test.weather==="auto"&&state.mode==="auto"&&liveKind()==="frost";
+    const level=state.frost_preview||test.weather==="frost"||iceFrost?1:frostLevel(toCelsius(live.temperature,live.temperatureUnit));
     return level*Math.min(1,state.effect_intensity);
   };
   let haTimeZone="UTC";
@@ -499,35 +514,13 @@ export function createPhotoView() {
   function weatherKey(){
     if(test.weather!=="auto")return ["clear","frost"].includes(test.weather)?(isNight()?"night":"day"):test.weather;
     if(state.mode!=="auto")return state.mode;
-    const w=String(live.weather||"").toLowerCase();
-    if(/lightning|storm|thunder/.test(w))return "storm";
-    if(Number(live.snow)>0)return "snow";
-    if(Number(live.rain)>0)return "rain";
-    if(/snow|hail/.test(w))return "snow";
-    if(/rain|pouring/.test(w))return "rain";
-    if(/wind/.test(w))return "wind";
-    if(/fog|mist|brouillard/.test(w))return "fog";
-    if(/cloud/.test(w))return "cloudy";
-    if(Number(live.cloud)>=60)return "cloudy";
-    if(Number(live.windSpeed)>=25)return "wind";
+    // Shared rules (numbers, on/off, Météo-France vigilance): sensor-values.js.
+    const kind=liveKind();
+    if(kind&&kind!=="frost")return kind;
     if(nighttime())return "night";
     const s=seasonNow();return images()[s]?s:"day";
   }
-  const moonPhase=(value)=>{
-    const raw=String(value||"").toLowerCase().trim();
-    const v=raw.replace(/[\s-]+/g,"_");
-    const mapping={
-      new_moon:"new_moon",nouvelle_lune:"new_moon",
-      waxing_crescent:"waxing_crescent",premier_croissant:"waxing_crescent",
-      first_quarter:"first_quarter",premier_quartier:"first_quarter",
-      waxing_gibbous:"waxing_gibbous",gibbeuse_croissante:"waxing_gibbous",
-      full_moon:"full_moon",pleine_lune:"full_moon",
-      waning_gibbous:"waning_gibbous",gibbeuse_decroissante:"waning_gibbous",
-      last_quarter:"last_quarter",dernier_quartier:"last_quarter",
-      waning_crescent:"waning_crescent",dernier_croissant:"waning_crescent"
-    };
-    return mapping[v]||null;
-  };
+  // moonPhase(): shared parser (English/French, accents, case) from sensor-values.js.
   const moonSymbol=(value)=>({
     new_moon:"🌑",waxing_crescent:"🌒",first_quarter:"🌓",
     waxing_gibbous:"🌔",full_moon:"🌕",waning_gibbous:"🌖",
@@ -633,6 +626,16 @@ export function createPhotoView() {
     error.hidden=false;
   });
   image.addEventListener("load",()=>{error.hidden=true});
+  function showSensorWarnings(issues){
+    const safe=issues&&typeof issues==="object"?issues:{};
+    for(const [key,warn] of sensorWarnings){
+      const item=safe[key];
+      const text=item&&typeof item==="object"&&typeof item.entity_id==="string"?issueText({
+        entity_id:item.entity_id.slice(0,120),issue:String(item.issue),
+        state:typeof item.state==="string"?item.state.slice(0,40):null},key):"";
+      warn.textContent=text;warn.hidden=!text;
+    }
+  }
   function requestEntities(){
     // Explicit request; only this iframe's parent is allowed to receive it.
     if(window.parent===window)return;
@@ -690,8 +693,11 @@ export function createPhotoView() {
       moon:typeof event.data.moon==="string"?event.data.moon:null,
       rain:Number.isFinite(event.data.rain)?event.data.rain:null,
       snow:Number.isFinite(event.data.snow)?event.data.snow:null,
-      cloud:Number.isFinite(event.data.cloud)?event.data.cloud:null
+      cloud:Number.isFinite(event.data.cloud)?event.data.cloud:null,
+      storm_alert:event.data.storm_alert===true,
+      ice_alert:event.data.ice_alert===true
     };
+    showSensorWarnings(event.data.sensor_issues);
     update();
   });
   let actual=0;

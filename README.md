@@ -171,16 +171,30 @@ Aller dans **Paramètres → Appareils et services → Maison 3D → Configurer*
 |---|---|---|
 | 🌤️ Météo | `weather.*` | Condition actuelle |
 | ☀️ Soleil | `sun.sun` | Jour et nuit |
-| 🌙 Phase lunaire | `sensor.*` | Forme de la lune dessinée sur la photo |
+| 🌙 Phase lunaire | `sensor.*` | Forme de la lune dessinée sur la photo (anglais ou français, ex. « Premier croissant ») |
 | 🌡️ Température | `sensor.*` | Relevé extérieur |
 | 💨 Vent | `sensor.*` | Rafales / mouvement |
-| 🌧️ Pluie | `sensor.*` / `binary_sensor.*` | Pluie active |
-| ❄️ Neige | `sensor.*` / `binary_sensor.*` | Neige active |
+| 🌧️ Pluie | `sensor.*` / `binary_sensor.*` | Pluie active (valeur, on/off ou vigilance Météo-France) |
+| ❄️ Neige | `sensor.*` / `binary_sensor.*` | Neige active (valeur, on/off ou vigilance Météo-France) |
 | ☁️ Nuages | `sensor.*` / `binary_sensor.*` | Couverture nuageuse |
 
 Le champ **Nom du projet** (facultatif, « Maison 3D » par défaut) s'affiche dans le panneau (bandeau « Mode édition » et « 📁 Projet : … » en bas de la vue 3D), sert de titre par défaut aux cartes et nomme le fichier d'export JSON.
 
 Tous les capteurs supplémentaires sont facultatifs. La météo et le soleil peuvent fournir les données de base ; les autres valeurs enrichissent l'animation.
+
+**Valeurs acceptées pour la pluie et la neige** : un nombre (0 = rien), `on` / `off`, ou une **vigilance Météo-France** (`Vert`, `Jaune`, `Orange`, `Rouge`, aussi `green` / `yellow` / `orange` / `red`, majuscules indifférentes) :
+
+| Vigilance | Capteur pluie (ex. `sensor.alerte_pluie_inondation`) | Capteur neige (ex. `sensor.alerte_neige_verglas`) |
+|---|---|---|
+| Vert | rien | rien |
+| Jaune / Orange | pluie | neige |
+| Rouge | orage | neige |
+
+Si l'identifiant ou le nom du capteur neige parle de **verglas** (ou *ice*) et que la température est **≤ 0 °C**, la vigilance donne l'effet **gel** à la place de la neige (si l'effet gel est activé).
+
+**Lune sans capteur choisi** : détection automatique d'un `sensor.*` dont l'identifiant contient `moon` ou `lune` (`moon_phase`, `phase_lune`, `phase_de_la_lune`…) ou dont l'état est une phase connue ; un identifiant anglais (`moon…`) est préféré s'il y en a plusieurs.
+
+Un capteur choisi dont la valeur n'est pas reconnue, `unavailable`, `unknown` ou introuvable est signalé par un petit avertissement dans le menu ⚙ Images / météo et dans l'éditeur de la carte (rien n'est affiché sur l'image).
 
 La page de l'appareil Maison 3D propose **un seul capteur de diagnostic, « État des capteurs »** (traduit en français et en anglais) : `OK`, `Non configuré` ou `Indisponible` (une source introuvable ou indisponible). Le détail de chaque source (météo, soleil, lune, température…) est dans son attribut **`sensor_statuses`** (`ok`, `not_configured`, `not_found`, `unknown`, `unavailable`). Il vérifie la disponibilité des entités, pas l'exactitude météorologique d'une mesure.
 
@@ -364,7 +378,7 @@ Vérifier que l'intégration a été ajoutée après l'installation HACS, puis *
 <details>
 <summary>La météo ou la lune ne change pas</summary>
 
-Dans **Paramètres → Appareils et services → Maison 3D → Configurer**, vérifier l'identifiant des entités, puis leur état dans **Outils de développement → États**. Éviter `unknown` ou `unavailable`. Quitter le mode Test et réactiver **◉ Auto**.
+Dans **Paramètres → Appareils et services → Maison 3D → Configurer**, vérifier l'identifiant des entités, puis leur état dans **Outils de développement → États**. Éviter `unknown` ou `unavailable`. Le menu ⚙ Images / météo et l'éditeur de la carte affichent un avertissement ⚠ sous un capteur dont la valeur n'est pas reconnue. Quitter le mode Test et réactiver **◉ Auto**.
 
 </details>
 

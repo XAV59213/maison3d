@@ -2,7 +2,8 @@ import "./maison3d-card-editor.js";
 import {IMAGE_KEYS} from "./photo-source.js";
 import {createStorageBridge} from "./storage-bridge.js";
 import {createMediaResolver} from "./media-resolver.js";
-import {createHassTracker,isWeather,isMoon} from "./hass-tracker.js";
+import {createHassTracker,isWeather} from "./hass-tracker.js";
+import {readSensor,precipitation,sensorIssues} from "./sensor-values.js";
 /**
  * Maison 3D interactive Lovelace card.
  * Load as a JavaScript module resource: /maison3d-assets/maison3d-card.js
@@ -137,7 +138,7 @@ class Maison3DCard extends HTMLElement {
     const choice = key => this._config[key] || integration[key] || "";
     const weather=(choice("weather_entity") && states[choice("weather_entity")]) || this._tracker.find("weather",states,isWeather);
     const sun=states[choice("sun_entity") || "sun.sun"];
-    const moon=states[choice("moon_entity")] || this._tracker.find("moon",states,isMoon);
+    const moon=states[choice("moon_entity")] || this._tracker.moon(states);
     // Only the tracked entities matter: same state objects = nothing to recompute or post.
     const keys=["temperature_entity","wind_entity","rain_entity","snow_entity","cloud_entity","weather_entity","sun_entity","moon_entity"];
     const dirty=this._tracker.changed([
@@ -146,22 +147,21 @@ class Maison3DCard extends HTMLElement {
     ]);
     if (!force && !dirty) return;
     const attrs=weather?.attributes||{};
+    // Numbers, on/off and Météo-France vigilance colours (see sensor-values.js).
     const numeric=(entityId,fallback)=>{
-      const entity=entityId&&states[entityId];
-      if(!entity||["unknown","unavailable"].includes(entity.state))return fallback;
-      const state=String(entity.state).toLowerCase();
-      if(state==="on")return 1;
-      if(state==="off")return 0;
-      const value=Number(entity.state);
-      return Number.isFinite(value)?value:fallback;
+      if(!entityId)return fallback;
+      const value=readSensor(states[entityId],{allowVigilance:false}).value;
+      return value===null?fallback:value;
     };
     const temperature=numeric(choice("temperature_entity"),
       typeof attrs.temperature==="number"?attrs.temperature:null);
     const windSpeed=numeric(choice("wind_entity"),
       typeof attrs.wind_speed==="number"?attrs.wind_speed:null);
-    const rain=numeric(choice("rain_entity"),null);
-    const snow=numeric(choice("snow_entity"),null);
+    const wet=precipitation(states[choice("rain_entity")],states[choice("snow_entity")]);
     const cloud=numeric(choice("cloud_entity"),null);
+    const sensor_issues=sensorIssues({...Object.fromEntries(keys.map(key=>[key,choice(key)])),
+      weather_entity:weather?.entity_id||choice("weather_entity"),sun_entity:choice("sun_entity")||"sun.sun",
+      moon_entity:moon?.entity_id||""},states);
     const payload={
       type:"maison3d:conditions",
       project_name:this._projectName(),
@@ -174,9 +174,12 @@ class Maison3DCard extends HTMLElement {
       temperature,
       temperatureUnit:states[choice("temperature_entity")]?.attributes?.unit_of_measurement??attrs.temperature_unit??"",
       windSpeed,
-      rain,
-      snow,
+      rain:wet.rain,
+      snow:wet.snow,
+      storm_alert:wet.storm_alert,
+      ice_alert:wet.ice_alert,
       cloud,
+      sensor_issues,
       windSpeedUnit:attrs.wind_speed_unit??"",
       sun:sun?.state??null,
       moon:moon?.state??null,

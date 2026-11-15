@@ -1,7 +1,8 @@
 /** Home Assistant custom panel wrapper for the Maison 3D editor. */
 import {createStorageBridge} from "./storage-bridge.js";
 import {createMediaResolver} from "./media-resolver.js";
-import {createHassTracker,isWeather,isMoon} from "./hass-tracker.js";
+import {createHassTracker,isWeather} from "./hass-tracker.js";
+import {readSensor,precipitation,sensorIssues} from "./sensor-values.js";
 class Maison3DPanel extends HTMLElement {
   constructor() {
     super();
@@ -71,7 +72,7 @@ class Maison3DPanel extends HTMLElement {
     const requested = choice("weather_entity") && states[choice("weather_entity")];
     const weather = requested || this._tracker.find("weather", states, isWeather);
     const sun = states[choice("sun_entity") || "sun.sun"];
-    const moonState = states[choice("moon_entity")] || this._tracker.find("moon", states, isMoon);
+    const moonState = states[choice("moon_entity")] || this._tracker.moon(states);
     // Only the tracked entities matter: same state objects = nothing to send.
     const keys = ["temperature_entity","wind_entity","rain_entity","snow_entity","cloud_entity","weather_entity","sun_entity","moon_entity"];
     const dirty = this._tracker.changed([
@@ -80,14 +81,16 @@ class Maison3DPanel extends HTMLElement {
     ]);
     if (!force && !dirty) return;
     const attributes = weather?.attributes || {};
+    // Numbers, on/off and Météo-France vigilance colours (see sensor-values.js).
     const numeric = (key, fallback) => {
-      const source = states[choice(key)];
-      if (!source || ["unknown","unavailable"].includes(source.state)) return fallback;
-      if (source.state === "on") return 1;
-      if (source.state === "off") return 0;
-      const value = Number(source.state);
-      return Number.isFinite(value) ? value : fallback;
+      if (!choice(key)) return fallback;
+      const value = readSensor(states[choice(key)], {allowVigilance: false}).value;
+      return value === null ? fallback : value;
     };
+    const wet = precipitation(states[choice("rain_entity")], states[choice("snow_entity")]);
+    const sensor_issues = sensorIssues({...Object.fromEntries(keys.map(key => [key, choice(key)])),
+      weather_entity: weather?.entity_id || choice("weather_entity"), sun_entity: choice("sun_entity") || "sun.sun",
+      moon_entity: moonState?.entity_id || ""}, states);
     const payload = {
       type: "maison3d:conditions",
       project_name: typeof diagnostic?.attributes?.project_name === "string" ? diagnostic.attributes.project_name : "",
@@ -100,9 +103,12 @@ class Maison3DPanel extends HTMLElement {
       temperature: numeric("temperature_entity", typeof attributes.temperature === "number" ? attributes.temperature : null),
       temperatureUnit: states[choice("temperature_entity")]?.attributes?.unit_of_measurement ?? attributes.temperature_unit ?? "",
       windSpeed: numeric("wind_entity", typeof attributes.wind_speed === "number" ? attributes.wind_speed : null),
-      rain: numeric("rain_entity", null),
-      snow: numeric("snow_entity", null),
+      rain: wet.rain,
+      snow: wet.snow,
+      storm_alert: wet.storm_alert,
+      ice_alert: wet.ice_alert,
       cloud: numeric("cloud_entity", null),
+      sensor_issues,
       windSpeedUnit: attributes.wind_speed_unit ?? "",
       sun: sun?.state ?? null,
       moon: moonState?.state ?? null,

@@ -556,6 +556,27 @@ class TestMaison3D(unittest.TestCase):
         self.assertTrue((COMPONENT / "www" / "maison3d-reference.webp").is_file())
         content = (ROOT / "README.md").read_text(encoding="utf-8")
         self.assertIn('src="custom_components/maison3d/www/maison3d-reference.webp"', content)
+    def test_sensor_values_shared_module(self):
+        www = COMPONENT / "www"
+        values = (www / "sensor-values.js").read_text(encoding="utf-8")
+        for word in ("vert", "jaune", "orange", "rouge", "green", "yellow", "red", "verglas"):
+            self.assertIn(word, values)
+        for name in ("maison3d-card.js", "maison3d-panel.js", "photo-view.js", "maison3d-card-editor.js"):
+            src = (www / name).read_text(encoding="utf-8")
+            self.assertIn('from "./sensor-values.js"', src, name)
+        for name in ("maison3d-card.js", "maison3d-panel.js"):
+            src = (www / name).read_text(encoding="utf-8")
+            self.assertIn("precipitation(", src, name)
+            self.assertIn("sensor_issues", src, name)
+            self.assertIn("this._tracker.moon(states)", src, name)
+        photo = (www / "photo-view.js").read_text(encoding="utf-8")
+        self.assertIn("weatherKind(", photo)
+        self.assertIn("sensor-warning", photo)
+        self.assertNotIn("premier_croissant", photo)
+        self.assertIn("sensor-warning", (www / "maison3d-card-editor.js").read_text(encoding="utf-8"))
+        tracker = (www / "hass-tracker.js").read_text(encoding="utf-8")
+        self.assertIn("moonRank", tracker)
+        self.assertIn("node tests/test_sensor_values.mjs", (ROOT / ".github/workflows/validate.yml").read_text(encoding="utf-8"))
 
 if __name__ == "__main__":
     unittest.main()
