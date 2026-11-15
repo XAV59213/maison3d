@@ -1,5 +1,6 @@
 /** Cinematic presets for the editable 3D property, not a replacement image. */
-import {onHaData,saveToHa} from "./ha-storage.js";
+import {onHaData} from "./ha-storage.js";
+import {registerSection,markSaved,changed} from "./draft.js";
 export function createPresentation({THREE,camera,controls}) {
   const presets={
     reference:{position:[-12,23,56],target:[0,1,1],fov:45,label:"Façade"},
@@ -54,8 +55,8 @@ export function createPresentation({THREE,camera,controls}) {
       camera.fov=destination.fov;camera.updateProjectionMatrix();
       controls.update();destination=null;
     }
-    try{localStorage.setItem("maison3d:view:v1",name)}catch{}
-    if(!immediate)saveToHa({view:{preset:name,presentation}});
+    // Navigation, not a change: remembered by the next « 💾 Enregistrer » (draft.js).
+    changed();
   }
   for(const [key,preset] of Object.entries(presets)){
     buttons.set(key,button(preset.label,()=>changeView(key)));
@@ -66,8 +67,7 @@ export function createPresentation({THREE,camera,controls}) {
     presentation=!presentation;
     document.documentElement.classList.toggle("presentation-mode",presentation);
     mode.textContent=presentation?"✎ Édition":"▣ Présentation";
-    try{localStorage.setItem("maison3d:presentation",String(presentation))}catch{}
-    saveToHa({view:{preset:selected,presentation}});
+    changed();
   });
   document.body.appendChild(root);
   document.documentElement.classList.toggle("presentation-mode",presentation);
@@ -75,6 +75,13 @@ export function createPresentation({THREE,camera,controls}) {
   if(document.documentElement.classList.contains("card-mode"))mode.hidden=true;
   const stored=(()=>{try{return localStorage.getItem("maison3d:view:v1")}catch{return null}})();
   changeView(Object.prototype.hasOwnProperty.call(presets,stored)?stored:"reference",true);
+  // Camera preset and presentation / edit mode: never a « modification » on their own
+  // (compare → null), saved with the other changes.
+  registerSection("view",{get:()=>({preset:selected,presentation}),compare:()=>null,
+    writeLocal:value=>{
+      localStorage.setItem("maison3d:view:v1",value.preset);
+      localStorage.setItem("maison3d:presentation",String(value.presentation));
+    }});
   controls.addEventListener("start",()=>{destination=null});
   // View and presentation mode saved in Home Assistant (shared between devices).
   onHaData((ha,{connected})=>{
@@ -87,6 +94,8 @@ export function createPresentation({THREE,camera,controls}) {
       try{localStorage.setItem("maison3d:presentation",String(presentation))}catch{}
     }
     if(Object.prototype.hasOwnProperty.call(presets,view.preset)&&view.preset!==selected)changeView(view.preset,true);
+    try{localStorage.setItem("maison3d:view:v1",selected)}catch{}
+    markSaved("view");
   });
   function frame(){
     if(!destination)return;

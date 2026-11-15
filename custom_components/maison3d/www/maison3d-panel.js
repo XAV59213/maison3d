@@ -15,8 +15,12 @@ class Maison3DPanel extends HTMLElement {
     this._storage = createStorageBridge({getFrame:()=>this._frame,getHass:()=>this._hass});
     this._onStorageMessage = event => this._storage.onMessage(event);
     this._media = createMediaResolver({getHass:()=>this._hass,onResolved:()=>this.sendCurrentConditions(true)});
+    this._dirty = false;
+    this._onBeforeUnload = event => {if(this._dirty){event.preventDefault();event.returnValue=""}};
     this._onFrameMessage = event => {
       if(event.origin!==window.location.origin || event.source!==this._frame?.contentWindow)return;
+      // Unsaved changes in the view (draft): warn before leaving the page.
+      if(event.data?.type==="maison3d:dirty"){this._dirty=event.data.dirty===true;return}
       if(event.data?.type==="maison3d:entity-options-request"){this._sendEntityOptions();return}
       if(event.data?.type!=="maison3d:entity-selection")return;
       for(const key of ENTITY_KEYS)this._choices[key]=menuChoice(key,event.data[key]);
@@ -31,6 +35,7 @@ class Maison3DPanel extends HTMLElement {
 
   connectedCallback() {
     window.addEventListener("message",this._onFrameMessage);
+    window.addEventListener("beforeunload",this._onBeforeUnload);
     window.addEventListener("message",this._onStorageMessage);
     if (this.shadowRoot) return;
     const root = this.attachShadow({ mode: "open" });
@@ -54,6 +59,7 @@ class Maison3DPanel extends HTMLElement {
 
   disconnectedCallback() {
     window.removeEventListener("message",this._onFrameMessage);
+    window.removeEventListener("beforeunload",this._onBeforeUnload);
     window.removeEventListener("message",this._onStorageMessage);
     this._storage.flush();
     this._loaded=false;

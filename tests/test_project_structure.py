@@ -106,7 +106,7 @@ class TestMaison3D(unittest.TestCase):
         # Frost is controlled from the settings menu only: no extra button on the photo.
         self.assertIn('frostInput.addEventListener("change"', photo)
         self.assertNotIn("frostBtn", photo)
-        self.assertIn("nav.append(photoBtn,planBtn,modelBtn,nightBtn,dayBtn,autoBtn,effectsBtn,optionsBtn)", photo)
+        self.assertIn("nav.append(photoBtn,planBtn,modelBtn,nightBtn,dayBtn,autoBtn,effectsBtn,optionsBtn,saveControls)", photo)
         self.assertIn("frost.frame(time,frostTarget())", photo)
         self.assertIn("frost.frame(time,0)", photo)
         self.assertIn("prefers-reduced-motion", frost)
@@ -273,13 +273,15 @@ class TestMaison3D(unittest.TestCase):
         """3D layout, photo settings and view saved in HA through the parent bridge."""
         www = COMPONENT / "www"
         page = (www / "index.html").read_text(encoding="utf-8")
-        self.assertIn('import {onHaData,onHaSaved,saveToHa} from "./ha-storage.js";', page)
-        self.assertIn("saveToHa({layout:data})", page)
+        self.assertIn('import {onHaData,saveToHa} from "./ha-storage.js";', page)
+        self.assertIn('registerSection("layout",', page)
         photo = (www / "photo-view.js").read_text(encoding="utf-8")
-        self.assertIn("saveToHa({photo_settings:saveable()})", photo)
+        self.assertIn('registerSection("photo_settings",', photo)
         self.assertIn("onHaData((ha,{connected,canSave})=>{", photo)
         presentation = (www / "presentation.js").read_text(encoding="utf-8")
-        self.assertIn("saveToHa({view:{preset:", presentation)
+        self.assertIn('registerSection("view",', presentation)
+        draft = (www / "draft.js").read_text(encoding="utf-8")
+        self.assertIn("if(saveToHa(patch)){", draft)
         for name in ("maison3d-panel.js", "maison3d-card.js"):
             source = (www / name).read_text(encoding="utf-8")
             self.assertIn("createStorageBridge({getFrame:()=>this._frame,getHass:()=>this._hass})", source)
@@ -629,6 +631,31 @@ class TestMaison3D(unittest.TestCase):
         # Lovelace editor: HA picker filtered per field, native fallback.
         self.assertIn("control.entityFilter=entity=>entityMatches(key,entity);", editor)
         self.assertIn('customElements.get("ha-entity-picker")', editor)
+
+    def test_explicit_save_button(self):
+        """Nothing is saved automatically: draft + « 💾 Enregistrer » / « ↶ Annuler » (2D and 3D)."""
+        www = COMPONENT / "www"
+        photo = (www / "photo-view.js").read_text(encoding="utf-8")
+        page = (www / "index.html").read_text(encoding="utf-8")
+        presentation = (www / "presentation.js").read_text(encoding="utf-8")
+        draft = (www / "draft.js").read_text(encoding="utf-8")
+        self.assertIn("const persist=()=>changed();", photo)
+        self.assertIn("function save(){changed()}", page)
+        # The only direct writes left: draft.js (on click), the one-time migration and the HA cache.
+        self.assertEqual(photo.count("saveToHa("), 1)
+        self.assertEqual(page.count("saveToHa("), 1)
+        self.assertNotIn("saveToHa(", presentation)
+        self.assertEqual(photo.count("localStorage.setItem("), 2)
+        self.assertIn('textContent="💾 Enregistrer"', draft)
+        self.assertIn('textContent="↶ Annuler"', draft)
+        self.assertIn("● Modifications non enregistrées", draft)
+        self.assertIn('"Enregistré ✓"', draft)
+        self.assertIn('window.addEventListener("beforeunload"', draft)
+        self.assertIn('type:"maison3d:dirty"', draft)
+        for name in ("maison3d-panel.js", "maison3d-card.js"):
+            src = (www / name).read_text(encoding="utf-8")
+            self.assertIn('"maison3d:dirty"', src, name)
+            self.assertIn('addEventListener("beforeunload",this._onBeforeUnload)', src, name)
 
     def test_cache_busting_version(self):
         """?v=<manifest version> on the panel, the card, their imports and the iframe."""

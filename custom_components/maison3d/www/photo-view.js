@@ -10,6 +10,7 @@ import {automaticSeason,haHour,SEASON_LABELS,createSeasonEffects} from "./season
 import {DEFAULT_MAIN_PHOTO,allowedPhotoUrl,bundledPhoto,resolveMainPhoto,IMAGE_SLOTS,IMAGE_KEYS,pickWeatherPhoto,suggestedFileName} from "./photo-source.js";
 import {createFrostEffects,frostLevel,toCelsius} from "./frost-effects.js";
 import {onHaData,saveToHa,uploadToHa} from "./ha-storage.js";
+import {registerSection,markSaved,changed,createSaveControls,SAVE_STYLE} from "./draft.js";
 import {moonPhase,weatherKind,issueText,toKmh,menuChoice,SOURCE_LABELS,ENTITY_KEYS as SENSOR_KEYS} from "./sensor-values.js";
 export function createPhotoView() {
   const KEYS=IMAGE_KEYS;
@@ -53,8 +54,9 @@ export function createPhotoView() {
   }
   try{applySaved(JSON.parse(localStorage.getItem(STORAGE)))}catch{}
   // Saved in Home Assistant (shared) when possible; this browser keeps a cache / offline copy.
-  const saveable=()=>{const copy={...state};delete copy.frost_preview;delete copy.effect;delete copy.frost;return copy};
-  const persist=()=>{try{localStorage.setItem(STORAGE,JSON.stringify(state))}catch{};saveToHa({photo_settings:saveable()})};
+  const saveable=()=>{const copy={...state,images:{...state.images}};delete copy.frost_preview;delete copy.effect;delete copy.frost;return copy};
+  // Draft: a change is shown immediately but only saved by « 💾 Enregistrer » (draft.js).
+  const persist=()=>changed();
   const refreshers=[];
   const bind=(el,get,prop="value")=>{refreshers.push(()=>{el[prop]=get()});return el};
   const section=document.createElement("section");
@@ -112,7 +114,9 @@ export function createPhotoView() {
   autoBtn.title="Utiliser le soleil et la météo réels de Home Assistant";
   const effectsBtn=document.createElement("button");
   effectsBtn.type="button";effectsBtn.title="Activer ou désactiver les effets animés";
-  nav.append(photoBtn,planBtn,modelBtn,nightBtn,dayBtn,autoBtn,effectsBtn,optionsBtn);
+  // « 💾 Enregistrer / ↶ Annuler » in the bar shared by the photo, the 2D plan and the 3D view.
+  const saveControls=createSaveControls();
+  nav.append(photoBtn,planBtn,modelBtn,nightBtn,dayBtn,autoBtn,effectsBtn,optionsBtn,saveControls);
   // Seasons live in the bottom/bar controls (no column on the photo): buttons on
   // a row of their own when there is room, a compact « Saison » selector otherwise.
   const seasonalNav=document.createElement("div");
@@ -166,7 +170,7 @@ export function createPhotoView() {
   head.className="settings-head";
   const h=document.createElement("strong");h.textContent="Images et saisons personnalisées";
   const close=document.createElement("button");close.type="button";close.textContent="✕ Fermer";
-  head.append(h,close);settings.append(head);
+  head.append(h,createSaveControls({compact:true}),close);settings.append(head);
   const note=document.createElement("p");note.textContent=
     "Image principale personnalisable : une photo de votre maison. Les effets météo, lune et saisons se dessinent sur cette photo. Laissez vide pour la configuration Home Assistant ou la photo officielle.";
   settings.append(note);
@@ -197,7 +201,7 @@ export function createPhotoView() {
       state.base_image_url=value;
       failedImages.delete(value);
       persist();update();
-      imageCheck.textContent=value?"Image enregistrée · prévisualisation conseillée":"Image principale par défaut";
+      imageCheck.textContent=value?"Image modifiée · prévisualisation conseillée · 💾 Enregistrer pour la garder":"Image principale par défaut";
     },"/local/maison3d/ma-maison.jpg");
   bind(mainPhotoInput,()=>state.base_image_url);
   const previewRow=document.createElement("div");
@@ -260,7 +264,8 @@ export function createPhotoView() {
     else{state.images[slot]=result.url;state.use_weather_photos=true;state.weather_photos_override=true;swapPhotos.checked=true}
     for(const refresh of refreshers)refresh();
     persist();update();
-    uploadStatus.textContent="Photo envoyée : "+result.url.split("?")[0];
+    // The file is on the server (explicit upload); using it is part of the draft.
+    uploadStatus.textContent="Photo envoyée : "+result.url.split("?")[0]+" · 💾 Enregistrer pour l'utiliser";
   });
   uploadBox.append(uploadLegend,uploadSlot,uploadBtn,uploadFile,uploadStatus);
   settings.append(uploadBox);
@@ -375,6 +380,7 @@ export function createPhotoView() {
   legend.textContent="Tester chaque état (sans changer les capteurs)";
   testSection.append(legend);
   // Test mode: forces a weather and/or day/night over the real Home Assistant data.
+  // (The season « Tester » buttons below change the saved season: part of the draft.)
   // Kept in memory only (never saved): a reload or « Revenir à la météo réelle » ends it.
   const testWeatherSelect=selectField("Météo forcée",[["auto","Météo réelle (Home Assistant)"],
     ...TEST_WEATHERS.map(([key,label])=>[key,label])],test.weather,v=>setTest({weather:v}));
@@ -576,6 +582,14 @@ export function createPhotoView() {
     "@media(max-width:700px){#maison3d-photo-controls{top:auto;bottom:8px;left:8px}",
     "#maison3d-photo-status{top:8px;right:8px;font-size:11px}}"
   ].join("");
+  style.textContent+=SAVE_STYLE+
+    "#maison3d-photo-controls .maison3d-save button{padding:9px 11px}"+
+    "#maison3d-photo-settings .settings-head{display:flex;align-items:center;gap:6px;flex-wrap:wrap}"+
+    "#maison3d-photo-settings .settings-head strong{flex:1 1 auto}"+
+    "#maison3d-photo-settings .maison3d-save button{padding:6px 9px;font-size:12px}"+
+    "@media(max-width:899px),(max-height:500px){#maison3d-photo-controls .maison3d-save .save-status{max-width:46vw;overflow:hidden;text-overflow:ellipsis}}"+
+    "html.card-mode #maison3d-photo-controls .maison3d-save button{padding:6px;font-size:11px}"+
+    "html.card-mode #maison3d-photo-controls .maison3d-save .save-status{font-size:10px;max-width:120px;overflow:hidden;text-overflow:ellipsis}";
   document.head.append(style);
   document.body.append(section,nav,settings);
   let live={weather:null,sun:null,temperature:null,temperatureUnit:"",windSpeed:0,moon:null,rain:null,snow:null,cloud:null,storm_alert:false,ice_alert:false};
@@ -755,7 +769,11 @@ export function createPhotoView() {
       for(const key of SENSOR_KEYS)renderEntityField(key,true);
       requestEntities();
       update();
-    }else if(canSave&&localStorage.getItem(STORAGE))saveToHa({photo_settings:saveable()});
+      markSaved("photo_settings");
+    }else if(canSave&&localStorage.getItem(STORAGE)){
+      // One-time migration of settings already saved in this browser (not a new change).
+      saveToHa({photo_settings:saveable()});
+    }
   });
   window.addEventListener("message",event=>{
     if(event.source!==window.parent||event.origin!==window.location.origin)return;
@@ -912,6 +930,26 @@ export function createPhotoView() {
   }
   // Existing WebGL loop invokes this callback every frame.
   document.addEventListener("visibilitychange",()=>{if(!document.hidden){resize();cinematics.resize();seasonalEffects.resize();frost.resize();update()}});
+  // Draft section: the current view (photo / plan / 3D) is navigation, not a change,
+  // but it is remembered by the next « Enregistrer ».
+  function restoreSaved(saved){
+    const keep={enabled:state.enabled,model_view:state.model_view};
+    Object.assign(state,saved,keep);
+    state.images={...defaults(),...saved.images};
+    applyOverrides();
+    for(const refresh of refreshers)refresh();
+    selectMode.value=state.mode;seasonSelect.value=state.season;seasonPick.value=state.season;
+    moonPreview.value=state.moon_preview;frostInput.checked=state.frost;
+    strengthValue.textContent=Math.round(state.effect_intensity*100)+" %";
+    for(const key of SENSOR_KEYS)renderEntityField(key,true);
+    requestEntities();update();
+  }
+  registerSection("photo_settings",{
+    get:saveable,
+    compare:v=>{delete v.enabled;delete v.model_view;delete v.use_weather_photos;return v},
+    apply:restoreSaved,
+    writeLocal:v=>localStorage.setItem(STORAGE,JSON.stringify(v))
+  });
   requestEntities();
   update();
   if(!state.enabled && state.model_view==="2d"){
