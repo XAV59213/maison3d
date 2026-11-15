@@ -7,7 +7,8 @@
       }
     },
     "abort": {
-      "already_configured": "Déjà configuré"
+      "already_configured": "Déjà configuré",
+      "single_instance_allowed": "Maison 3D est déjà configuré. Une seule instance est possible."
     }
   },
   "options": {
@@ -34,6 +35,32 @@
     },
     "error": {
       "invalid_image_url": "URL d’image invalide : utilisez /local/, /maison3d-assets/, /api/ ou HTTPS."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "sensors_status": {
+        "name": "État des capteurs",
+        "state": {
+          "ok": "OK",
+          "not_configured": "Non configuré",
+          "unavailable": "Indisponible"
+        },
+        "state_attributes": {
+          "sensor_statuses": {
+            "name": "État de chaque source"
+          },
+          "configured_count": {
+            "name": "Sources configurées"
+          },
+          "available_count": {
+            "name": "Sources disponibles"
+          },
+          "project_name": {
+            "name": "Nom du projet"
+          }
+        }
+      }
     }
   }
 }

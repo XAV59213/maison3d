@@ -1,0 +1,14 @@
+{
+  "entity": {
+    "sensor": {
+      "sensors_status": {
+        "default": "mdi:weather-partly-cloudy",
+        "state": {
+          "ok": "mdi:check-circle-outline",
+          "not_configured": "mdi:cog-outline",
+          "unavailable": "mdi:alert-circle-outline"
+        }
+      }
+    }
+  }
+}

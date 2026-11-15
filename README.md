@@ -182,7 +182,9 @@ Le champ **Nom du projet** (facultatif, « Maison 3D » par défaut) s'affiche d
 
 Tous les capteurs supplémentaires sont facultatifs. La météo et le soleil peuvent fournir les données de base ; les autres valeurs enrichissent l'animation.
 
-La page de l'appareil Maison 3D propose **un diagnostic général et des diagnostics individuels** : `OK`, `Non configuré`, `Introuvable`, `Indisponible`. Ils vérifient la disponibilité des entités, pas l'exactitude météorologique d'une mesure.
+La page de l'appareil Maison 3D propose **un seul capteur de diagnostic, « État des capteurs »** (traduit en français et en anglais) : `OK`, `Non configuré` ou `Indisponible` (une source introuvable ou indisponible). Le détail de chaque source (météo, soleil, lune, température…) est dans son attribut **`sensor_statuses`** (`ok`, `not_configured`, `not_found`, `unknown`, `unavailable`). Il vérifie la disponibilité des entités, pas l'exactitude météorologique d'une mesure.
+
+> **Mise à jour depuis une ancienne version :** les 8 anciens capteurs « … - état » (un par source) sont supprimés automatiquement au démarrage ; le capteur général garde son identifiant (`sensor.maison_3d_etat_des_capteurs`). Ses valeurs internes deviennent `ok` / `not_configured` / `unavailable` (affichées traduites) : adaptez les automatisations qui testaient `OK`, `Non configuré` ou `Indisponible`. Une seule intégration Maison 3D peut être ajoutée, comme avant.
 
 ## 🖥️ Carte Lovelace prête à l'emploi
 
