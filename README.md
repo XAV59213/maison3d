@@ -194,6 +194,20 @@ Si l'identifiant ou le nom du capteur neige parle de **verglas** (ou *ice*) et q
 
 **Lune sans capteur choisi** : détection automatique d'un `sensor.*` dont l'identifiant contient `moon` ou `lune` (`moon_phase`, `phase_lune`, `phase_de_la_lune`…) ou dont l'état est une phase connue ; un identifiant anglais (`moon…`) est préféré s'il y en a plusieurs.
 
+**Choisir les entités depuis la vue** (menu ⚙ Images / météo) : chaque capteur a un **sélecteur** rempli avec les entités de Home Assistant qui conviennent, avec leur nom et leur entity_id :
+
+| Champ | Entités proposées |
+|---|---|
+| Météo | `weather.*` |
+| Soleil | `sun.*` |
+| Lune | capteurs de phase de lune (même détection qu'en automatique) |
+| Température | `device_class: temperature` |
+| Vent | `device_class: wind_speed` |
+| Nuages | capteurs en % (sauf batteries) ou dont le nom parle de nuages |
+| Pluie / neige | `precipitation`, `binary_sensor` humidité (moisture), vigilances Météo-France |
+
+Une recherche apparaît quand la liste est longue, et **✎ Autre (saisie libre)** reste disponible. Le choix **Automatique** reprend la valeur effective, et le menu indique toujours l'entité réellement utilisée et sa provenance. L'ordre de priorité est : configuration de la carte → choix du menu → configuration de l'intégration → détection automatique. Une valeur imposée par la carte se modifie dans l'éditeur de la carte, qui utilise le sélecteur d'entités de Home Assistant filtré de la même façon.
+
 Un capteur choisi dont la valeur n'est pas reconnue, `unavailable`, `unknown` ou introuvable est signalé par un petit avertissement dans le menu ⚙ Images / météo et dans l'éditeur de la carte (rien n'est affiché sur l'image).
 
 La page de l'appareil Maison 3D propose **un seul capteur de diagnostic, « État des capteurs »** (traduit en français et en anglais) : `OK`, `Non configuré` ou `Indisponible` (une source introuvable ou indisponible). Le détail de chaque source (météo, soleil, lune, température…) est dans son attribut **`sensor_statuses`** (`ok`, `not_configured`, `not_found`, `unknown`, `unavailable`). Il vérifie la disponibilité des entités, pas l'exactitude météorologique d'une mesure.

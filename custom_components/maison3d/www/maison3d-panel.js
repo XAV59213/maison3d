@@ -2,25 +2,24 @@
 import {createStorageBridge} from "./storage-bridge.js";
 import {createMediaResolver} from "./media-resolver.js";
 import {createHassTracker,isWeather} from "./hass-tracker.js";
-import {readSensor,precipitation,sensorIssues} from "./sensor-values.js";
+import {readSensor,precipitation,sensorIssues,menuChoice,effectiveEntities,entityOptions,ENTITY_KEYS} from "./sensor-values.js";
 class Maison3DPanel extends HTMLElement {
   constructor() {
     super();
     this._lastConditions = "";
     this._loaded = false;
     this._tracker = createHassTracker();
-    this._choices = {weather_entity:"",sun_entity:"sun.sun",moon_entity:"sensor.moon_phase",
-      temperature_entity:"",wind_entity:"",rain_entity:"",snow_entity:"",cloud_entity:""};
+    // Entities chosen in the ⚙ menu of the view ("" = inherit the integration).
+    this._choices = Object.fromEntries(ENTITY_KEYS.map(key => [key, ""]));
     // Project (3D layout, photo settings, view) saved in Home Assistant for the iframe.
     this._storage = createStorageBridge({getFrame:()=>this._frame,getHass:()=>this._hass});
     this._onStorageMessage = event => this._storage.onMessage(event);
     this._media = createMediaResolver({getHass:()=>this._hass,onResolved:()=>this.sendCurrentConditions(true)});
     this._onFrameMessage = event => {
       if(event.origin!==window.location.origin || event.source!==this._frame?.contentWindow)return;
+      if(event.data?.type==="maison3d:entity-options-request"){this._sendEntityOptions();return}
       if(event.data?.type!=="maison3d:entity-selection")return;
-      for(const key of Object.keys(this._choices)){
-        if(typeof event.data[key]==="string" && event.data[key].length<150)this._choices[key]=event.data[key];
-      }
+      for(const key of ENTITY_KEYS)this._choices[key]=menuChoice(key,event.data[key]);
       this.sendCurrentConditions(true);
     };
   }
@@ -60,6 +59,12 @@ class Maison3DPanel extends HTMLElement {
     this._loaded=false;
   }
 
+  // Candidates for the entity selectors of the ⚙ menu (one scan, on request only).
+  _sendEntityOptions() {
+    if (!this._hass || !this._frame?.contentWindow) return;
+    this._frame.contentWindow.postMessage({type: "maison3d:entity-options", options: entityOptions(this._hass.states || {})}, window.location.origin);
+  }
+
   sendCurrentConditions(force = false) {
     if (!this._loaded || !this._hass || !this._frame?.contentWindow) return;
 
@@ -67,7 +72,8 @@ class Maison3DPanel extends HTMLElement {
     // Memoised lookups: no scan of every entity on each Home Assistant update.
     const diagnostic = this._tracker.diagnostic(states);
     const configured = diagnostic?.attributes?.entities || {};
-    const choice = key => configured[key] || this._choices[key] || "";
+    // ⚙ menu choice → integration option → automatic detection / default.
+    const choice = key => this._choices[key] || configured[key] || "";
     // Prefer a known/available weather entity rather than an unknown one.
     const requested = choice("weather_entity") && states[choice("weather_entity")];
     const weather = requested || this._tracker.find("weather", states, isWeather);
@@ -109,6 +115,11 @@ class Maison3DPanel extends HTMLElement {
       ice_alert: wet.ice_alert,
       cloud: numeric("cloud_entity", null),
       sensor_issues,
+      entities_effective: effectiveEntities([["menu", this._choices], ["integration", configured]], {
+        weather_entity: {entity_id: weather?.entity_id || "", source: "auto"},
+        moon_entity: {entity_id: moonState?.entity_id || "", source: "auto"},
+        sun_entity: {entity_id: sun ? "sun.sun" : "", source: "default"}
+      }),
       windSpeedUnit: attributes.wind_speed_unit ?? "",
       sun: sun?.state ?? null,
       moon: moonState?.state ?? null,

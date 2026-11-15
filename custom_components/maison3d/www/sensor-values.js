@@ -150,3 +150,97 @@ export function weatherKind({weather,rain,snow,cloud,windSpeed,stormAlert=false,
   if(Number(windSpeed)>=25)return "wind";
   return null;
 }
+
+/* ---------- Entity choice: effective value, where it comes from, candidates ---------- */
+export const ENTITY_KEYS=["weather_entity","sun_entity","moon_entity","temperature_entity",
+  "wind_entity","rain_entity","snow_entity","cloud_entity"];
+// Placeholders saved by the ⚙ menu before v2.5.2: never real choices.
+export const LEGACY_MENU_DEFAULTS={moon_entity:"sensor.moon_phase",sun_entity:"sun.sun"};
+const ENTITY_ID=/^[a-z_][a-z0-9_]*\.[a-z0-9_]+$/;
+/** A choice made in the ⚙ menu: "" (inherit) unless it is a real entity id. */
+export function menuChoice(key,value){
+  if(typeof value!=="string")return "";
+  const id=value.trim().slice(0,150);
+  if(!id||LEGACY_MENU_DEFAULTS[key]===id)return "";
+  return id;
+}
+export const SOURCE_LABELS={card:"configuration de la carte",menu:"choisie dans ce menu",
+  integration:"configuration de l'intégration",auto:"détection automatique",default:"valeur par défaut",none:"aucune"};
+/**
+ * layers: [[source, {key: entity_id}], …] by priority; detected: {key: entity_id} found
+ * automatically (weather / moon) or by default (sun.sun). → {key: {entity_id, source}}.
+ */
+export function effectiveEntities(layers,detected={}){
+  const out={};
+  for(const key of ENTITY_KEYS){
+    let pick=null;
+    for(const [source,values] of layers){
+      const id=values?.[key];
+      if(typeof id==="string"&&id.trim()){pick={entity_id:id.trim().slice(0,150),source};break}
+    }
+    if(!pick&&detected[key]?.entity_id)pick={entity_id:detected[key].entity_id,source:detected[key].source||"auto"};
+    out[key]=pick||{entity_id:"",source:"none"};
+  }
+  return out;
+}
+
+const TEMP_UNITS=new Set(["°c","°f","k","c","f"]);
+const WIND_UNITS=new Set(["km/h","m/s","mph","kn","kt","knots","ft/s","bft","beaufort"]);
+const word=(text,re)=>re.test(fold(text));
+const deviceClass=entity=>fold(entity?.attributes?.device_class);
+const unit=entity=>fold(entity?.attributes?.unit_of_measurement);
+const domain=entity=>String(entity?.entity_id||"").split(".")[0];
+// Words at the start of a token only: « bermerain » (a place name) is not « rain ».
+const wetWords=/(?:^|[^a-z])(?:rain|pluie|pluvio|snow|neige|precip|verglas|grele|hail)/;
+const cloudWords=/(?:^|[^a-z])(?:cloud|nuage|nebulosit)/;
+/** Does this entity fit the field? (filters of the ⚙ menu and of the card editor) */
+export function entityMatches(key,entity){
+  const id=String(entity?.entity_id||"");
+  if(!ENTITY_ID.test(id))return false;
+  const d=domain(entity),dc=deviceClass(entity),u=unit(entity);
+  switch(key){
+    case "weather_entity":return d==="weather";
+    case "sun_entity":return d==="sun";
+    case "moon_entity":return isMoon(entity);
+    case "temperature_entity":return d==="sensor"&&(dc==="temperature"||(!dc&&TEMP_UNITS.has(u)));
+    case "wind_entity":return d==="sensor"&&(dc==="wind_speed"||(!dc&&WIND_UNITS.has(u)));
+    case "cloud_entity":
+      if(d!=="sensor"&&d!=="binary_sensor")return false;
+      return word(id+" "+(entity.attributes?.friendly_name||""),cloudWords)||(d==="sensor"&&u==="%"&&dc!=="battery");
+    case "rain_entity":case "snow_entity":
+      if(d==="binary_sensor")return dc==="moisture"||word(id,wetWords);
+      if(d!=="sensor")return false;
+      if(dc==="precipitation"||dc==="precipitation_intensity")return true;
+      if(vigilanceLevel(entity.state)!==null||word(id,/(?:^|[^a-z])(?:alerte|vigilance|warning)/))return true;
+      return word(id+" "+(entity.attributes?.friendly_name||""),wetWords);
+    default:return false;
+  }
+}
+// Best candidates first (the field's own words), then by name.
+function preference(key,entity){
+  const text=fold(entity.entity_id+" "+(entity.attributes?.friendly_name||""));
+  if(key==="rain_entity")return /(?:^|[^a-z])(?:rain|pluie|pluvio|inond|precip)/.test(text)?0:1;
+  if(key==="snow_entity")return /(?:^|[^a-z])(?:snow|neige|verglas)/.test(text)?0:1;
+  if(key==="cloud_entity")return cloudWords.test(text)?0:1;
+  if(key==="moon_entity")return -moonRank(entity);
+  return 0;
+}
+/** {key: [{id, name}]} for every field; one pass over the states, on request only. */
+export function entityOptions(states,limit=300){
+  const out=Object.fromEntries(ENTITY_KEYS.map(key=>[key,[]]));
+  for(const id in states||{}){
+    const entity=states[id];
+    for(const key of ENTITY_KEYS)if(entityMatches(key,entity))out[key].push(entity);
+  }
+  for(const key of ENTITY_KEYS){
+    out[key]=out[key]
+      .sort((a,b)=>preference(key,a)-preference(key,b)||entityName(a).localeCompare(entityName(b),"fr"))
+      .slice(0,limit)
+      .map(entity=>({id:entity.entity_id,name:entityName(entity)}));
+  }
+  return out;
+}
+export const entityName=entity=>{
+  const name=entity?.attributes?.friendly_name;
+  return typeof name==="string"&&name.trim()?name.trim().slice(0,80):String(entity?.entity_id||"");
+};
