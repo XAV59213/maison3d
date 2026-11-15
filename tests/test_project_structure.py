@@ -667,7 +667,8 @@ class TestMaison3D(unittest.TestCase):
 
     def test_photo_night_day_auto_buttons_and_visible_night_filter(self):
         photo = (COMPONENT / "www" / "photo-view.js").read_text(encoding="utf-8")
-        self.assertIn('nightBtn.textContent="☾ Nuit réelle"', photo)
+        self.assertIn('nightBtn.textContent=t("night")', photo)
+        self.assertIn("☾ Nuit réelle", (COMPONENT/"www"/"i18n.js").read_text(encoding="utf-8"))
         self.assertIn('nightBtn.addEventListener("click",()=>setTest({time:"night"}))', photo)
         self.assertIn('dayBtn.addEventListener("click",()=>setTest({time:"day"}))', photo)
         self.assertIn('autoBtn.addEventListener("click",()=>resetTest.click())', photo)
@@ -722,7 +723,8 @@ class TestMaison3D(unittest.TestCase):
     def test_2d_plan_accessible_from_photo_and_restores_mode(self):
         photo = (COMPONENT / "www" / "photo-view.js").read_text(encoding="utf-8")
         app = app_page()
-        self.assertIn('planBtn.textContent="▤ Plan 2D"', photo)
+        self.assertIn('planBtn.textContent=t("view_plan")', photo)
+        self.assertIn("▤ Plan 2D", (COMPONENT/"www"/"i18n.js").read_text(encoding="utf-8"))
         self.assertIn('nav.append(photoBtn,planBtn,modelBtn', photo)
         self.assertIn('planBtn.addEventListener("click",()=>setModelView("2d"))', photo)
         self.assertIn('modelBtn.addEventListener("click",()=>setModelView("3d"))', photo)
