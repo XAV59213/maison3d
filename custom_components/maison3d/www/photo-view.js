@@ -7,12 +7,14 @@
 import {createPhotoCinematics} from "./photo-cinematics.js";
 import {createMoonOverlay} from "./moon-effects.js";
 import {automaticSeason,haHour,SEASON_LABELS,createSeasonEffects} from "./season-effects.js";
-import {DEFAULT_MAIN_PHOTO,allowedPhotoUrl,bundledPhoto,resolveMainPhoto,IMAGE_SLOTS,IMAGE_KEYS,pickWeatherPhoto,suggestedFileName} from "./photo-source.js";
+import {DEFAULT_MAIN_PHOTO,allowedPhotoUrl,bundledPhoto,resolveMainPhoto,IMAGE_SLOTS,IMAGE_KEYS,pickWeatherPhoto,suggestedFileName,responsiveSrcset,photoSizes} from "./photo-source.js";
 import {createFrostEffects,frostLevel,toCelsius} from "./frost-effects.js";
 import {onHaData,saveToHa,uploadToHa} from "./ha-storage.js";
 import {registerSection,markSaved,changed,createSaveControls,SAVE_STYLE} from "./draft.js";
 import {moonPhase,weatherKind,issueText,toKmh,menuChoice,SOURCE_LABELS,ENTITY_KEYS as SENSOR_KEYS} from "./sensor-values.js";
-export function createPhotoView() {
+export function createPhotoView({ensureScene=null}={}) {
+  // ensureScene(): loads the 3D scene (three.js) on demand; the photo never needs it.
+  const withScene=fn=>Promise.resolve(ensureScene?.()).then(fn,()=>{});
   const KEYS=IMAGE_KEYS;
   const LABELS={...Object.fromEntries(IMAGE_SLOTS),fog:"Brouillard",clear:"Clair",frost:"Gel"};
   // Weather/season ambiences selectable as a fixed (saved) ambience.
@@ -117,6 +119,31 @@ export function createPhotoView() {
   // « 💾 Enregistrer / ↶ Annuler » in the bar shared by the photo, the 2D plan and the 3D view.
   const saveControls=createSaveControls();
   nav.append(photoBtn,planBtn,modelBtn,nightBtn,dayBtn,autoBtn,effectsBtn,optionsBtn,saveControls);
+  // Lovelace card: the bottom bar folds into one « ☰ Menu » button (folded by default on a
+  // narrow card or a phone). Display state only: never a change for « 💾 Enregistrer »;
+  // the choice is remembered in this browser like the other navigation states.
+  const BAR_KEY="maison3d:card-bar:v1";
+  const barToggle=document.createElement("button");
+  barToggle.type="button";barToggle.className="bar-toggle";
+  barToggle.setAttribute("aria-controls","maison3d-photo-controls");
+  const narrowCard=()=>innerWidth<=600||(Math.min(screen.width,screen.height)<=600&&matchMedia("(pointer:coarse)").matches);
+  let barChoice=null;
+  try{const v=localStorage.getItem(BAR_KEY);if(v==="collapsed"||v==="expanded")barChoice=v}catch{}
+  const setBar=collapsed=>{
+    nav.classList.toggle("collapsed",collapsed);
+    barToggle.textContent=collapsed?"☰ Menu":"▾ Réduire";
+    barToggle.title=collapsed?"Afficher la barre de commandes":"Réduire la barre de commandes";
+    barToggle.setAttribute("aria-expanded",String(!collapsed));
+  };
+  setBar(barChoice?barChoice==="collapsed":narrowCard());
+  // Until the user chooses, follow the card width (Lovelace may resize it after loading).
+  addEventListener("resize",()=>{if(!barChoice)setBar(narrowCard())});
+  barToggle.addEventListener("click",()=>{
+    const collapsed=!nav.classList.contains("collapsed");setBar(collapsed);
+    barChoice=collapsed?"collapsed":"expanded";
+    try{localStorage.setItem(BAR_KEY,barChoice)}catch{}
+  });
+  nav.prepend(barToggle);
   // Seasons live in the bottom/bar controls (no column on the photo): buttons on
   // a row of their own when there is room, a compact « Saison » selector otherwise.
   const seasonalNav=document.createElement("div");
@@ -578,6 +605,11 @@ export function createPhotoView() {
     "html.card-mode #maison3d-photo-controls{top:auto;bottom:6px;left:6px;gap:3px}",
     "html.card-mode #maison3d-photo-controls button{padding:6px;font-size:11px}",
     "html.card-mode #maison3d-photo-status{top:8px;right:8px}",
+    "#maison3d-photo-controls .bar-toggle{display:none}",
+    "html.card-mode #maison3d-photo-controls .bar-toggle{display:inline-block;background:#31445d}",
+    // Folded: only « ☰ Menu », plus « 💾 Enregistrer » while there are unsaved changes.
+    "html.card-mode #maison3d-photo-controls.collapsed{padding:4px}",
+    "html.card-mode #maison3d-photo-controls.collapsed>:not(.bar-toggle):not(.maison3d-save.dirty){display:none!important}",
     "html.photo-active #maison3d-presentation,html.photo-active #maison3d-weather-status{display:none!important}",
     "@media(max-width:700px){#maison3d-photo-controls{top:auto;bottom:8px;left:8px}",
     "#maison3d-photo-status{top:8px;right:8px;font-size:11px}}"
@@ -607,6 +639,8 @@ export function createPhotoView() {
   let haTimeZone="UTC";
   let lastAutoSeason="";
   let currentSrc="",active="day",lastFrame=0;
+  const imageSizes=()=>photoSizes({width:innerWidth,height:innerHeight,ratio:(image.naturalWidth/image.naturalHeight)||1286/914,dpr:devicePixelRatio||1});
+  addEventListener("resize",()=>{if(image.hasAttribute("srcset"))image.sizes=imageSizes()});
   let missingBundled=new Set();
   const failedImages=new Set();
   const isCardView=new URLSearchParams(window.location.search).get("mode")==="card";
@@ -659,7 +693,13 @@ export function createPhotoView() {
     section.classList.toggle("night-photo",picked.nightPhoto&&!failedImages.has(candidate));
     const path=failedImages.has(candidate)
       ?(failedImages.has(mainPhoto)?DEFAULT:mainPhoto):candidate;
-    if(path!==currentSrc){currentSrc=path;image.src=path;error.hidden=true}
+    if(path!==currentSrc){
+      currentSrc=path;
+      // Bundled photos: 640 / 960 px copies (srcset); custom images stay as they are.
+      const srcset=responsiveSrcset(path);
+      if(srcset){image.sizes=imageSizes();image.srcset=srcset}else{image.removeAttribute("srcset");image.removeAttribute("sizes")}
+      image.src=path;error.hidden=true;
+    }
     const weatherTint=selected==="snow"||selected==="winter"?"linear-gradient(#e7f5ff18,#eaf7ff29)":
       selected==="storm"?"#101b3866":selected==="rain"?"#26344746":
       selected==="cloudy"?"#5b677523":selected==="fog"?"#c6ced62e":"transparent";
@@ -701,6 +741,7 @@ export function createPhotoView() {
     section.hidden=!state.enabled;
     if(!state.enabled){section.style.display="none"}else{section.style.display="block"}
     document.documentElement.classList.toggle("photo-active",state.enabled);
+    if(!state.enabled)withScene(()=>{});
   }
   photoBtn.addEventListener("click",()=>{state.enabled=true;persist();update()});
   // ☾ / ☀ preview night or day immediately (test mode, not saved); ◉ Auto returns to real data.
@@ -712,7 +753,7 @@ export function createPhotoView() {
     settings.hidden=true;
     persist();update();
     // Reuse the existing camera controls so the editor remains consistent.
-    document.getElementById(view==="2d"?"topview":"tab3d")?.click();
+    withScene(()=>document.getElementById(view==="2d"?"topview":"tab3d")?.click());
   };
   planBtn.addEventListener("click",()=>setModelView("2d"));
   modelBtn.addEventListener("click",()=>setModelView("3d"));
@@ -953,7 +994,7 @@ export function createPhotoView() {
   requestEntities();
   update();
   if(!state.enabled && state.model_view==="2d"){
-    document.getElementById("topview")?.click();
+    withScene(()=>document.getElementById("topview")?.click());
   }
   return {frame,update,state};
 }

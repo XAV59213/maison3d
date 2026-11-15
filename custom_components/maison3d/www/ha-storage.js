@@ -6,7 +6,7 @@
  */
 const inFrame=window.parent!==window;
 const listeners=new Set(),savedListeners=new Set();
-let haData=null,canSave=false,connected=false,requested=false,uploadId=0;
+let haData=null,canSave=false,connected=false,answered=false,requested=false,uploadId=0;
 const uploads=new Map();
 window.addEventListener("message",event=>{
   if(event.source!==window.parent||event.origin!==window.location.origin)return;
@@ -14,7 +14,7 @@ window.addEventListener("message",event=>{
   if(type==="maison3d:storage"){
     connected=event.data.data!==null&&typeof event.data.data==="object";
     canSave=connected&&event.data.can_save===true;
-    haData=connected?event.data.data:null;
+    haData=connected?event.data.data:null;answered=true;
     for(const fn of listeners)fn(haData,{canSave,connected,error:event.data.error||""});
   }else if(type==="maison3d:upload-result"){
     const done=uploads.get(event.data.id);uploads.delete(event.data.id);
@@ -23,10 +23,13 @@ window.addEventListener("message",event=>{
     for(const fn of savedListeners)fn({ok:event.data.ok===true,error:String(event.data.error||"")});
   }
 });
-/** Called with the Home Assistant data (or null when unavailable), once per load. */
+/**
+ * Called with the Home Assistant data (or null when unavailable), once per load.
+ * A listener added later (3D scene loaded on demand) gets the answer already received.
+ */
 export function onHaData(fn){
   listeners.add(fn);
-  if(haData||connected)fn(haData,{canSave,connected,error:""});
+  if(answered)fn(haData,{canSave,connected,error:""});
   if(!requested&&inFrame){requested=true;window.parent.postMessage({type:"maison3d:storage-load"},window.location.origin)}
 }
 export function onHaSaved(fn){savedListeners.add(fn)}

@@ -263,6 +263,12 @@ images:
 
 </details>
 
+### 📱 Carte sur téléphone : chargement allégé
+
+- **La 3D n'est chargée qu'à la demande** : la photo et la carte n'utilisent plus three.js (≈ 690 Ko). Il est téléchargé seulement en ouvrant **⬡ 3D éditable**, **▤ Plan 2D** ou une visite intérieure. Un indicateur « Chargement de la 3D… » s'affiche pendant ce temps. Si la vue 3D ou le plan 2D était la dernière vue utilisée, la 3D se charge dès l'ouverture.
+- **Photos plus légères** : les photos fournies (photo principale, photos météo jour / nuit, photo réelle de la grange) existent aussi en 640 et 960 px de large (`srcset` / `sizes`). Le navigateur choisit la plus petite qui reste nette pour la taille affichée. Sur un écran 2× ou 3×, la densité retenue est plafonnée à 1,5. **Vos propres images (URL) ne sont pas modifiées.**
+- **Barre du bas repliable** : dans la carte, **☰ Menu** déplie la barre de commandes et **▾ Réduire** la replie. Elle est repliée par défaut sur une carte étroite (≤ 600 px) ou un téléphone. Ce choix d'affichage est retenu dans le navigateur. Ce n'est pas un réglage : il n'active pas **💾 Enregistrer**. Repliée, la barre garde le bouton 💾 Enregistrer visible tant qu'il reste des modifications non enregistrées.
+
 ## 🧪 Mode test
 
 Dans le menu **⚙ Images / météo** (panneau **et** carte), la zone **« Mode test »** force n'importe quelle météo, de jour ou de nuit, **sans toucher aux capteurs**. Aucun bouton n'est ajouté sur la photo.

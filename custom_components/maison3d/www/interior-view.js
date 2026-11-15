@@ -6,12 +6,21 @@
  *   de pièces attestées, un relevé ou des photos restent nécessaires.
  */
 import {buildBarnInterior,BARN_VIEW,BARN_PHOTO} from "./barn-interior.js";
-export function createInteriorExplorer({THREE,scene,camera,controls,getItems,getMeshes,presentation,photoView}){
-  const shell=new THREE.Group();shell.name="maison3d-interior-provisional";
-  scene.add(shell);
-  const material=(color,roughness=.88)=>new THREE.MeshStandardMaterial({color,roughness,side:THREE.DoubleSide});
-  const paint=material(0xe7e0d4),floor=material(0xbca88c),accent=material(0x918b7d);
-  const timber=material(0x997050),stone=material(0xb8b0a0),dark=material(0x46443d),glass=material(0x9acbd4,.28);
+import {responsiveSrcset,photoSizes} from "./photo-source.js";
+// The buttons exist from the start (photo view included); the 3D part is attached by
+// scene3d.js once loaded: entering a building first asks ensureScene() to load it.
+export function createInteriorExplorer({photoView,ensureScene=null}){
+  let THREE,scene,camera,controls,getItems,getMeshes,presentation,shell;
+  let paint,floor,accent,timber,dark,glass,cameraBefore;
+  function attach(deps){
+    ({THREE,scene,camera,controls,getItems,getMeshes,presentation}=deps);
+    shell=new THREE.Group();shell.name="maison3d-interior-provisional";
+    scene.add(shell);
+    const material=(color,roughness=.88)=>new THREE.MeshStandardMaterial({color,roughness,side:THREE.DoubleSide});
+    paint=material(0xe7e0d4);floor=material(0xbca88c);accent=material(0x918b7d);
+    timber=material(0x997050);dark=material(0x46443d);glass=material(0x9acbd4,.28);
+    cameraBefore={position:new THREE.Vector3(),target:new THREE.Vector3(),fov:46};
+  }
   function block(parent,w,h,d,mat,x,y,z){
     const mesh=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);
     mesh.position.set(x,y,z);mesh.receiveShadow=true;
@@ -24,7 +33,10 @@ export function createInteriorExplorer({THREE,scene,camera,controls,getItems,get
   function add(key,text){
     const b=document.createElement("button");b.type="button";b.textContent=text;
     b.setAttribute("aria-pressed","false");
-    b.addEventListener("click",()=>enter(key));
+    b.addEventListener("click",()=>{
+      if(shell||key==="outside")return enter(key);
+      ensureScene?.().then(()=>enter(key)).catch(()=>{});
+    });
     nav.append(b);buttons.set(key,b);
   }
   add("outside","↩ Extérieur");
@@ -44,7 +56,13 @@ export function createInteriorExplorer({THREE,scene,camera,controls,getItems,get
   caption.textContent="Photo réelle — intérieur de la grange · « ⬡ Vue 3D » pour revenir à la 3D";
   realPhoto.append(realImg,caption);
   const showPhoto=on=>{
-    if(on&&!realImg.src)realImg.src=new URL(BARN_PHOTO,import.meta.url).href;
+    if(on){
+      // 640 / 960 / 1500 px copies: the phone loads the lightest one that stays sharp.
+      const full=new URL(BARN_PHOTO,import.meta.url);
+      realImg.sizes=photoSizes({width:innerWidth,height:innerHeight,ratio:1500/845,fit:"contain",dpr:devicePixelRatio||1});
+      if(!realImg.srcset)realImg.srcset=responsiveSrcset(full.pathname).replace(/\/maison3d-assets\/images\//g,new URL("./images/",import.meta.url).href);
+      if(!realImg.src)realImg.src=full.href;
+    }
     realPhoto.hidden=!on;photoBtn.setAttribute("aria-pressed",String(on));
     photoBtn.textContent=on?"⬡ Vue 3D":"📷 Photo réelle";
   };
@@ -81,8 +99,8 @@ export function createInteriorExplorer({THREE,scene,camera,controls,getItems,get
   document.head.append(style);document.body.append(realPhoto,nav);
   let active="outside";
   const hidden=new Map();
-  const cameraBefore={position:new THREE.Vector3(),target:new THREE.Vector3(),fov:46};
   function clear(){
+    if(!shell)return;
     for(const mesh of [...shell.children]){
       shell.remove(mesh);
       mesh.traverse(obj=>{obj.geometry?.dispose();if(obj.material&&obj.material!==paint&&obj.material!==floor&&obj.material!==accent&&obj.material!==timber&&obj.material!==dark&&obj.material!==glass)obj.material.dispose?.()});
@@ -92,6 +110,7 @@ export function createInteriorExplorer({THREE,scene,camera,controls,getItems,get
   // extérieures (feuilles, neige) ne la traversent ; seules ses propres lampes l'éclairent.
   const BARN_LAYER=2;let layersBefore=null;
   function restore(){
+    if(!shell)return;
     if(layersBefore!==null){camera.layers.mask=layersBefore;layersBefore=null}
     document.documentElement.classList.remove("interior-barn");
     for(const [node,value] of hidden)node.visible=value;
@@ -147,6 +166,7 @@ export function createInteriorExplorer({THREE,scene,camera,controls,getItems,get
     return {w,d,h,group};
   }
   function enter(key){
+    if(!shell){if(key!=="outside")ensureScene?.().then(()=>enter(key)).catch(()=>{});return}
     if(key==="outside"){
       const wasInside=active!=="outside";
       active="outside";restore();
@@ -211,5 +231,5 @@ export function createInteriorExplorer({THREE,scene,camera,controls,getItems,get
     cameraBefore.fov=beforeFov;
   }
   for(const [id,b] of buttons)b.setAttribute("aria-pressed",String(id==="outside"));
-  return {enter,refresh,showPhoto,get active(){return active}};
+  return {attach,enter,refresh,showPhoto,get active(){return active}};
 }

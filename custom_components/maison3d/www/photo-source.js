@@ -62,6 +62,28 @@ export const BUNDLED_IMAGES=Object.fromEntries(Object.entries(FILES).flatMap(([k
   :[[key+"_day",IMG+file+"-jour.webp"],[key+"_night",IMG+file+"-nuit.webp"]]));
 
 /**
+ * Lighter copies of the bundled photos (same name + -640 / -960, WebP) for phones and
+ * small cards: srcset of the bundled photos only. Custom images (user URLs) get none.
+ */
+export const RESPONSIVE_WIDTHS=[640,960];
+const FULL_WIDTH={[DEFAULT_MAIN_PHOTO]:1286,...Object.fromEntries(Object.values(BUNDLED_IMAGES).map(path=>[path,1286])),
+  "/maison3d-assets/images/grange-interieur.webp":1500};
+export function responsiveSrcset(path){
+  const full=FULL_WIDTH[path];if(!full)return "";
+  const base=path.slice(0,-".webp".length);
+  return [...RESPONSIVE_WIDTHS.map(w=>`${base}-${w}.webp ${w}w`),`${path} ${full}w`].join(", ");
+}
+/**
+ * sizes for a photo shown with object-fit cover (or contain) in a box: rendered width
+ * in CSS px. On 2× / 3× phones the density taken into account is capped at 1.5: the
+ * photo stays sharp but a phone no longer downloads the full 1286 px file for a card.
+ */
+export function photoSizes({width,height,ratio,fit="cover",dpr=1}){
+  const shown=fit==="cover"?Math.max(width,height*ratio):Math.min(width,height*ratio);
+  return Math.max(1,Math.ceil(shown*Math.min(dpr,1.5)/Math.max(dpr,1)))+"px";
+}
+
+/**
  * Alternative photo for a weather kind and time of day. Order:
  * custom day/night slot → custom weather slot → bundled day/night →
  * custom (moon/season/)day or night → bundled clear day or night → main photo.
