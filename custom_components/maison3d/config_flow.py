@@ -9,6 +9,7 @@ from homeassistant import config_entries
 from homeassistant.core import callback
 from homeassistant.helpers import selector
 
+from . import state_logic
 from .const import (
     DEFAULT_PROJECT_NAME,
     DEFAULT_STARTUP_GRACE_MINUTES,
@@ -18,6 +19,7 @@ from .const import (
     PROJECT_NAME_MAX,
     startup_grace_minutes,
 )
+from .store import get_store
 
 SENSOR_OPTIONS = {
     "weather_entity": ("weather",),
@@ -165,8 +167,15 @@ class Maison3DOptionsFlow(config_entries.OptionsFlowWithReload):
             mode=selector.NumberSelectorMode.BOX,
             unit_of_measurement="min",
         ))
+        # Settings of the view's ⚙ menu (.storage) that replace these options.
+        store = get_store(self.hass)
+        await store.async_load()
+        overrides = state_logic.menu_overrides(store.data.get("photo_settings"), dict(self.config_entry.options))
         return self.async_show_form(
             step_id="init",
             data_schema=vol.Schema(schema),
             errors=errors,
+            description_placeholders={
+                "overrides": state_logic.overrides_text(overrides, self.hass.config.language),
+            },
         )

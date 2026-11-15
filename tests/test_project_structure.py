@@ -328,6 +328,34 @@ class TestMaison3D(unittest.TestCase):
         fr = json.loads((COMPONENT / "translations" / "fr.json").read_text(encoding="utf-8"))
         self.assertEqual(fr["entity"]["sensor"]["sensors_status"]["name"], "État des capteurs")
 
+    def test_review_points(self):
+        """Review v2.10.0, points 1–4 (previews, recovery, overrides, this browser's version)."""
+        www = COMPONENT / "www"
+        draft = (www / "draft.js").read_text(encoding="utf-8")
+        storage = (www / "ha-storage.js").read_text(encoding="utf-8")
+        photo = (www / "photo-view.js").read_text(encoding="utf-8")
+        panel = (www / "maison3d-panel.js").read_text(encoding="utf-8")
+        card = (www / "maison3d-card.js").read_text(encoding="utf-8")
+        self.assertIn('RECOVERY_KEY="maison3d:draft:v1:"+instance', draft)
+        self.assertIn("sessionStorage", draft)
+        self.assertIn('frame.name = "maison3d-panel";', panel)
+        self.assertIn('frame.name="maison3d-card:"+cardInstance(location.pathname,this._config);', card)
+        self.assertIn('addEventListener("maison3d:section-needed"', app_page())
+        self.assertIn('const COPY_KEY="maison3d:browser-copy:v1";', storage)
+        self.assertIn("export function useHaVersion()", storage)
+        self.assertIn("if(connected)keepBrowserCopy(patch);", draft)
+        for source in (panel, card):
+            self.assertIn("integration_options", source)
+        self.assertIn("card_options", card)
+        for key in ("effect_override", "frost_override", "weather_photos_override", "base_image_url"):
+            self.assertIn(f'overrideNote(', photo)
+            self.assertIn(f'key:"{key}"', photo)
+        flow = (COMPONENT / "config_flow.py").read_text(encoding="utf-8")
+        self.assertIn('"overrides": state_logic.overrides_text(', flow)
+        for name in ("strings.json", "translations/en.json", "translations/fr.json"):
+            data = json.loads((COMPONENT / name).read_text(encoding="utf-8"))
+            self.assertIn("{overrides}", data["options"]["step"]["init"]["description"], name)
+
     def test_outdoor_lights(self):
         """Lights are photo settings (draft), toggle off by default, parents check the toggle."""
         www = COMPONENT / "www"

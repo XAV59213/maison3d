@@ -212,6 +212,16 @@ class Maison3DCard extends HTMLElement {
       weather_photos:this._config.weather_photos??(diagnostic?.attributes?.weather_photos_enabled===true),
       time_zone:this._hass.config?.time_zone??"UTC",
       language:this._hass.locale?.language||this._hass.language||"",
+      // Integration options and this card's own options (« remplace l'option… » in the ⚙ menu).
+      integration_options:{
+        effects_enabled:diagnostic?.attributes?.effects_enabled!==false,
+        frost_enabled:diagnostic?.attributes?.frost_enabled!==false,
+        weather_photos:diagnostic?.attributes?.weather_photos_enabled===true,
+        base_image_url:typeof diagnostic?.attributes?.base_image_url==="string"?diagnostic.attributes.base_image_url:"",
+        entities:integration
+      },
+      card_options:{effects_enabled:this._config.effects_enabled,frost_enabled:this._config.frost_enabled,
+        weather_photos:this._config.weather_photos,base_image_url:this._config.base_image_url||""},
       user_is_admin:this._hass.user?.is_admin===true,
       light_states:this._lights.states(states),
       weather:weather?.state??null,

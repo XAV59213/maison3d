@@ -35,6 +35,9 @@ export function createPhotoView({ensureScene=null}={}) {
     // Outdoor lights (lights.js): [{entity_id,name,x,y,color,intensity}] + click to toggle (off by default).
     lights:[],light_toggle:"off"
   };
+  // Inherited values sent by the card / panel (« remplace l'option de l'intégration » notes).
+  let integrationOpts={},cardOpts={};
+  const overrideNotes=[];
   // Apply saved settings (Home Assistant or this browser), keeping only valid values.
   const ENTITY_KEYS=["moon_entity","weather_entity","sun_entity","temperature_entity","wind_entity","rain_entity","snow_entity","cloud_entity"];
   function applySaved(saved){
@@ -352,14 +355,19 @@ export function createPhotoView({ensureScene=null}={}) {
     label.className="entity-field";label.dataset.key=key;
     label.append(document.createTextNode(title));
     const used=document.createElement("small");used.className="entity-source";
+    const over=document.createElement("small");over.className="override-note";over.dataset.key=key;over.hidden=true;
+    const overText=document.createElement("span");
+    const overBack=document.createElement("button");overBack.type="button";overBack.className="override-back";
+    over.append(overText,overBack);
     const search=document.createElement("input");
     search.type="search";search.className="entity-search";search.placeholder="🔍 Rechercher (nom ou entity_id)";search.hidden=true;
     const select=document.createElement("select");select.className="entity-select";
     const input=document.createElement("input");
     input.type="text";input.className="entity-free";input.placeholder=placeholder;input.value=state[key];input.hidden=true;
-    label.append(used,search,select,input);settings.append(label);
-    const field={label,used,search,select,input,signature:""};
+    label.append(used,over,search,select,input);settings.append(label);
+    const field={label,used,over,overText,overBack,search,select,input,signature:""};
     const choose=value=>{state[key]=menuChoice(key,value);persist();requestEntities();renderEntityField(key,true)};
+    overBack.addEventListener("click",event=>{event.preventDefault();input.value="";choose("")});
     select.addEventListener("change",()=>{
       if(select.value===CUSTOM){input.hidden=false;input.focus();return}
       input.value=select.value;choose(select.value);
@@ -379,6 +387,13 @@ export function createPhotoView({ensureScene=null}={}) {
   function renderEntityField(key,force=false){
     const field=entityFields.get(key);if(!field)return;
     const item={...(effective[key]||{entity_id:"",source:"none"}),key};
+    // This menu's choice replaces the integration option (unless the card imposes its own).
+    const integrationEntity=typeof integrationOpts?.entities?.[key]==="string"?integrationOpts.entities[key]:"";
+    field.over.hidden=!state[key]||item.source==="card";
+    if(!field.over.hidden){
+      field.overText.textContent="⚠ "+t("overrides")+" ("+t("integrationValue",{value:integrationEntity||t("none")})+") ";
+      field.overBack.textContent=t("backToIntegration");
+    }
     const options=entityOptions?.[key]||[];
     const term=field.search.value.trim().toLowerCase();
     const signature=JSON.stringify([item,state[key],options.length,term,entityOptions?1:0]);
@@ -700,6 +715,35 @@ export function createPhotoView({ensureScene=null}={}) {
   settings.append(motionLabel);
   refreshers.push(()=>{motionSelect.value=state.motion;refreshMotionHint()});
   onMotionChange(refreshMotionHint);refreshMotionHint();
+  // Settings of this menu that replace an integration (or card) option: a note next to
+  // each one, with « Revenir à l'intégration » (back to inheriting: a draft change).
+  function overrideNote(anchor,{key,active,source,value,clear}){
+    const box=document.createElement("small");box.className="override-note";box.dataset.key=key;box.hidden=true;
+    const text=document.createElement("span");
+    const back=document.createElement("button");back.type="button";back.className="override-back";
+    back.addEventListener("click",()=>{clear();persist();applyOverrides();for(const refresh of refreshers)refresh();update();renderOverrides()});
+    box.append(text,back);anchor.after(box);
+    overrideNotes.push(()=>{
+      const on=active();box.hidden=!on;if(!on)return;
+      const card=source()==="card";
+      text.textContent="⚠ "+t(card?"overridesCard":"overrides")+" ("+t(card?"cardValue":"integrationValue",{value:value()})+") ";
+      back.textContent=t("backToIntegration");
+    });
+  }
+  const onOff=v=>t(v?"on":"off");
+  const boolOption=(cardKey,integrationKey,fallback)=>({
+    source:()=>typeof cardOpts[cardKey]==="boolean"?"card":"integration",
+    value:()=>onOff(typeof cardOpts[cardKey]==="boolean"?cardOpts[cardKey]:typeof integrationOpts[integrationKey]==="boolean"?integrationOpts[integrationKey]:fallback)
+  });
+  overrideNote(checkbox,{key:"effect_override",active:()=>typeof state.effect_override==="boolean",...boolOption("effects_enabled","effects_enabled",true),clear:()=>{state.effect_override=null}});
+  overrideNote(frostLabel,{key:"frost_override",active:()=>typeof state.frost_override==="boolean",...boolOption("frost_enabled","frost_enabled",true),clear:()=>{state.frost_override=null}});
+  overrideNote(swapLabel,{key:"weather_photos_override",active:()=>typeof state.weather_photos_override==="boolean",...boolOption("weather_photos","weather_photos",false),clear:()=>{state.weather_photos_override=null}});
+  overrideNote(mainPhotoInput.parentElement,{key:"base_image_url",active:()=>Boolean(state.base_image_url),
+    source:()=>cardOpts.base_image_url?"card":"integration",
+    value:()=>(cardOpts.base_image_url||integrationOpts.base_image_url||t("none")).split("?")[0].slice(-60),
+    clear:()=>{state.base_image_url=""}});
+  function renderOverrides(){for(const fn of overrideNotes)fn()}
+  onUiLang(()=>{renderOverrides();for(const key of SENSOR_KEYS)renderEntityField(key,true)});
   const reset=document.createElement("button");reset.type="button";reset.textContent="Réinitialiser les images";
   reset.addEventListener("click",()=>{
     if(!confirm("Réinitialiser toutes les URLs personnalisées ?"))return;
@@ -799,6 +843,10 @@ export function createPhotoView({ensureScene=null}={}) {
     "#maison3d-photo-status{top:8px;right:8px;font-size:11px}}"
   ].join("");
   style.textContent+=SAVE_STYLE+LIGHT_STYLE+
+    "#maison3d-photo-settings .override-note{display:block;margin:-6px 0 8px;font:11px system-ui;color:#f3c77a}"+
+    "#maison3d-photo-settings .entity-field .override-note{margin:2px 0 3px}"+
+    "#maison3d-photo-settings .override-note[hidden]{display:none}"+
+    "#maison3d-photo-settings .override-note button{padding:3px 7px;font-size:11px;margin-left:4px;background:#4a3a1c}"+
     "#maison3d-photo-controls .maison3d-save button{padding:9px 11px}"+
     "#maison3d-photo-settings .settings-head{display:flex;align-items:center;gap:6px;flex-wrap:wrap}"+
     "#maison3d-photo-settings .settings-head strong{flex:1 1 auto}"+
@@ -965,7 +1013,7 @@ export function createPhotoView({ensureScene=null}={}) {
     if(!state.enabled){section.style.display="none"}else{section.style.display="block"}
     document.documentElement.classList.toggle("photo-active",state.enabled);
     if(!state.enabled)withScene(()=>{});
-    renderLights();
+    renderLights();renderOverrides();
   }
   photoBtn.addEventListener("click",()=>{state.enabled=true;persist();update()});
   // ☾ / ☀ preview night or day immediately (test mode, not saved); ◉ Auto returns to real data.
@@ -1075,6 +1123,14 @@ export function createPhotoView({ensureScene=null}={}) {
     if(!settings.hidden)renderLightSettings();
     globals={effects:event.data.effects_enabled!==false,frost:event.data.frost_enabled!==false,
       weather_photos:event.data.weather_photos===true};
+    // Where the inherited values come from (integration options, card configuration).
+    const io=event.data.integration_options&&typeof event.data.integration_options==="object"?event.data.integration_options:{};
+    integrationOpts={effects_enabled:io.effects_enabled,frost_enabled:io.frost_enabled,weather_photos:io.weather_photos,
+      base_image_url:typeof io.base_image_url==="string"?io.base_image_url.slice(0,500):"",
+      entities:io.entities&&typeof io.entities==="object"?Object.fromEntries(SENSOR_KEYS.map(k=>[k,typeof io.entities[k]==="string"?io.entities[k].slice(0,150):""])):{}};
+    const co=event.data.card_options&&typeof event.data.card_options==="object"?event.data.card_options:{};
+    cardOpts={effects_enabled:co.effects_enabled,frost_enabled:co.frost_enabled,weather_photos:co.weather_photos,
+      base_image_url:typeof co.base_image_url==="string"?co.base_image_url.slice(0,500):""};
     applyOverrides();
     const supplied=event.data.base_image_url;
     parentBasePhoto=allowedUrl(supplied)?supplied:"";
@@ -1111,6 +1167,7 @@ export function createPhotoView({ensureScene=null}={}) {
     }
     for(const key of SENSOR_KEYS)renderEntityField(key);
     markWeatherReady();
+    renderOverrides();
     update();
   });
   let actual=0;

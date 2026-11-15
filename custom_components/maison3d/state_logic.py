@@ -405,3 +405,55 @@ def is_moon(entity: Any) -> bool:
 def moon_rank(entity: Any) -> int:
     ident = _entity_id(entity)
     return (4 if "moon" in ident else 2 if "lune" in ident else 0) + (1 if moon_phase(_state(entity)) else 0)
+
+
+OVERRIDE_FLAGS = (
+    ("effect_override", "effects_enabled", True),
+    ("frost_override", "frost_enabled", True),
+    ("weather_photos_override", "weather_photos_enabled", False),
+)
+
+
+def menu_overrides(photo_settings: Any, options: dict) -> list[dict[str, Any]]:
+    """Settings of the ⚙ menu (saved in .storage) that replace an integration option.
+
+    [{"key": option key, "menu": value of the menu, "integration": option value}, …]
+    (Lovelace card options are not known here: each card may impose its own.)
+    """
+    saved = photo_settings if isinstance(photo_settings, dict) else {}
+    out: list[dict[str, Any]] = []
+    for flag, option, default in OVERRIDE_FLAGS:
+        if isinstance(saved.get(flag), bool):
+            out.append({"key": option, "menu": saved[flag], "integration": bool(options.get(option, default))})
+    if allowed_photo_url(saved.get("base_image_url")):
+        out.append({"key": "base_image_url", "menu": saved["base_image_url"],
+                    "integration": str(options.get("base_image_url") or "")})
+    for key in ENTITY_KEYS:
+        choice = menu_choice(key, saved.get(key))
+        if choice:
+            out.append({"key": key, "menu": choice, "integration": str(options.get(key) or "")})
+    return out
+
+
+_OVERRIDE_TEXT = {
+    "fr": {"none": "Aucun réglage du menu ⚙ de la vue ne remplace ces options.",
+           "head": "⚠ Réglages du menu ⚙ de la vue qui remplacent ces options (à remettre sur « Revenir à l'intégration » dans ⚙ pour que l'option ci-dessous s'applique) :",
+           "on": "activé", "off": "désactivé", "empty": "vide",
+           "card": "Les cartes Lovelace peuvent aussi imposer leurs propres valeurs."},
+    "en": {"none": "No setting of the view's ⚙ menu replaces these options.",
+           "head": "⚠ Settings of the view's ⚙ menu that replace these options (use « Back to the integration » in ⚙ so that the option below applies):",
+           "on": "on", "off": "off", "empty": "empty",
+           "card": "Lovelace cards may also impose their own values."},
+}
+
+
+def overrides_text(items: list[dict[str, Any]], language: str | None) -> str:
+    """Help text of the options flow listing the active menu overrides."""
+    text = _OVERRIDE_TEXT["fr" if str(language or "").lower().startswith("fr") else "en"]
+    if not items:
+        return text["none"] + " " + text["card"]
+    show = lambda v: text["on" if v else "off"] if isinstance(v, bool) else (str(v) or text["empty"])  # noqa: E731
+    lines = [text["head"]]
+    lines += [f"- `{item['key']}` : {show(item['menu'])} (≠ {show(item['integration'])})" for item in items]
+    lines.append(text["card"])
+    return "\n".join(lines)
