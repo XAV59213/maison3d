@@ -53,11 +53,16 @@ const el=document.createElement("script");el.type="importmap";el.textContent=JSO
    the 3D view, the 2D plan or an interior visit is opened (import() keeps ?v=). */
 import {createPhotoView} from "./photo-view.js";
 import {createInteriorExplorer} from "./interior-view.js";
+import {onHaData} from "./ha-storage.js";
 const loader=document.getElementById("maison3d-scene-loading");
 let offscreen=false,scene3d=null,loading=null,lastConditions=null;
 addEventListener("message",e=>{if(e.source!==window.parent||e.origin!==location.origin)return;
   if(e.data?.type==="maison3d:visibility")offscreen=e.data.visible===false;
-  if(e.data?.type==="maison3d:conditions")lastConditions=e.data});
+  if(e.data?.type!=="maison3d:conditions")return;
+  lastConditions=e.data;
+  // Project name (integration options / card) shown even before the 3D is loaded.
+  const name=typeof e.data.project_name==="string"?e.data.project_name.trim().slice(0,60):"";
+  for(const el of document.querySelectorAll(".project-name"))if(el.textContent!==(name||"Maison 3D"))el.textContent=name||"Maison 3D"});
 function ensureScene(){
   if(!loading){
     loader.hidden=false;loader.classList.remove("failed");loader.querySelector("span").textContent="Chargement de la 3D…";
@@ -77,6 +82,13 @@ function ensureScene(){
 loader.addEventListener("click",()=>{if(loader.classList.contains("failed"))ensureScene().catch(()=>{})});
 const photoView=createPhotoView({ensureScene});
 const interior=createInteriorExplorer({photoView,ensureScene});
+// One-time migration of a 3D layout saved only in this browser (older versions): the 3D
+// scene does it, so it is loaded once in the background, as with the photo settings.
+onHaData((ha,{connected,canSave})=>{
+  let local=null;try{local=localStorage.getItem("maison3d-v2-layout")}catch{}
+  const valid=Array.isArray(ha?.layout)&&ha.layout.every(o=>o&&typeof o.id==="string"&&typeof o.type==="string");
+  if(connected&&canSave&&local&&!valid)ensureScene().catch(()=>{});
+});
 // Photo animations until the 3D scene (its own render loop) takes over.
 requestAnimationFrame(function loop(time){if(scene3d)return;if(!document.hidden&&!offscreen)photoView.frame(time);requestAnimationFrame(loop)});
 </script></body></html>

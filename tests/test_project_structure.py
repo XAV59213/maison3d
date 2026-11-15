@@ -74,6 +74,11 @@ class TestMaison3D(unittest.TestCase):
         self.assertIn("export function startScene(", scene)
         photo = (www / "photo-view.js").read_text(encoding="utf-8")
         self.assertIn("export function createPhotoView({ensureScene=null}={})", photo)
+        # Late listeners (3D loaded on demand) still get the Home Assistant answer.
+        storage = (www / "ha-storage.js").read_text(encoding="utf-8")
+        self.assertIn("if(answered)fn(haData,{canSave,connected,error:\"\"});", storage)
+        # One-time layout migration from this browser still happens without opening the 3D.
+        self.assertIn("if(connected&&canSave&&local&&!valid)ensureScene()", main)
         for name in ("photo-view.js", "interior-view.js", "barn-interior.js", "draft.js", "ha-storage.js"):
             self.assertNotRegex((www / name).read_text(encoding="utf-8"), r'from\s+"three', name)
 
