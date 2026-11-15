@@ -4,6 +4,14 @@ Les notes de chaque version officielle. Lorsqu’un tag `vX.Y.Z` est poussé, le
 
 Les notes des versions antérieures à v2.10.1 restent sur la [page Releases](https://github.com/XAV59213/maison3d/releases).
 
+## v2.14.0 — Aperçus temporaires, Saison fixe, brouillon et remplacements
+
+- Aperçus temporaires des saisons et de la phase de lune : rien n’est enregistré, l’aperçu se termine avec « ↩ Revenir » ou au bout de 2 minutes.
+- **Saison fixe** dans le menu ⚙, enregistrée avec 💾 Enregistrer.
+- Récupération des modifications non enregistrées (sessionStorage) au retour sur le panneau ou la carte.
+- Les réglages du menu ⚙ qui remplacent une option de l’intégration sont signalés, avec « Revenir à l’intégration ».
+- Les non-administrateurs peuvent garder une version de ce navigateur (non partagée).
+
 ## v2.13.0 — Nettoyage, délai de grâce Netatmo et i18n
 
 - Un unique workflow `release.yml` crée la release GitHub lorsqu’un tag `vX.Y.Z` est poussé (à la place des anciens `publish-v2-x-y.yml`).
