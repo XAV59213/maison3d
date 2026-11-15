@@ -4,6 +4,13 @@ Les notes de chaque version officielle. Lorsqu’un tag `vX.Y.Z` est poussé, le
 
 Les notes des versions antérieures à v2.10.1 restent sur la [page Releases](https://github.com/XAV59213/maison3d/releases).
 
+## v2.13.0 — Nettoyage, délai de grâce Netatmo et i18n
+
+- Un unique workflow `release.yml` crée la release GitHub lorsqu’un tag `vX.Y.Z` est poussé (à la place des anciens `publish-v2-x-y.yml`).
+- Les quatre anciennes photos sans suffixe (`jour`, `nuageux`, `pluie`, `neige`) sont retirées du dépôt ; leurs URL historiques restent servies.
+- Le délai de grâce Netatmo passe à 15 minutes par défaut (réglable de 0 à 60) et tolère aussi l’état `unavailable` au démarrage de Home Assistant.
+- L’éditeur de carte et les libellés principaux de l’iframe suivent la langue de Home Assistant (français et anglais).
+
 ## v2.12.0 — Capteurs de diagnostic et lumières extérieures la nuit
 
 - Cinq capteurs de diagnostic (mode des saisons, saison active, photo affichée, ambiance météo, jour/nuit), calculés par Home Assistant.
