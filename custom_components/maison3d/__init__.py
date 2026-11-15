@@ -53,10 +53,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: Maison3DConfigEntry) -> 
         if not await hass.async_add_executor_job(_frontend_present):
             _LOGGER.error("Maison 3D frontend files are missing: %s", assets)
             return False
+        # Exact 301 routes must be registered *before* the /maison3d-assets
+        # static path, otherwise the prefix would swallow the old photo URLs.
+        # Failures here are logged and ignored: they must not block setup.
+        register_legacy_photo_redirects(hass)
         await hass.http.async_register_static_paths(
             [StaticPathConfig(ASSETS_URL, str(assets), False)]
         )
-        register_legacy_photo_redirects(hass)
         await async_register_upload(hass)
         state["static_registered"] = True
 
