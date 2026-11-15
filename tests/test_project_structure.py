@@ -22,7 +22,7 @@ class TestMaison3D(unittest.TestCase):
             'getItems().find(item=>item.id===key&&item.type==="building")',
             'if(photoView.state.enabled){photoView.state.enabled=false;photoView.update()}',
             'exterior.visible=false',
-            'restore();clear()',
+            'hidden.clear();clear();',
             'cameraBefore.position.copy(beforePosition)',
             'presentation.cancel()',
             'Volumes intérieurs provisoires',
