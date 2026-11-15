@@ -16,9 +16,9 @@ assert.equal(requests[0].path,"/api/maison3d/upload");
 assert.equal(requests[0].init.method,"POST");
 assert.equal(requests[0].init.body.get("name"),"neige-nuit");
 assert.equal(requests[0].init.body.get("file").name,"IMG.JPG");
-await assert.rejects(uploadPhoto(hass,new File(["x"],"a.gif",{type:"image/gif"})),/format refusé/);
-await assert.rejects(uploadPhoto(hass,new File([new Uint8Array(UPLOAD_MAX+1)],"a.jpg",{type:"image/jpeg"})),/trop gros/);
-await assert.rejects(uploadPhoto(hass,null),/aucun fichier/);
+await assert.rejects(uploadPhoto(hass,new File(["x"],"a.gif",{type:"image/gif"})),/bad_format/);
+await assert.rejects(uploadPhoto(hass,new File([new Uint8Array(UPLOAD_MAX+1)],"a.jpg",{type:"image/jpeg"})),/too_big/);
+await assert.rejects(uploadPhoto(hass,null),/no_file/);
 status=415;await assert.rejects(uploadPhoto(hass,jpeg),/Format refusé/);status=200;
 assert.equal(requests.length,2); // client-side checks never reach the server
 // Bridge: the iframe asks, the parent uploads and replies with the same id.
@@ -32,6 +32,6 @@ bridge.onMessage({data:{type:"maison3d:upload",id:8,file:jpeg},source:{},origin:
 assert.equal(posted.length,0); // foreign window ignored
 hass.user={is_admin:false};
 bridge.onMessage(from({type:"maison3d:upload",id:9,file:jpeg}));await sleep(5);
-assert.deepEqual(posted.pop(),{type:"maison3d:upload-result",id:9,ok:false,error:"administrateur requis"});
+assert.deepEqual(posted.pop(),{type:"maison3d:upload-result",id:9,ok:false,error:"admin_required"});
 assert.equal(requests.length,3);
 console.log("Upload photo (checks, fetchWithAuth, bridge admin/origin) OK");

@@ -36,17 +36,17 @@ html.compact-scene #maison3d-photo-controls,html.compact-scene #maison3d-present
 #maison3d-scene-loading.failed{cursor:pointer}#maison3d-scene-loading.failed i{display:none}@keyframes m3dspin{to{transform:rotate(360deg)}}
 </style></head><body>
 <script>if(new URLSearchParams(location.search).get("mode")==="card")document.documentElement.classList.add("card-mode");</script>
-<div id="view"></div><div id="maison3d-scene-loading" role="status" aria-live="polite" hidden><i></i><span>Chargement de la 3D…</span></div><div class="brand">⌂ Maison 3D<small>Mode édition · <span class="project-name">Maison 3D</span></small></div>
-<nav class="toolbar"><button class="on" id="tab3d">▣ 3D</button><button id="topview">▤ Plan 2D</button><button id="terrain">△ Terrain</button><button id="addsteps">▤ Escalier</button><button id="addtree">♧ Végétation</button><button id="addchair">▣ Mobilier</button><button id="toggle">⚙ Édition</button></nav>
-<div id="hint">☀ Scène éditable · Déplacement, rotation, taille · 💾 Enregistrer pour garder</div>
-<div class="side"><button id="orbit" title="Vue générale">⌂</button><button id="duplicate" title="Dupliquer">▣</button><button id="remove" title="Supprimer">⌫</button><button id="export" title="Exporter JSON">⇩</button><button id="import" title="Importer JSON">⇧</button></div>
-<div class="modes"><button class="on" data-time="day">☀ Jour</button><button data-time="evening">◒ Soir</button><button data-time="night">☾ Nuit</button><button id="weather">☁ Météo</button></div>
-<div class="bottom">📁 Projet : <span class="project-name">Maison 3D</span> · <span id="save">Enregistré localement</span></div>
-<section class="editor" id="editor"><strong>Édition des objets</strong><p style="font-size:12px;color:#bcc9d4">Clique sur un élément puis déplace-le à la souris. Utilise les champs pour les dimensions et la rotation. Maj + glisser permet aussi un repositionnement précis.</p><label>Objet sélectionné<select id="objects"></select></label><div class="cols">
+<div id="view"></div><div id="maison3d-scene-loading" role="status" aria-live="polite" hidden><i></i><span data-i18n="loading_3d">Chargement de la 3D…</span></div><div class="brand">⌂ Maison 3D<small><span data-i18n="brand_edit">Mode édition</span> · <span class="project-name">Maison 3D</span></small></div>
+<nav class="toolbar"><button class="on" id="tab3d" data-i18n="tab_3d">▣ 3D</button><button id="topview" data-i18n="tab_plan">▤ Plan 2D</button><button id="terrain" data-i18n="tab_terrain">△ Terrain</button><button id="addsteps" data-i18n="tab_steps">▤ Escalier</button><button id="addtree" data-i18n="tab_trees">♧ Végétation</button><button id="addchair" data-i18n="tab_furniture">▣ Mobilier</button><button id="toggle" data-i18n="tab_edit">⚙ Édition</button></nav>
+<div id="hint" data-i18n="hint_scene">☀ Scène éditable · Déplacement, rotation, taille · 💾 Enregistrer pour garder</div>
+<div class="side"><button id="orbit" title="Vue générale" data-i18n-title="title_orbit">⌂</button><button id="duplicate" title="Dupliquer" data-i18n-title="title_dup">▣</button><button id="remove" title="Supprimer" data-i18n-title="title_del">⌫</button><button id="export" title="Exporter JSON" data-i18n-title="title_export">⇩</button><button id="import" title="Importer JSON" data-i18n-title="title_import">⇧</button></div>
+<div class="modes"><button class="on" data-time="day" data-i18n="time_day">☀ Jour</button><button data-time="evening" data-i18n="time_evening">◒ Soir</button><button data-time="night" data-i18n="time_night">☾ Nuit</button><button id="weather" data-i18n="time_weather">☁ Météo</button></div>
+<div class="bottom"><span data-i18n="project_label">📁 Projet :</span> <span class="project-name">Maison 3D</span> · <span id="save" data-i18n="saved_locally">Enregistré localement</span></div>
+<section class="editor" id="editor"><strong data-i18n="editor_title">Édition des objets</strong><p style="font-size:12px;color:#bcc9d4" data-i18n="editor_help">Clique sur un élément puis déplace-le à la souris. Utilise les champs pour les dimensions et la rotation. Maj + glisser permet aussi un repositionnement précis.</p><label><span data-i18n="selected_object">Objet sélectionné</span><select id="objects"></select></label><div class="cols">
 <label>X <input id="x" type="number" step=".25"></label><label>Z <input id="z" type="number" step=".25"></label>
-<label>Largeur <input id="w" type="number" min=".2" step=".25"></label><label>Longueur <input id="d" type="number" min=".2" step=".25"></label>
-<label>Hauteur <input id="h" type="number" min=".2" step=".25"></label><label>Rotation ° <input id="r" type="number" step="5"></label>
-</div><div class="actions"><button id="add">+ Ajouter</button><button id="copy">Dupliquer</button><button id="del">Supprimer</button><button id="reset">Réinitialiser</button></div><label>Nouvel objet<select id="kind"><option value="tree">Arbre</option><option value="building">Bâtiment</option><option value="shed">Abri métal</option><option value="wall">Muret</option><option value="steps">Escalier</option><option value="road">Chemin / route</option><option value="gate">Portail</option><option value="pool">Piscine</option><option value="swing">Balançoire</option><option value="furniture">Mobilier</option></select></label></section>
+<label><span data-i18n="dim_width">Largeur</span> <input id="w" type="number" min=".2" step=".25"></label><label><span data-i18n="dim_depth">Longueur</span> <input id="d" type="number" min=".2" step=".25"></label>
+<label><span data-i18n="dim_height">Hauteur</span> <input id="h" type="number" min=".2" step=".25"></label><label><span data-i18n="dim_rotation">Rotation °</span> <input id="r" type="number" step="5"></label>
+</div><div class="actions"><button id="add" data-i18n="add_object">+ Ajouter</button><button id="copy" data-i18n="dup_object">Dupliquer</button><button id="del" data-i18n="del_object">Supprimer</button><button id="reset" data-i18n="reset_layout">Réinitialiser</button></div><label><span data-i18n="new_object">Nouvel objet</span><select id="kind"><option value="tree" data-i18n="type_tree">Arbre</option><option value="building" data-i18n="type_building">Bâtiment</option><option value="shed" data-i18n="type_shed">Abri métal</option><option value="wall" data-i18n="type_wall">Muret</option><option value="steps" data-i18n="type_steps">Escalier</option><option value="road" data-i18n="type_road">Chemin / route</option><option value="gate" data-i18n="type_gate">Portail</option><option value="pool" data-i18n="type_pool">Piscine</option><option value="swing" data-i18n="type_swing">Balançoire</option><option value="furniture" data-i18n="type_furniture">Mobilier</option></select></label></section>
 <input type="file" id="file" accept="application/json" hidden>
 <script type="application/json" id="maison3d-importmap">{"imports":{"three":"./vendor/three/three.module.min.js","three/addons/":"./vendor/three/addons/"}}</script>
 <script>/* Cache-busting: index.html?v=<version> (set by the card / panel) adds ?v= to every module of this page, then the import map is inserted. */
@@ -62,6 +62,8 @@ const el=document.createElement("script");el.type="importmap";el.textContent=JSO
 import {createPhotoView} from "./photo-view.js";
 import {createInteriorExplorer} from "./interior-view.js";
 import {onHaData} from "./ha-storage.js";
+import {t,onUiLang,applyDocumentLang} from "./i18n.js";
+applyDocumentLang();onUiLang(()=>applyDocumentLang());
 const loader=document.getElementById("maison3d-scene-loading");
 let offscreen=false,scene3d=null,loading=null,lastConditions=null;
 addEventListener("message",e=>{if(e.source!==window.parent||e.origin!==location.origin)return;
@@ -73,7 +75,7 @@ addEventListener("message",e=>{if(e.source!==window.parent||e.origin!==location.
   for(const el of document.querySelectorAll(".project-name"))if(el.textContent!==(name||"Maison 3D"))el.textContent=name||"Maison 3D"});
 function ensureScene(){
   if(!loading){
-    loader.hidden=false;loader.classList.remove("failed");loader.querySelector("span").textContent="Chargement de la 3D…";
+    loader.hidden=false;loader.classList.remove("failed");loader.querySelector("span").textContent=t("loading_3d");
     loading=import("./scene3d.js").then(({startScene})=>{
       const s=startScene({photoView,interior,isOffscreen:()=>offscreen});
       // Conditions received before the 3D was loaded (weather, sun, project name).
@@ -81,7 +83,7 @@ function ensureScene(){
       scene3d=s;loader.hidden=true;return s;
     }).catch(err=>{
       console.warn("Maison 3D: 3D indisponible",err);loading=null;
-      loader.classList.add("failed");loader.querySelector("span").textContent="⚠ 3D indisponible — réessayez";
+      loader.classList.add("failed");loader.querySelector("span").textContent=t("load_3d_fail");
       throw err;
     });
   }

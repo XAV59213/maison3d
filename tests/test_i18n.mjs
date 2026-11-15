@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import {pathToFileURL} from "node:url";
 const www=name=>pathToFileURL("custom_components/maison3d/www/"+name).href;
-const {langOf,t,labelOf}=await import(www("i18n.js"));
+const {langOf,t,labelOf,textKeys,UI_TEXT,formatTime,localeTag,setUiLang}=await import(www("i18n.js"));
 const {shouldDeferFirstPhoto,WEATHER_WAIT_MS,bundledPhoto}=await import(www("photo-source.js"));
 
 assert.equal(langOf("fr"),"fr");
@@ -30,4 +30,26 @@ for(const key of ["view_photo","ed_general","ed_upload","status_auto","label_sno
   assert.notEqual(t("fr",key),key,key+" missing in fr");
   assert.notEqual(t("en",key),key,key+" missing in en");
 }
-console.log("i18n FR/EN, photo wait and legacy mapping OK");
+
+const frKeys=Object.keys(UI_TEXT.fr).sort();
+const enKeys=Object.keys(UI_TEXT.en).sort();
+assert.deepEqual(frKeys,enKeys,"FR and EN key sets must be identical");
+assert.deepEqual(textKeys(),frKeys);
+for(const key of frKeys){
+  assert.equal(typeof UI_TEXT.fr[key],"string",key+" FR must be a string");
+  assert.equal(typeof UI_TEXT.en[key],"string",key+" EN must be a string");
+  assert.ok(String(UI_TEXT.fr[key]).trim(),key+" FR is empty");
+  assert.ok(String(UI_TEXT.en[key]).trim(),key+" EN is empty");
+  assert.notEqual(t("fr",key),key,key+" missing in fr");
+  // The key "off" is translated as "off" in English — do not require EN !== key.
+}
+setUiLang("fr");
+assert.equal(localeTag(),"fr-FR");
+const noon=new Date("2026-11-15T12:00:00");
+assert.ok(formatTime(noon));
+setUiLang("en");
+assert.equal(localeTag(),"en-GB");
+assert.ok(formatTime(noon));
+setUiLang("fr");
+console.log("i18n FR/EN, photo wait and legacy mapping OK ("+frKeys.length+" keys)");
+

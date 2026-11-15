@@ -12,7 +12,7 @@
  * asks « Restaurer les modifications non enregistrées ? » (Restaurer / Ignorer).
  */
 import {saveToHa,onHaSaved,haStorageStatus,onHaData,keepBrowserCopy,onBrowserCopy,useHaVersion} from "./ha-storage.js";
-import {t,onUiLang,uiLang} from "./i18n.js";
+import {t,onUiLang,uiLang,formatTime} from "./i18n.js";
 const sections=new Map();
 const listeners=new Set();
 let status={kind:"idle",text:""},saving=false,clearTimer=null,waiter=null;
@@ -98,7 +98,7 @@ function offerRecovery(){
   const yes=document.createElement("button");yes.type="button";yes.className="recovery-restore";
   const no=document.createElement("button");no.type="button";no.className="recovery-ignore";
   yes.addEventListener("click",restoreRecovery);no.addEventListener("click",ignoreRecovery);
-  const when=()=>{try{return new Date(pending.at).toLocaleTimeString(uiLang()==="fr"?"fr-FR":"en-GB",{hour:"2-digit",minute:"2-digit"})}catch{return ""}};
+  const when=()=>formatTime(pending.at);
   onUiLang(()=>{text.textContent=t("restoreQuestion");detail.textContent=t("restoreDetail",{when:when()});yes.textContent=t("restore");no.textContent=t("ignore")});
   banner.append(text,detail,yes,no);
   document.body.append(banner);
@@ -145,17 +145,17 @@ export async function saveDraft(){
     let timeout=null;
     result=await new Promise(resolve=>{
       waiter=resolve;
-      timeout=setTimeout(()=>{if(waiter===resolve){waiter=null;resolve({ok:false,error:"délai dépassé"})}},20000);
+      timeout=setTimeout(()=>{if(waiter===resolve){waiter=null;resolve({ok:false,error:"timeout"})}},20000);
     });
     clearTimeout(timeout);
     saving=false;
-    if(result.ok){finish();setStatus("saved","Enregistré ✓")}
-    else setStatus("error","⚠ Non enregistré dans Home Assistant ("+(result.error==="admin_required"?"administrateur requis":result.error||"erreur")+")");
+    if(result.ok){finish();setStatus("saved",t("save_ok"))}
+    else setStatus("error",t("save_ha_fail",{reason:result.error==="admin_required"?t("save_admin"):result.error==="timeout"?t("save_timeout"):result.error||t("save_error")}));
     return result.ok;
   }
   saving=false;
   const {connected}=haStorageStatus();
-  if(!local){setStatus("error","⚠ Enregistrement impossible dans ce navigateur — exportez en JSON");return false}
+  if(!local){setStatus("error",t("save_browser_fail"));return false}
   finish();
   // Non-administrator: this browser's version really takes precedence over Home Assistant here.
   if(connected)keepBrowserCopy(patch);
@@ -176,19 +176,24 @@ window.addEventListener("beforeunload",event=>{
 export function createSaveControls({compact=false}={}){
   const group=document.createElement("span");
   group.className="maison3d-save"+(compact?" compact":"");
-  group.setAttribute("role","group");group.setAttribute("aria-label","Enregistrer les modifications");
+  group.setAttribute("role","group");group.setAttribute("aria-label",t("save_group"));
   const save=document.createElement("button");
-  save.type="button";save.className="save-btn";save.textContent="💾 Enregistrer";
+  save.type="button";save.className="save-btn";save.textContent=t("save_btn");
   const cancel=document.createElement("button");
-  cancel.type="button";cancel.className="cancel-btn";cancel.textContent="↶ Annuler";
-  cancel.title="Revenir au dernier état enregistré";
+  cancel.type="button";cancel.className="cancel-btn";cancel.textContent=t("undo_btn");
+  cancel.title=t("undo_title");
   const info=document.createElement("span");
   info.className="save-status";info.setAttribute("role","status");info.setAttribute("aria-live","polite");
   // This browser's version (non-administrator): badge + « ↺ Revenir à la version Home Assistant ».
   const copyBadge=document.createElement("span");copyBadge.className="browser-copy";copyBadge.hidden=true;
   const haVersion=document.createElement("button");haVersion.type="button";haVersion.className="ha-version-btn";haVersion.hidden=true;
   haVersion.addEventListener("click",()=>{if(typeof confirm==="function"&&!confirm(t("backToHaConfirm")))return;useHaVersion()});
-  onUiLang(()=>{copyBadge.textContent="🖥 "+t("browserCopy");copyBadge.title=t("browserCopyTitle");haVersion.textContent=t("backToHa")});
+  const paintSave=()=>{
+    group.setAttribute("aria-label",t("save_group"));
+    save.textContent=t("save_btn");cancel.textContent=t("undo_btn");cancel.title=t("undo_title");
+    copyBadge.textContent="🖥 "+t("browserCopy");copyBadge.title=t("browserCopyTitle");haVersion.textContent=t("backToHa");
+  };
+  onUiLang(()=>{paintSave();changed()});
   onBrowserCopy(keys=>{copyBadge.hidden=haVersion.hidden=!keys.length});
   group.append(save,cancel,info,copyBadge,haVersion);
   save.addEventListener("click",()=>saveDraft());
@@ -196,13 +201,13 @@ export function createSaveControls({compact=false}={}){
   onDraft(({dirty,saving:busy,kind,text})=>{
     save.disabled=!dirty||busy;cancel.disabled=!dirty||busy;cancel.hidden=!dirty&&!busy;
     group.classList.toggle("dirty",dirty);
-    save.title=dirty?"Modifications non enregistrées — cliquer pour enregistrer":"Aucune modification à enregistrer";
-    save.setAttribute("aria-label",dirty?"Enregistrer (modifications non enregistrées)":"Enregistrer (aucune modification)");
-    const shown=kind==="saving"||kind==="saved"||kind==="error"?text:dirty?"● Modifications non enregistrées":"";
-    if(shown==="● Modifications non enregistrées"){
+    save.title=dirty?t("save_hint_dirty"):t("save_hint_clean");
+    save.setAttribute("aria-label",dirty?t("save_aria_dirty"):t("save_aria_clean"));
+    const shown=kind==="saving"||kind==="saved"||kind==="error"?text:dirty?t("dirty_long"):"";
+    if(shown&&shown===t("dirty_long")){
       // Short text on phones and in narrow cards.
       const long=document.createElement("span");long.className="long";long.textContent=shown;
-      const short=document.createElement("span");short.className="short";short.textContent="● Non enregistré";
+      const short=document.createElement("span");short.className="short";short.textContent=t("dirty_short");
       info.replaceChildren(long,short);
     }else info.textContent=shown;
     info.hidden=!shown;info.dataset.kind=kind==="idle"&&dirty?"dirty":kind;

@@ -1,3 +1,4 @@
+import {t,langOf} from "./i18n.js";
 /**
  * Shared animation intensity for seasonal, cinematic, frost, weather and 3D effects.
  * Setting (photo_settings.motion): auto | always | never.
@@ -62,22 +63,8 @@ function notify(){
 media()?.addEventListener?.("change",()=>{if(mode==="auto")notify()});
 
 export const MOTION_LABELS={
-  fr:{
-    title:"Animations",
-    auto:"Auto",
-    always:"Toujours",
-    never:"Jamais",
-    hint:"Auto suit le système. Avec une réduction d'animations, le mouvement reste lent au lieu d'être figé.",
-    reduced:"animations réduites par le système"
-  },
-  en:{
-    title:"Animations",
-    auto:"Auto",
-    always:"Always",
-    never:"Never",
-    hint:"Auto follows the system. With reduced motion, movement stays slow instead of freezing.",
-    reduced:"animations reduced by the system"
-  }
+  fr:{title:t("fr","motion_title"),auto:t("fr","motion_auto"),always:t("fr","motion_always"),never:t("fr","motion_never"),hint:t("fr","motion_hint"),reduced:t("fr","motion_reduced")},
+  en:{title:t("en","motion_title"),auto:t("en","motion_auto"),always:t("en","motion_always"),never:t("en","motion_never"),hint:t("en","motion_hint"),reduced:t("en","motion_reduced")}
 };
 
 export function motionLocale(lang){

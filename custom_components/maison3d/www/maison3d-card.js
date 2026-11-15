@@ -281,7 +281,7 @@ window.customCards=window.customCards||[];
 if (!window.customCards.some(card=>card.type==="maison3d-card")) {
   window.customCards.push({
     type:"maison3d-card",name:"Maison 3D",
-    description:"Photo de la maison animée par la météo réelle (pluie, neige, orage, gel, jour/nuit), plan 2D et vue 3D. Aucun réglage nécessaire : tout vient de l’intégration Maison 3D.",
+    description:t("card_description"),
     preview:true,
     documentationURL:"https://github.com/XAV59213/maison3d#-carte-lovelace-prête-à-lemploi"
   });

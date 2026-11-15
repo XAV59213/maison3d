@@ -76,9 +76,9 @@ export function createPhotoView({ensureScene=null}={}) {
   const bind=(el,get,prop="value")=>{refreshers.push(()=>{el[prop]=get()});return el};
   const section=document.createElement("section");
   section.id="maison3d-photo-view";
-  section.setAttribute("aria-label","Vue photographique de la propriété");
+  section.setAttribute("aria-label",t("set_photo_alt"));
   const image=document.createElement("img");
-  image.alt="Vue photographique validée de la propriété";
+  image.alt=t("set_photo_alt_ok");
   image.decoding="async";
   const tint=document.createElement("div");
   tint.className="photo-light";
@@ -101,7 +101,7 @@ export function createPhotoView({ensureScene=null}={}) {
   moon.className="moon-phase";
   const error=document.createElement("div");
   error.className="photo-error";error.hidden=true;
-  error.textContent="Image inaccessible : corrigez son URL dans les réglages Photo.";
+  error.textContent=t("image_unreachable");
   section.append(image,tint,cinematicCanvas,seasonalCanvas,canvas,frostCanvas,status,moon,error);
   // Outdoor lights: halos (night, entity on) over the photo and its night / weather layers.
   const lightOverlay=createLightOverlay({container:section,image,after:frostCanvas,onToggle:id=>requestToggle(id)});
@@ -115,22 +115,22 @@ export function createPhotoView({ensureScene=null}={}) {
   const nav=document.createElement("nav");
   nav.id="maison3d-photo-controls";
   const photoBtn=document.createElement("button");
-  photoBtn.type="button";photoBtn.textContent="▣ Photo réelle";
+  photoBtn.type="button";photoBtn.textContent=t("view_photo");
   const modelBtn=document.createElement("button");
-  modelBtn.type="button";modelBtn.textContent="⬡ 3D éditable";
+  modelBtn.type="button";modelBtn.textContent=t("view_model");
   const planBtn=document.createElement("button");
-  planBtn.type="button";planBtn.textContent="▤ Plan 2D";
+  planBtn.type="button";planBtn.textContent=t("view_plan");
   planBtn.title="Afficher le plan de dessus du modèle, revenir à la photo à tout moment";
   const optionsBtn=document.createElement("button");
-  optionsBtn.type="button";optionsBtn.textContent="⚙ Images / météo";
+  optionsBtn.type="button";optionsBtn.textContent=t("options");
   const nightBtn=document.createElement("button");
-  nightBtn.type="button";nightBtn.className="chrome-photo";nightBtn.textContent="☾ Nuit réelle";
+  nightBtn.type="button";nightBtn.className="chrome-photo";nightBtn.textContent=t("night");
   nightBtn.title="Prévisualiser immédiatement la nuit sur la photo";
   const dayBtn=document.createElement("button");
-  dayBtn.type="button";dayBtn.className="chrome-photo";dayBtn.textContent="☀ Jour";
+  dayBtn.type="button";dayBtn.className="chrome-photo";dayBtn.textContent=t("day");
   dayBtn.title="Prévisualiser immédiatement le jour sur la photo";
   const autoBtn=document.createElement("button");
-  autoBtn.type="button";autoBtn.className="chrome-photo";autoBtn.textContent="◉ Auto";
+  autoBtn.type="button";autoBtn.className="chrome-photo";autoBtn.textContent=t("auto");
   autoBtn.title="Utiliser le soleil et la météo réels de Home Assistant";
   const effectsBtn=document.createElement("button");
   effectsBtn.type="button";effectsBtn.className="chrome-photo";effectsBtn.title="Activer ou désactiver les effets animés";
@@ -241,8 +241,7 @@ export function createPhotoView({ensureScene=null}={}) {
   const h=document.createElement("strong");h.textContent="Images et saisons personnalisées";
   const close=document.createElement("button");close.type="button";close.textContent="✕ Fermer";
   head.append(h,createSaveControls({compact:true}),close);settings.append(head);
-  const note=document.createElement("p");note.textContent=
-    "Image principale personnalisable : une photo de votre maison. Les effets météo, lune et saisons se dessinent sur cette photo. Laissez vide pour la configuration Home Assistant ou la photo officielle.";
+  const note=document.createElement("p");note.textContent=t("set_intro");
   settings.append(note);
   const makeField=(title,value,onChange,placeholder="")=>{
     const label=document.createElement("label");
@@ -261,45 +260,47 @@ export function createPhotoView({ensureScene=null}={}) {
     sel.value=value;sel.addEventListener("change",()=>fn(sel.value));label.append(sel);
     settings.append(label);return sel;
   };
-  const mainPhotoInput=makeField("Image principale personnalisée (facultatif)",
+  const mainPhotoInput=makeField(t("set_main_photo"),
     state.base_image_url,(value,input)=>{
       if(value&&!allowedUrl(value)){
-        input.setCustomValidity("Utilise /local/…, /maison3d-media/…, /maison3d-assets/…, /api/… ou HTTPS.");
+        input.setCustomValidity(t("set_url_rule"));
         input.reportValidity();return;
       }
       input.setCustomValidity("");
       state.base_image_url=value;
       failedImages.delete(value);
       persist();update();
-      imageCheck.textContent=value?"Image modifiée · prévisualisation conseillée · 💾 Enregistrer pour la garder":"Image principale par défaut";
+      setStatus(imageCheck,value?"set_main_modified":"set_main_default");
     },"/local/maison3d/ma-maison.jpg");
   bind(mainPhotoInput,()=>state.base_image_url);
   const previewRow=document.createElement("div");
   previewRow.className="main-photo-preview";
   const previewBtn=document.createElement("button");
-  previewBtn.type="button";previewBtn.textContent="Vérifier et prévisualiser";
+  previewBtn.type="button";previewBtn.textContent=t("ed_check");
   const imageCheck=document.createElement("span");
   imageCheck.setAttribute("role","status");
-  imageCheck.textContent="Vérifiez l'image pour contrôler son accès.";
+  const setStatus=(el,key,vars={})=>{el.dataset.i18nKey=key;el.dataset.i18nVars=JSON.stringify(vars||{});el.textContent=t(lang,key,vars)};
+  const paintStatus=el=>{if(el.dataset.i18nKey)el.textContent=t(lang,el.dataset.i18nKey,JSON.parse(el.dataset.i18nVars||"{}"))};
+  setStatus(imageCheck,"set_check_first");
   const previewThumbnail=document.createElement("img");
-  previewThumbnail.alt="Aperçu de l'image principale";
+  previewThumbnail.alt=t("set_main_alt");
   previewThumbnail.hidden=true;
   previewBtn.addEventListener("click",()=>{
     const candidate=mainPhotoInput.value.trim();
     if(candidate&&!allowedUrl(candidate)){
-      imageCheck.textContent="URL invalide";previewThumbnail.hidden=true;return;
+      setStatus(imageCheck,"ed_url_invalid_short");previewThumbnail.hidden=true;return;
     }
     const target=bundledPhoto(candidate)||resolveMainPhoto({parent:parentBasePhoto,isCard:isCardView});
-    imageCheck.textContent="Vérification en cours…";
+    setStatus(imageCheck,"set_checking");
     previewThumbnail.hidden=true;
     const probe=new Image();
     probe.onload=()=>{
-      imageCheck.textContent="Image trouvée";
+      setStatus(imageCheck,"set_image_ok");
       previewThumbnail.src=target;previewThumbnail.hidden=false;
       failedImages.delete(target);
     };
     probe.onerror=()=>{
-      imageCheck.textContent="Image inaccessible — photo officielle utilisée";
+      setStatus(imageCheck,"set_image_missing");
       previewThumbnail.hidden=true;
       failedImages.add(target);
       update();
@@ -310,39 +311,37 @@ export function createPhotoView({ensureScene=null}={}) {
   settings.append(previewRow);
   // Upload a photo from this device into /config/www/maison3d/ (administrators).
   const uploadBox=document.createElement("fieldset");uploadBox.className="maison3d-upload";
-  const uploadLegend=document.createElement("legend");uploadLegend.textContent="📤 Envoyer une photo depuis cet appareil";
-  const uploadSlot=document.createElement("select");uploadSlot.setAttribute("aria-label","Photo à remplacer");
-  for(const [key,name] of [["main","Image principale"],...IMAGE_SLOTS]){
-    const option=document.createElement("option");option.value=key;option.textContent=name;uploadSlot.append(option);
-  }
+  const uploadLegend=document.createElement("legend");uploadLegend.textContent=t("set_upload_legend");
+  const uploadSlot=document.createElement("select");uploadSlot.setAttribute("aria-label",t("set_upload_slot"));
+  const fillUploadSlot=()=>{uploadSlot.replaceChildren();for(const [key] of [["main"],...IMAGE_SLOTS]){const option=document.createElement("option");option.value=key;option.textContent=key==="main"?t("set_slot_main"):t("set_image_slot",{name:labelOf(lang,key)});uploadSlot.append(option)}};fillUploadSlot();
   const uploadFile=document.createElement("input");uploadFile.type="file";uploadFile.accept="image/jpeg,image/png,image/webp";uploadFile.hidden=true;
-  const uploadBtn=document.createElement("button");uploadBtn.type="button";uploadBtn.textContent="Choisir et envoyer…";uploadBtn.disabled=true;
+  const uploadBtn=document.createElement("button");uploadBtn.type="button";uploadBtn.textContent=t("set_upload_choose");uploadBtn.disabled=true;
   const uploadStatus=document.createElement("span");uploadStatus.setAttribute("role","status");
-  uploadStatus.textContent="Disponible dans Home Assistant pour les administrateurs.";
+  setStatus(uploadStatus,"set_upload_admin_ok");
   uploadBtn.addEventListener("click",()=>uploadFile.click());
   uploadFile.addEventListener("change",async()=>{
     const file=uploadFile.files?.[0];uploadFile.value="";
     if(!file)return;
-    if(!/^image\/(jpeg|png|webp)$/.test(file.type)){uploadStatus.textContent="Format refusé : jpg, png ou webp.";return}
-    if(file.size>10*1024*1024){uploadStatus.textContent="Fichier trop gros (10 Mo max).";return}
+    if(!/^image\/(jpeg|png|webp)$/.test(file.type)){setStatus(uploadStatus,"set_upload_bad_format");return}
+    if(file.size>10*1024*1024){setStatus(uploadStatus,"set_upload_too_big");return}
     const slot=uploadSlot.value;
-    uploadStatus.textContent="Envoi de "+file.name+"…";uploadBtn.disabled=true;
+    setStatus(uploadStatus,"set_upload_sending",{name:file.name});uploadBtn.disabled=true;
     const result=await uploadToHa(file,slot==="main"?"ma-maison":suggestedFileName(slot).replace(/\.jpg$/,""));
     uploadBtn.disabled=false;
-    if(!result.ok||!allowedUrl(result.url)){uploadStatus.textContent="Échec de l'envoi : "+(result.error||"réponse invalide");return}
+    const uploadError=code=>({admin_required:t("save_admin"),timeout:t("save_timeout"),bad_format:t("set_upload_bad_format"),too_big:t("set_upload_too_big"),no_file:t("set_upload_invalid")})[code]||code||t("set_upload_invalid");
+    if(!result.ok||!allowedUrl(result.url)){setStatus(uploadStatus,"set_upload_fail",{error:uploadError(result.error)});return}
     if(slot==="main"){state.base_image_url=result.url;failedImages.delete(result.url)}
     else{state.images[slot]=result.url;state.use_weather_photos=true;state.weather_photos_override=true;swapPhotos.checked=true}
     for(const refresh of refreshers)refresh();
     persist();update();
     // The file is on the server (explicit upload); using it is part of the draft.
-    uploadStatus.textContent="Photo envoyée : "+result.url.split("?")[0]+" · 💾 Enregistrer pour l'utiliser";
+    setStatus(uploadStatus,"set_upload_sent",{url:result.url.split("?")[0]});
   });
   uploadBox.append(uploadLegend,uploadSlot,uploadBtn,uploadFile,uploadStatus);
   settings.append(uploadBox);
   onHaData((ha,{canSave})=>{
     uploadBtn.disabled=!canSave;
-    uploadStatus.textContent=canSave?"La photo est enregistrée dans /config/www/maison3d/ (jpg, png, webp · 10 Mo max).":
-      "Envoi de photos : administrateur Home Assistant requis.";
+    setStatus(uploadStatus,canSave?"set_upload_folder":"set_upload_need_admin");
   });
   // Discreet warning under a sensor field (unknown value, unavailable…); never on the photo.
   const sensorWarnings=new Map();
@@ -367,7 +366,7 @@ export function createPhotoView({ensureScene=null}={}) {
     const overBack=document.createElement("button");overBack.type="button";overBack.className="override-back";
     over.append(overText,overBack);
     const search=document.createElement("input");
-    search.type="search";search.className="entity-search";search.placeholder="🔍 Rechercher (nom ou entity_id)";search.hidden=true;
+    search.type="search";search.className="entity-search";search.placeholder=t("set_search");search.hidden=true;
     const select=document.createElement("select");select.className="entity-select";
     const input=document.createElement("input");
     input.type="text";input.className="entity-free";input.placeholder=placeholder;input.value=state[key];input.hidden=true;
@@ -387,7 +386,7 @@ export function createPhotoView({ensureScene=null}={}) {
     renderEntityField(key,true);
   }
   const describe=item=>{
-    if(!item?.entity_id)return "aucune entité";
+    if(!item?.entity_id)return t("set_entity_none");
     const found=entityOptions?.[item.key]?.find(o=>o.id===item.entity_id);
     return (found&&found.name!==item.entity_id?found.name+" · ":"")+item.entity_id;
   };
@@ -408,24 +407,24 @@ export function createPhotoView({ensureScene=null}={}) {
     field.signature=signature;
     const byCard=item.source==="card";
     field.used.textContent=item.entity_id
-      ?"Utilisée : "+describe(item)+" — "+(SOURCE_LABELS[item.source]||item.source)
-      :"Aucune entité utilisée";
+      ?t("set_entity_used",{name:describe(item)+" — "+(t("source_"+item.source)!=="source_"+item.source?t("source_"+item.source):(SOURCE_LABELS[item.source]||item.source))})
+      :t("set_entity_none_used");
     const opts=[];
     const add=(value,text)=>{const o=document.createElement("option");o.value=value;o.textContent=text;opts.push(o)};
     const inherited=state[key]?null:item;
     // Short label (the full name, entity_id and source are written just above).
-    const SHORT={integration:"intégration",auto:"détection auto",default:"défaut"};
+    const shortSrc=s=>t("source_short_"+s)!=="source_short_"+s?t("source_short_"+s):s;
     const shortName=it=>entityOptions?.[key]?.find(o=>o.id===it.entity_id)?.name||it.entity_id;
-    add("","Automatique"+(inherited?.entity_id&&!byCard?" · "+shortName(inherited)+" ("+(SHORT[inherited.source]||inherited.source)+")":
-      byCard?" (valeur de la carte)":""));
+    add("",t("set_auto")+(inherited?.entity_id&&!byCard?" · "+shortName(inherited)+" ("+shortSrc(inherited.source)+")":
+      byCard?t("set_card_value"):""));
     const shown=options.filter(o=>!term||o.name.toLowerCase().includes(term)||o.id.includes(term));
     for(const o of shown)add(o.id,o.name===o.id?o.id:o.name+" — "+o.id);
-    if(state[key]&&!options.some(o=>o.id===state[key]))add(state[key],state[key]+(entityOptions?" (introuvable)":""));
-    add(CUSTOM,"✎ Autre (saisie libre)…");
+    if(state[key]&&!options.some(o=>o.id===state[key]))add(state[key],state[key]+(entityOptions?t("set_not_found_suffix"):""));
+    add(CUSTOM,t("ed_custom"));
     field.select.replaceChildren(...opts);
     field.select.value=state[key]||"";
     field.select.disabled=byCard;
-    field.select.title=byCard?"Imposée par la carte : la modifier dans l'éditeur de la carte":"";
+    field.select.title=byCard?t("set_imposed_by_card"):"";
     field.search.hidden=options.length<=8;
     // Free typing only as a fallback: no candidate, or a value outside the list.
     if(document.activeElement!==field.input)
@@ -435,16 +434,17 @@ export function createPhotoView({ensureScene=null}={}) {
   function requestEntityOptions(){
     if(window.parent!==window)window.parent.postMessage({type:"maison3d:entity-options-request"},window.location.origin);
   }
-  entityField("weather_entity","Entité météo","weather.ma_maison");
-  entityField("sun_entity","Entité soleil","sun.sun");
-  entityField("moon_entity","Entité lune","sensor.phase_de_la_lune");
-  entityField("temperature_entity","Capteur température extérieure","sensor.temperature_exterieure");
-  entityField("wind_entity","Capteur vitesse du vent","sensor.vent");
-  entityField("rain_entity","Capteur pluie (valeur, on/off ou vigilance)","sensor.alerte_pluie_inondation");
-  entityField("snow_entity","Capteur neige (valeur, on/off ou vigilance)","sensor.alerte_neige_verglas");
-  entityField("cloud_entity","Capteur nuages (pourcentage ou on/off)","sensor.nuages");
-  const selectMode=selectField("Ambiance",[
-    ["auto","Automatique (Home Assistant)"],...AMBIANCES.map(k=>[k,LABELS[k]])
+  const ENTITY_TITLES={weather_entity:"set_entity_weather",sun_entity:"set_entity_sun",moon_entity:"set_entity_moon",temperature_entity:"set_entity_temp",wind_entity:"set_entity_wind",rain_entity:"set_entity_rain",snow_entity:"set_entity_snow",cloud_entity:"set_entity_cloud"};
+  entityField("weather_entity",t("set_entity_weather"),"weather.ma_maison");
+  entityField("sun_entity",t("set_entity_sun"),"sun.sun");
+  entityField("moon_entity",t("set_entity_moon"),"sensor.phase_de_la_lune");
+  entityField("temperature_entity",t("set_entity_temp"),"sensor.temperature_exterieure");
+  entityField("wind_entity",t("set_entity_wind"),"sensor.vent");
+  entityField("rain_entity",t("set_entity_rain"),"sensor.alerte_pluie_inondation");
+  entityField("snow_entity",t("set_entity_snow"),"sensor.alerte_neige_verglas");
+  entityField("cloud_entity",t("set_entity_cloud"),"sensor.nuages");
+  const selectMode=selectField(t("set_ambience"),[
+    ["auto",t("set_ambience_auto")],...AMBIANCES.map(k=>[k,labelOf(lang,k)||LABELS[k]])
   ],state.mode,v=>{state.mode=v;persist();update();});
   // « Saison fixe »: the saved season (draft 💾); Auto = Home Assistant calendar.
   const seasonSelect=selectField(t("fixedSeason"),[
@@ -462,15 +462,15 @@ export function createPhotoView({ensureScene=null}={}) {
   const testSection=document.createElement("fieldset");
   testSection.className="maison3d-test-states";
   const legend=document.createElement("legend");
-  legend.textContent="Tester chaque état (sans changer les capteurs)";
+  legend.textContent=t("test_legend");
   testSection.append(legend);
   // Test mode: forces a weather and/or day/night over the real Home Assistant data.
   // (The season buttons below are temporary previews, like the moon phase: not saved.)
   // Kept in memory only (never saved): a reload or « Revenir à la météo réelle » ends it.
-  const testWeatherSelect=selectField("Météo forcée",[["auto","Météo réelle (Home Assistant)"],
+  const testWeatherSelect=selectField(t("set_test_weather"),[["auto",t("set_test_weather_real")],
     ...TEST_WEATHERS.map(([key,label])=>[key,label])],test.weather,v=>setTest({weather:v}));
-  const testTimeSelect=selectField("Moment forcé",[["auto","Heure réelle (soleil Home Assistant)"],
-    ["day","☀ Jour"],["night","☾ Nuit"]],test.time,v=>setTest({time:v}));
+  const testTimeSelect=selectField(t("set_test_time"),[["auto",t("set_test_time_real")],
+    ["day",t("time_day")],["night",t("time_night")]],test.time,v=>setTest({time:v}));
   testSection.append(testWeatherSelect.parentElement,testTimeSelect.parentElement);
   const testGrid=document.createElement("div");testGrid.className="test-grid";
   const testButtons=new Map(),timeButtons=new Map();
@@ -480,14 +480,14 @@ export function createPhotoView({ensureScene=null}={}) {
     btn.addEventListener("click",()=>setTest({weather:test.weather===key?"auto":key}));
     testGrid.append(btn);testButtons.set(key,btn);
   }
-  for(const [key,label] of [["day","☀ Forcer le jour"],["night","☾ Forcer la nuit"]]){
+  for(const [key,label] of [["day",t("set_force_day")],["night",t("set_force_night")]]){
     const btn=document.createElement("button");
     btn.type="button";btn.textContent=label;btn.dataset.testTime=key;
     btn.addEventListener("click",()=>setTest({time:test.time===key?"auto":key}));
     testGrid.append(btn);timeButtons.set(key,btn);
   }
   const seasonTests=new Map();
-  for(const [key,label] of [["spring","🌸 Printemps"],["summer","☀ Été"],["autumn","🍂 Automne"],["winter","❄ Hiver"]]){
+  for(const [key,label] of [["spring","🌸 "+t(lang,"label_spring")],["summer","☀ "+t(lang,"label_summer")],["autumn","🍂 "+t(lang,"label_autumn")],["winter","❄ "+t(lang,"label_winter")]]){
     const btn=document.createElement("button");
     btn.type="button";btn.textContent=label;
     btn.addEventListener("click",()=>chooseSeason(test.season===key?"auto":key));
@@ -496,7 +496,7 @@ export function createPhotoView({ensureScene=null}={}) {
   testSection.append(testGrid);
   // Frost can also be added on top of any other test weather.
   const frostTest=document.createElement("button");
-  frostTest.type="button";frostTest.textContent="🧊 Ajouter le gel";
+  frostTest.type="button";frostTest.textContent=t("frost_add");
   frostTest.addEventListener("click",()=>{
     state.enabled=true;state.frost_preview=!state.frost_preview;update();
   });
@@ -514,7 +514,7 @@ export function createPhotoView({ensureScene=null}={}) {
   const moonLabel=moonPreview.parentElement;
   testSection.append(moonLabel);
   const resetTest=document.createElement("button");
-  resetTest.type="button";resetTest.textContent="◉ Revenir à la météo réelle";
+  resetTest.type="button";resetTest.textContent=t("reset_test");
   // Ends every test and preview; the saved settings (ambience, fixed season) are kept.
   resetTest.addEventListener("click",()=>{
     state.frost_preview=false;
@@ -641,11 +641,14 @@ export function createPhotoView({ensureScene=null}={}) {
     window.parent.postMessage({type:"maison3d:light-toggle",entity_id:id},window.location.origin);
   }
   renderLightSettings();
+  const imageSlotInputs={};
   for(const key of KEYS){
-    bind(makeField("Image "+LABELS[key],state.images[key],(v,input)=>{
-      if(v&&!allowedUrl(v)){input.setCustomValidity("Utilise /local/…, /maison3d-media/…, /maison3d-assets/…, /api/… ou HTTPS.");input.reportValidity();return}
+    const slotInput=makeField(t("set_image_slot",{name:labelOf(lang,key)||LABELS[key]}),state.images[key],(v,input)=>{
+      if(v&&!allowedUrl(v)){input.setCustomValidity(t("set_url_rule"));input.reportValidity();return}
       input.setCustomValidity("");state.images[key]=v;persist();update();
-    },"/local/maison3d/"+suggestedFileName(key)),()=>state.images[key]);
+    },"/local/maison3d/"+suggestedFileName(key));
+    imageSlotInputs[key]=slotInput;
+    bind(slotInput,()=>state.images[key]);
   }
   const swapLabel=document.createElement("label");swapLabel.className="checkbox";
   const swapPhotos=document.createElement("input");swapPhotos.type="checkbox";
@@ -653,12 +656,10 @@ export function createPhotoView({ensureScene=null}={}) {
   swapPhotos.addEventListener("change",()=>{
     state.use_weather_photos=swapPhotos.checked;state.weather_photos_override=swapPhotos.checked;persist();update();
   });
-  swapLabel.append(swapPhotos,document.createTextNode(
-    "Utiliser les photos météo jour/nuit (sinon : photo principale + animations)"
-  ));
+  const swapText=document.createTextNode(t("set_photos"));swapLabel.append(swapPhotos,swapText);
   settings.append(swapLabel);
   const baseNotice=document.createElement("p");
-  baseNotice.textContent="Par défaut, la photographie officielle reste fixe : seule l'ambiance météo, l'éclairage et la lune changent.";
+  baseNotice.textContent=t("set_photos_help");
   settings.append(baseNotice);
   const checkbox=document.createElement("label");checkbox.className="checkbox";
   const effect=document.createElement("input");effect.type="checkbox";effect.checked=state.effect;
@@ -671,7 +672,7 @@ export function createPhotoView({ensureScene=null}={}) {
   };
   effect.addEventListener("change",()=>setEffects(effect.checked));
   effectsBtn.addEventListener("click",()=>setEffects(!state.effect));
-  checkbox.append(effect,document.createTextNode("Activer les effets météo, lumineux et saisonniers"));settings.append(checkbox);
+  const effectText=document.createTextNode(t("set_effects"));checkbox.append(effect,effectText);settings.append(checkbox);
   const frostLabel=document.createElement("label");frostLabel.className="checkbox";
   const frostInput=document.createElement("input");frostInput.type="checkbox";frostInput.checked=state.frost;
   const setFrost=value=>{
@@ -681,9 +682,9 @@ export function createPhotoView({ensureScene=null}={}) {
     persist();update();
   };
   frostInput.addEventListener("change",()=>setFrost(frostInput.checked));
-  frostLabel.append(frostInput,document.createTextNode("Effet gel quand la température est ≤ 0 °C"));settings.append(frostLabel);
+  const frostText=document.createTextNode(t("set_frost"));frostLabel.append(frostInput,frostText);settings.append(frostLabel);
   const strengthLabel=document.createElement("label");
-  strengthLabel.textContent="Intensité des animations (0 = aucune, 200 % = forte)";
+  strengthLabel.textContent=t("intensity");
   const strength=document.createElement("input");
   strength.type="range";strength.min="0";strength.max="2";strength.step="0.1";
   strength.value=String(state.effect_intensity);
@@ -751,9 +752,9 @@ export function createPhotoView({ensureScene=null}={}) {
     clear:()=>{state.base_image_url=""}});
   function renderOverrides(){for(const fn of overrideNotes)fn()}
   onUiLang(()=>{renderOverrides();for(const key of SENSOR_KEYS)renderEntityField(key,true)});
-  const reset=document.createElement("button");reset.type="button";reset.textContent="Réinitialiser les images";
+  const reset=document.createElement("button");reset.type="button";reset.textContent=t("set_reset_images");
   reset.addEventListener("click",()=>{
-    if(!confirm("Réinitialiser toutes les URLs personnalisées ?"))return;
+    if(!confirm(t("set_reset_confirm")))return;
     state.images=defaults();state.mode="auto";state.season="auto";persist();
     settings.querySelectorAll("label").forEach(l=>{
       const input=l.querySelector('input[type="text"]');
@@ -922,6 +923,9 @@ export function createPhotoView({ensureScene=null}={}) {
     waxing_gibbous:"🌔",full_moon:"🌕",waning_gibbous:"🌖",
     last_quarter:"🌗",waning_crescent:"🌘"
   })[moonPhase(value)]||"🌙";
+  const weatherTestLabel=key=>({clear:"☀ "+t(lang,"label_clear"),cloudy:"☁ "+t(lang,"label_cloudy"),rain:"🌧 "+t(lang,"label_rain"),
+    storm:t(lang,"test_storm"),snow:"❄ "+t(lang,"label_snow"),wind:"💨 "+t(lang,"label_wind"),fog:"🌫 "+t(lang,"label_fog"),frost:"🧊 "+t(lang,"label_frost")})[key]||key;
+  const moonGlyph={new_moon:"🌑",waxing_crescent:"🌒",first_quarter:"🌓",waxing_gibbous:"🌔",full_moon:"🌕",waning_gibbous:"🌖",last_quarter:"🌗",waning_crescent:"🌘"};
   function applyLang(){
     photoBtn.textContent=t(lang,"view_photo");
     planBtn.textContent=t(lang,"view_plan");
@@ -937,12 +941,51 @@ export function createPhotoView({ensureScene=null}={}) {
     effectsBtn.title=t(lang,"effects_title");
     h.textContent=t(lang,"settings_title");
     close.textContent=t(lang,"settings_close");
+    note.textContent=t(lang,"set_intro");
     legend.textContent=t(lang,"test_legend");
     frostTest.textContent=t(lang,"frost_add");
     resetTest.textContent=t(lang,"reset_test");
     const strengthText=strengthLabel.firstChild;
     if(strengthText&&strengthText.nodeType===3)strengthText.textContent=t(lang,"intensity");
     error.textContent=t(lang,"image_unreachable");
+    if(mainPhotoInput.parentElement.firstChild?.nodeType===3)mainPhotoInput.parentElement.firstChild.textContent=t(lang,"set_main_photo");
+    previewBtn.textContent=t(lang,"ed_check");
+    previewThumbnail.alt=t(lang,"set_main_alt");
+    uploadLegend.textContent=t(lang,"set_upload_legend");
+    uploadSlot.setAttribute("aria-label",t(lang,"set_upload_slot"));
+    const slotVal=uploadSlot.value;fillUploadSlot();uploadSlot.value=slotVal;
+    uploadBtn.textContent=t(lang,"set_upload_choose");
+    swapText.textContent=t(lang,"set_photos");
+    baseNotice.textContent=t(lang,"set_photos_help");
+    effectText.textContent=t(lang,"set_effects");
+    frostText.textContent=t(lang,"set_frost");
+    reset.textContent=t(lang,"set_reset_images");
+    if(testWeatherSelect.parentElement.firstChild?.nodeType===3)testWeatherSelect.parentElement.firstChild.textContent=t(lang,"set_test_weather");
+    for(const o of testWeatherSelect.options)o.textContent=o.value==="auto"?t(lang,"set_test_weather_real"):weatherTestLabel(o.value);
+    if(testTimeSelect.parentElement.firstChild?.nodeType===3)testTimeSelect.parentElement.firstChild.textContent=t(lang,"set_test_time");
+    for(const o of testTimeSelect.options)o.textContent=o.value==="auto"?t(lang,"set_test_time_real"):t(lang,o.value==="day"?"time_day":"time_night");
+    for(const [key,btn] of testButtons)btn.textContent=weatherTestLabel(key);
+    for(const [key,btn] of timeButtons)btn.textContent=t(lang,key==="day"?"set_force_day":"set_force_night");
+    const seasonIcon={spring:"🌸 ",summer:"☀ ",autumn:"🍂 ",winter:"❄ "};
+    for(const [key,btn] of seasonTests)btn.textContent=(seasonIcon[key]||"")+t(lang,"label_"+key);
+    if(moonPreview.parentElement.firstChild?.nodeType===3)moonPreview.parentElement.firstChild.textContent=t(lang,"moonPreview");
+    for(const o of moonPreview.options)o.textContent=o.value==="auto"?t(lang,"moonFromSensor"):(moonGlyph[o.value]||"")+" "+labelOf(lang,"moon_"+o.value);
+    if(selectMode.parentElement.firstChild?.nodeType===3)selectMode.parentElement.firstChild.textContent=t(lang,"set_ambience");
+    for(const o of selectMode.options)o.textContent=o.value==="auto"?t(lang,"set_ambience_auto"):(labelOf(lang,o.value)||o.value);
+    const mt=motionLocale(lang);
+    motionTitle.textContent=mt.title;motionSelect.setAttribute("aria-label",mt.title);
+    for(const o of motionSelect.options)o.textContent=mt[o.value];
+    motionHint.textContent=mt.hint;motionReduced.textContent=mt.reduced;
+    for(const [key,field] of entityFields){
+      if(field.label.firstChild?.nodeType===3&&ENTITY_TITLES[key])field.label.firstChild.textContent=t(lang,ENTITY_TITLES[key]);
+      field.search.placeholder=t(lang,"set_search");
+    }
+    for(const key of KEYS){
+      const input=imageSlotInputs[key];const lab=input?.parentElement?.firstChild;
+      if(lab&&lab.nodeType===3)lab.textContent=t(lang,"set_image_slot",{name:labelOf(lang,key)||LABELS[key]});
+    }
+    paintStatus(imageCheck);paintStatus(uploadStatus);
+    image.alt=t(lang,"set_photo_alt");
     setBar(nav.classList.contains("collapsed"));
   }
   function update(){
@@ -1042,7 +1085,7 @@ export function createPhotoView({ensureScene=null}={}) {
   image.addEventListener("error",()=>{
     if(currentSrc!==DEFAULT){
       failedImages.add(currentSrc);
-      imageCheck.textContent="Image inaccessible — retour à la photo officielle";
+      setStatus(imageCheck,"set_image_fallback");
       update();
       return;
     }
@@ -1308,6 +1351,7 @@ export function createPhotoView({ensureScene=null}={}) {
     writeLocal:v=>localStorage.setItem(STORAGE,JSON.stringify(v))
   });
   requestEntities();watchLights(true);
+  onUiLang(code=>{lang=code;applyLang();renderLightSettings();for(const key of SENSOR_KEYS)renderEntityField(key,true);renderOverrides();update()});
   applyLang();
   weatherWait=setTimeout(()=>{markWeatherReady();update()},WEATHER_WAIT_MS);
   update();

@@ -70,11 +70,11 @@ export function saveToHa(patch){
 export const haStorageStatus=()=>({inFrame,connected,canSave});
 /** Upload a photo through the parent (saved in /config/www/maison3d/); resolves {ok,url,error}. */
 export function uploadToHa(file,name){
-  if(!inFrame||!canSave)return Promise.resolve({ok:false,url:"",error:"administrateur Home Assistant requis"});
+  if(!inFrame||!canSave)return Promise.resolve({ok:false,url:"",error:"admin_required"});
   const id=++uploadId;
   return new Promise(resolve=>{
     uploads.set(id,resolve);
-    setTimeout(()=>{if(uploads.delete(id))resolve({ok:false,url:"",error:"délai dépassé"})},120000);
+    setTimeout(()=>{if(uploads.delete(id))resolve({ok:false,url:"",error:"timeout"})},120000);
     window.parent.postMessage({type:"maison3d:upload",id,file,name},window.location.origin);
   });
 }

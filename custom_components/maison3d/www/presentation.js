@@ -1,18 +1,19 @@
 /** Cinematic presets for the editable 3D property, not a replacement image. */
 import {onHaData} from "./ha-storage.js";
+import {t,onUiLang} from "./i18n.js";
 import {registerSection,markSaved,changed} from "./draft.js";
 export function createPresentation({THREE,camera,controls}) {
   const presets={
-    reference:{position:[-12,23,56],target:[0,1,1],fov:45,label:"Façade"},
-    elevated:{position:[31,29,43],target:[1,1,-2],fov:49,label:"Aérienne"},
-    garden:{position:[-26,14,-27],target:[1,2,3],fov:52,label:"Jardin"},
-    garage:{position:[39,16,39],target:[18,1,5],fov:48,label:"Garage"}
+    reference:{position:[-12,23,56],target:[0,1,1],fov:45,labelKey:"pres_facade"},
+    elevated:{position:[31,29,43],target:[1,1,-2],fov:49,labelKey:"pres_aerial"},
+    garden:{position:[-26,14,-27],target:[1,2,3],fov:52,labelKey:"pres_garden"},
+    garage:{position:[39,16,39],target:[18,1,5],fov:48,labelKey:"pres_garage"}
   };
   let destination=null;
   let selected="reference";
   const root=document.createElement("nav");
   root.id="maison3d-presentation";
-  root.setAttribute("aria-label","Vues 3D Maison 3D");
+  root.setAttribute("aria-label",t("pres_nav"));
   const style=document.createElement("style");
   style.textContent=[
     "#maison3d-presentation{position:fixed;right:12px;top:10px;z-index:6;display:flex;",
@@ -59,19 +60,19 @@ export function createPresentation({THREE,camera,controls}) {
     changed();
   }
   for(const [key,preset] of Object.entries(presets)){
-    buttons.set(key,button(preset.label,()=>changeView(key)));
+    buttons.set(key,button(t(preset.labelKey),()=>changeView(key)));
   }
   let presentation=true;
   try{presentation=localStorage.getItem("maison3d:presentation")!=="false"}catch{}
-  const mode=button("✎ Édition",()=>{
+  const mode=button(t("pres_edit"),()=>{
     presentation=!presentation;
     document.documentElement.classList.toggle("presentation-mode",presentation);
-    mode.textContent=presentation?"✎ Édition":"▣ Présentation";
+    mode.textContent=presentation?t("pres_edit"):t("pres_present");
     changed();
   });
   document.body.appendChild(root);
   document.documentElement.classList.toggle("presentation-mode",presentation);
-  mode.textContent=presentation?"✎ Édition":"▣ Présentation";
+  mode.textContent=presentation?t("pres_edit"):t("pres_present");
   if(document.documentElement.classList.contains("card-mode"))mode.hidden=true;
   const stored=(()=>{try{return localStorage.getItem("maison3d:view:v1")}catch{return null}})();
   changeView(Object.prototype.hasOwnProperty.call(presets,stored)?stored:"reference",true);
@@ -90,13 +91,19 @@ export function createPresentation({THREE,camera,controls}) {
     if(typeof view.presentation==="boolean"&&view.presentation!==presentation){
       presentation=view.presentation;
       document.documentElement.classList.toggle("presentation-mode",presentation);
-      mode.textContent=presentation?"✎ Édition":"▣ Présentation";
+      mode.textContent=presentation?t("pres_edit"):t("pres_present");
       try{localStorage.setItem("maison3d:presentation",String(presentation))}catch{}
     }
     if(Object.prototype.hasOwnProperty.call(presets,view.preset)&&view.preset!==selected)changeView(view.preset,true);
     try{localStorage.setItem("maison3d:view:v1",selected)}catch{}
     markSaved("view");
   });
+  function paintPresentation(){
+    root.setAttribute("aria-label",t("pres_nav"));
+    for(const [key,preset] of Object.entries(presets)){const b=buttons.get(key);if(b)b.textContent=t(preset.labelKey)}
+    mode.textContent=presentation?t("pres_edit"):t("pres_present");
+  }
+  onUiLang(paintPresentation);
   function frame(){
     if(!destination)return;
     camera.position.lerp(destination.position,.09);

@@ -3,6 +3,7 @@
  * when the bundled barn example applies, and the button labels.
  * Pure functions, no DOM and no three.js (unit-testable in Node).
  */
+import {t} from "./i18n.js";
 export const VISIT_TYPES=new Set(["building"]);
 /** Default visits shown before the 3D project is loaded. */
 export const DEFAULT_VISIT_BUILDINGS=[
@@ -10,7 +11,7 @@ export const DEFAULT_VISIT_BUILDINGS=[
   {id:"grange",name:"Grange / salle de jeux indépendante",type:"building",interior:"barn"}
 ];
 /** Optional notice for schematic interiors (hidden by default). */
-export const INTERIOR_DISCLAIMER="Volumes intérieurs provisoires — plans à confirmer";
+export const INTERIOR_DISCLAIMER=()=>t("interior_disclaimer");
 /** Compact 3D chrome: iPhone 390 px portrait or landscape, and other small windows. */
 export const COMPACT_WIDTH=700,COMPACT_HEIGHT=500;
 export function isCompactView(width,height){
@@ -55,23 +56,23 @@ export function shortBuildingName(item){
 }
 
 export function visitButtonLabel(item){
-  if(!item)return "🚪 Intérieur";
-  if(item.id==="maison")return "🚪 Intérieur maison";
-  if(item.id==="grange")return "🏚 Intérieur grange";
+  if(!item)return t("visit_interior");
+  if(item.id==="maison")return t("visit_maison");
+  if(item.id==="grange")return t("visit_grange");
   const name=shortBuildingName(item);
-  return name?`🚪 Intérieur ${name}`:"🚪 Intérieur";
+  return name?t("visit_named",{name}):t("visit_interior");
 }
 
 /** « 📷 Photo de la grange », or « Photo du bâtiment » with its name. */
 export function photoButtonLabel(item,showingPhoto=false){
-  if(showingPhoto)return "⬡ Vue 3D";
-  if(!item)return "📷 Photo du bâtiment";
-  if(item.id==="grange"||/grange/i.test(String(item.name||"")))return "📷 Photo de la grange";
+  if(showingPhoto)return t("visit_photo_3d");
+  if(!item)return t("visit_photo_building");
+  if(item.id==="grange"||/grange/i.test(String(item.name||"")))return t("visit_photo_barn");
   const name=shortBuildingName(item);
-  return name?`📷 Photo de ${name}`:"📷 Photo du bâtiment";
+  return name?t("visit_photo_named",{name}):t("visit_photo_building");
 }
 
 export function photoButtonTitle(item){
-  const name=shortBuildingName(item)||"bâtiment";
-  return `Afficher la photo de l'intérieur de ${name}`;
+  const name=shortBuildingName(item)||t("building_fallback");
+  return t("visit_photo_title",{name});
 }

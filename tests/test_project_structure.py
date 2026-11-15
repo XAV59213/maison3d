@@ -23,7 +23,7 @@ class TestMaison3D(unittest.TestCase):
         self.assertIn("interior.attach({THREE,scene,camera,controls",page)
         self.assertIn('interior?.refresh()',page)
         for marker in (
-            'add("outside","↩ Extérieur")',
+            'add("outside",t("visit_outside"))',
             'visitBuildings',
             'isBarnInterior',
             'syncVisitButtons',
@@ -38,7 +38,9 @@ class TestMaison3D(unittest.TestCase):
         ):
             self.assertIn(marker,module)
         visits=(COMPONENT/"www"/"visits.js").read_text(encoding="utf-8")
-        self.assertIn("Volumes intérieurs provisoires",visits)
+        i18n=(COMPONENT/"www"/"i18n.js").read_text(encoding="utf-8")
+        self.assertIn("Volumes intérieurs provisoires",i18n)
+        self.assertIn('interior_disclaimer',visits)
         self.assertIn('visitButtonLabel',visits)
 
     def test_realistic_barn_interior(self):
@@ -60,12 +62,13 @@ class TestMaison3D(unittest.TestCase):
         self.assertLess(photo.stat().st_size,400_000)
         for marker in ("rack","bureau","table","canapé","écran de projection","bar","moto","volière","armoires","arcade"):
             self.assertIn(marker,barn.lower())
+        catalog=module+(www/"i18n.js").read_text(encoding="utf-8")
         for marker in ("📷 Photo de la grange","⬡ Vue 3D","maison3d-interior-photo","drawBarn(building)",
                        "camera.layers.set(BARN_LAYER)","camera.layers.mask=layersBefore","interior-barn",
                        "isBarnInterior(building)","hasInteriorPhoto"):
-            self.assertIn(marker,module)
+            self.assertIn(marker,catalog)
         self.assertIn('interior:"barn"', (www/"scene3d.js").read_text(encoding="utf-8"))
-        self.assertIn("Aménagement réaliste (projet exemple)", (www/"scene3d.js").read_text(encoding="utf-8"))
+        self.assertIn("Aménagement réaliste (projet exemple)", (www/"i18n.js").read_text(encoding="utf-8"))
 
     def test_three_loaded_on_demand(self):
         """The photo and the Lovelace card never load three.js: only the 3D view / plan / interior visits do."""
@@ -224,12 +227,14 @@ class TestMaison3D(unittest.TestCase):
         www = COMPONENT / "www"
         motion = (www / "motion-level.js").read_text(encoding="utf-8")
         photo = (www / "photo-view.js").read_text(encoding="utf-8")
+        i18n = (www / "i18n.js").read_text(encoding="utf-8")
         self.assertIn('export const MOTION_MODES=["auto","always","never"];', motion)
         self.assertIn("export function motionLevel(){", motion)
         self.assertIn('MOTION_QUERY="(prefers-reduced-motion: reduce)"', motion)
         self.assertIn("MOTION_REDUCED=.2", motion)
-        self.assertIn("animations réduites par le système", motion)
-        self.assertIn("animations reduced by the system", motion)
+        self.assertIn("animations réduites par le système", i18n)
+        self.assertIn("animations reduced by the system", i18n)
+        self.assertIn("motion_reduced", motion)
         for name in ("season-effects.js", "photo-cinematics.js", "frost-effects.js",
                      "weather-effects.js", "world-ambience.js", "photo-view.js"):
             source = (www / name).read_text(encoding="utf-8")
@@ -688,7 +693,8 @@ class TestMaison3D(unittest.TestCase):
         self.assertNotIn("persist()", chooser)
         self.assertIn("const PREVIEW_MS=Number(globalThis.__maison3dPreviewMs)||120000;", photo)
         self.assertIn("testButtons.set(key,btn)", photo)
-        self.assertIn('resetTest.textContent="◉ Revenir à la météo réelle"', photo)
+        self.assertIn('resetTest.textContent=t("reset_test")', photo)
+        self.assertIn("◉ Revenir à la météo réelle", (COMPONENT / "www" / "i18n.js").read_text(encoding="utf-8"))
         for phase in ("new_moon","waxing_crescent","first_quarter",
                       "waxing_gibbous","full_moon","waning_gibbous",
                       "last_quarter","waning_crescent"):
@@ -840,6 +846,7 @@ class TestMaison3D(unittest.TestCase):
         page = app_page()
         presentation = (www / "presentation.js").read_text(encoding="utf-8")
         draft = (www / "draft.js").read_text(encoding="utf-8")
+        i18n = (www / "i18n.js").read_text(encoding="utf-8")
         self.assertIn("const persist=()=>changed();", photo)
         self.assertIn("function save(){changed()}", page)
         # The only direct writes left: draft.js (on click), the one-time migration and the HA cache.
@@ -849,10 +856,12 @@ class TestMaison3D(unittest.TestCase):
         # + the folded / unfolded card bar (display state, not a setting).
         self.assertEqual(photo.count("localStorage.setItem("), 3)
         self.assertEqual(photo.count("localStorage.setItem(BAR_KEY,"), 1)
-        self.assertIn('textContent="💾 Enregistrer"', draft)
-        self.assertIn('textContent="↶ Annuler"', draft)
-        self.assertIn("● Modifications non enregistrées", draft)
-        self.assertIn('"Enregistré ✓"', draft)
+        self.assertIn('textContent=t("save_btn")', draft)
+        self.assertIn('cancel.textContent=t("undo_btn")', draft)
+        self.assertIn("💾 Enregistrer", i18n)
+        self.assertIn("↶ Annuler", i18n)
+        self.assertIn("● Modifications non enregistrées", i18n)
+        self.assertIn("Enregistré ✓", i18n)
         self.assertIn('window.addEventListener("beforeunload"', draft)
         self.assertIn('type:"maison3d:dirty"', draft)
         for name in ("maison3d-panel.js", "maison3d-card.js"):

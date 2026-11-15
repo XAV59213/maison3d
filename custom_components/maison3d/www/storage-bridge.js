@@ -7,9 +7,9 @@ export const SAVE_DELAY=800;
 export const UPLOAD_MAX=10*1024*1024;
 /** Send one image to /api/maison3d/upload (admin); resolves with {url,file,size}. */
 export async function uploadPhoto(hass,file,name=""){
-  if(!(file instanceof Blob))throw new Error("aucun fichier");
-  if(file.size>UPLOAD_MAX)throw new Error("fichier trop gros (10 Mo max)");
-  if(!/^image\/(jpeg|png|webp)$/.test(file.type))throw new Error("format refusé (jpg, png ou webp)");
+  if(!(file instanceof Blob))throw new Error("no_file");
+  if(file.size>UPLOAD_MAX)throw new Error("too_big");
+  if(!/^image\/(jpeg|png|webp)$/.test(file.type))throw new Error("bad_format");
   const form=new FormData();
   form.append("name",String(name).slice(0,80));
   form.append("file",file,file.name||"photo.jpg");
@@ -50,7 +50,7 @@ export function createStorageBridge({getFrame,getHass,delay=SAVE_DELAY}){
   }
   async function upload({id,file,name}){
     const reply=result=>send({type:"maison3d:upload-result",id,...result});
-    if(!isAdmin()){reply({ok:false,error:"administrateur requis"});return}
+    if(!isAdmin()){reply({ok:false,error:"admin_required"});return}
     try{const result=await uploadPhoto(getHass(),file,name);reply({ok:true,url:result.url})}
     catch(err){reply({ok:false,error:String(err?.message||err)})}
   }
