@@ -155,7 +155,7 @@ export function createLightOverlay({container,image,after=null,onToggle}){
     last=next;
     const {lights,live,night,markers,clickable,lang}=next;
     const box={naturalWidth:image.naturalWidth||1286,naturalHeight:image.naturalHeight||914,width:container.clientWidth,height:container.clientHeight};
-    const base=Math.max(40,Math.min(box.width,box.height)*.2);
+    const base=Math.max(60,Math.min(box.width,box.height)*.3);
     const keep=new Set();
     for(const light of lights){
       keep.add(light.entity_id);
@@ -173,10 +173,10 @@ export function createLightOverlay({container,image,after=null,onToggle}){
       node.halo.hidden=!halo;
       node.halo.dataset.entity=light.entity_id;
       if(halo){
-        const size=base*(.55+.45*halo.strength);
-        const [r,g,b]=halo.rgb,a=Math.min(1,.5+.35*halo.strength);
+        const size=base*(.6+.5*halo.strength);
+        const [r,g,b]=halo.rgb,a=Math.min(1,.7+.3*halo.strength);
         Object.assign(node.halo.style,{left:left-size/2+"px",top:top-size/2+"px",width:size+"px",height:size+"px",
-          background:`radial-gradient(circle,rgba(255,255,255,${a}) 0%,rgba(${r},${g},${b},${a}) 9%,rgba(${r},${g},${b},${a*.42}) 32%,rgba(${r},${g},${b},0) 70%)`});
+          background:`radial-gradient(circle,rgba(255,255,255,${a}) 0%,rgba(${r},${g},${b},${a}) 6%,rgba(${r},${g},${b},${a*.72}) 20%,rgba(${r},${g},${b},${a*.32}) 42%,rgba(${r},${g},${b},0) 70%)`});
       }
       const state=live[light.entity_id]?.state;
       const label=light.name||live[light.entity_id]?.name||light.entity_id;
@@ -184,7 +184,7 @@ export function createLightOverlay({container,image,after=null,onToggle}){
       node.dot.dataset.clickable=clickable?"1":"0";
       node.dot.dataset.entity=light.entity_id;
       node.dot.dataset.state=state||"";
-      node.dot.classList.toggle("on",state==="on");
+      node.dot.classList.toggle("lit",state==="on");
       node.dot.classList.toggle("marker",markers);
       node.dot.textContent=markers?"💡 "+label:"";
       node.dot.title=clickable?say(lang,"clickTitle",{name:label}):label+" · "+(say(lang,state||"missing"));
@@ -205,10 +205,12 @@ export const LIGHT_STYLE=
   "#maison3d-photo-view .light-halo[hidden]{display:none}"+
   "#maison3d-photo-view .light-dot{position:absolute;transform:translate(-50%,-50%);min-width:30px;min-height:30px;border-radius:15px;"+
   "border:2px solid #ffffffb0;background:#10192366;color:#fff;font:11px system-ui;padding:2px 7px;cursor:pointer;pointer-events:auto;white-space:nowrap}"+
-  "#maison3d-photo-view .light-dot:not(.marker){background:transparent;border-color:#ffffff40;width:34px;height:34px;padding:0}"+
-  "#maison3d-photo-view .light-dot.on{border-color:#ffd27a}"+
+  "#maison3d-photo-view .light-dot:not(.marker){background:transparent!important;border-color:#ffffff40;width:34px;height:34px;padding:0}"+
+  "#maison3d-photo-view .light-dot.lit{border-color:#ffd27a}"+
   "#maison3d-photo-view .light-dot[hidden]{display:none}"+
   "#maison3d-photo-view.placing-light{cursor:crosshair}"+
+  // Placing a light: the whole photo is free (the command bar comes back after the click).
+  "html.placing-light #maison3d-photo-controls{display:none!important}"+
   "#maison3d-photo-view .light-placing{position:absolute;left:50%;top:14px;transform:translateX(-50%);z-index:3;background:#1579eaee;color:#fff;"+
   "font:13px system-ui;padding:9px 14px;border-radius:10px;max-width:86%;text-align:center;box-shadow:0 6px 18px #0007}"+
   "#maison3d-photo-view .light-placing[hidden]{display:none}"+

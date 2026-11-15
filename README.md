@@ -45,6 +45,8 @@ Elle propose deux vues complémentaires :
 - 🎮 **Prévisualisation manuelle de chaque état**, sans modifier les entités Home Assistant.
 - 🩺 Sélection de capteurs et état de disponibilité depuis l'intégration.
 - 🎨 **19 emplacements d'images configurables** pour les météos, saisons et phases lunaires.
+- 💡 **Lumières extérieures la nuit** : halos sur la photo quand les `light.*` / `switch.*` placées sont allumées (bascule d'un clic en option).
+- 🩺 **Capteurs de diagnostic** : saison, mode des saisons, photo, ambiance et jour / nuit calculés par Home Assistant.
 
 ## 🖼️ Choisir sa propre photo — v2.3.6
 
@@ -217,6 +219,37 @@ Un capteur choisi dont la valeur n'est pas reconnue, `unavailable`, `unknown` ou
 La page de l'appareil Maison 3D propose **un seul capteur de diagnostic, « État des capteurs »** (traduit en français et en anglais) : `OK`, `Non configuré` ou `Dégradé` (`degraded` : une source introuvable, inconnue ou indisponible). Pendant les **30 secondes qui suivent le démarrage complet de Home Assistant**, une entité encore introuvable (Netatmo, Météo-France… chargées tard) ne rend pas le capteur `Dégradé`. Les attributs `sensor_statuses` et `entities` ne sont pas enregistrés dans l'historique (recorder). Le détail de chaque source (météo, soleil, lune, température…) est dans son attribut **`sensor_statuses`** (`ok`, `not_configured`, `not_found`, `unknown`, `unavailable`). Il vérifie la disponibilité des entités, pas l'exactitude météorologique d'une mesure.
 
 > **Mise à jour depuis une ancienne version :** les 8 anciens capteurs « … - état » (un par source) sont supprimés automatiquement au démarrage ; le capteur général garde son identifiant (`sensor.maison_3d_etat_des_capteurs`). Ses valeurs internes sont `ok` / `not_configured` / `degraded` (affichées traduites) : adaptez les automatisations qui testaient `OK`, `Non configuré`, `Indisponible` ou l'ancienne valeur `unavailable` (remplacée par `degraded`, pour ne plus être confondue avec l'état « indisponible » de Home Assistant). Une seule intégration Maison 3D peut être ajoutée, comme avant.
+
+## 🩺 Capteurs de diagnostic de la vue
+
+L'appareil **Maison 3D** expose, en plus de « État des capteurs », cinq capteurs de diagnostic (catégorie *Diagnostic*, noms traduits FR/EN) :
+
+| entity_id | unique_id | État | Attributs |
+|---|---|---|---|
+| `sensor.maison3d_season_mode` | `<entry_id>_season_mode` | `auto` / `fixed` | `fixed_season` |
+| `sensor.maison3d_season` | `<entry_id>_season` | `spring` / `summer` / `autumn` / `winter` | — |
+| `sensor.maison3d_photo` | `<entry_id>_photo` | nom du fichier de la photo affichée | `url` (complète, non historisée), `source`, `weather_photos` |
+| `sensor.maison3d_ambience` | `<entry_id>_ambience` | `day`, `night`, `cloudy`, `rain`, `snow`, `wind`, `storm`, `fog` ou une saison | `ambience_mode`, `weather_kind`, `frost`, `effects`, `entities` (non historisé) |
+| `sensor.maison3d_day_night` | `<entry_id>_day_night` | `day` / `night` | `source` (`sun`, `clock` ou `fixed_ambience`) |
+
+**Calcul côté Home Assistant** : les valeurs sont recalculées par l'intégration (même règles que la vue, portées en Python dans `state_logic.py` et vérifiées contre le JavaScript par les tests) à partir des réglages enregistrés (💾) et des entités Home Assistant (météo, soleil, lune, capteurs). Elles sont donc connues sans navigateur ouvert et identiques pour tout le monde. Mise à jour à chaque 💾 Enregistrer, à chaque changement d'une entité utilisée, et toutes les 5 minutes (saison, heure sans entité soleil).
+
+Ce qui reste propre au navigateur n'est **pas** reflété : le mode test (☾ / ☀ / météo forcée), les réglages propres à une carte Lovelace (entités, images, options de la carte) et le repli quand une image ne se charge pas dans le navigateur. Pas de `select` : changer la saison ou l'ambiance passe par le brouillon 💾 de la vue.
+
+## 💡 Lumières extérieures la nuit
+
+Dans **⚙ Images / météo → 💡 Lumières extérieures** :
+
+1. choisir une entité `light.*` ou `switch.*` (liste filtrée) puis **➕ Ajouter** ;
+2. toucher la photo à l'emplacement de la lampe (📍 **Placer** pour la déplacer ensuite, Échap pour annuler) ;
+3. régler le nom, la couleur du halo et l'intensité ; **✕ Retirer** pour l'enlever ;
+4. **💾 Enregistrer** : les lumières font partie des réglages de la photo (brouillon, ↶ Annuler possible), partagés par le panneau et les cartes.
+
+La nuit (soleil couché, ambiance Nuit ou ☾ Nuit réelle), un halo s'affiche **seulement si la lumière est allumée**, avec la couleur (`rgb_color`) et la luminosité (`brightness`) de la lampe ; un `switch` utilise la couleur choisie. Le jour, aucun halo. Rendu léger (CSS, sans three.js).
+
+**Allumer / éteindre d'un clic** (facultatif, **désactivé par défaut**) : « Administrateurs seulement » ou « Tous les utilisateurs Home Assistant ». Un clic sur la lampe appelle `light.toggle` / `switch.toggle` ; la carte et le panneau vérifient l'option et la liste des lumières, puis Home Assistant vérifie les droits (un refus s'affiche dans la bulle d'information).
+
+Le placement se fait à la souris / au doigt sur la photo : il n'est pas proposé dans les options de l'intégration (formulaire sans photo).
 
 ## 🖥️ Carte Lovelace prête à l'emploi
 

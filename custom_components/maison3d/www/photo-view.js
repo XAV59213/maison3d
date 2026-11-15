@@ -98,8 +98,8 @@ export function createPhotoView({ensureScene=null}={}) {
   error.className="photo-error";error.hidden=true;
   error.textContent="Image inaccessible : corrigez son URL dans les réglages Photo.";
   section.append(image,tint,cinematicCanvas,seasonalCanvas,canvas,frostCanvas,status,moon,error);
-  // Outdoor lights: halos (night, entity on) between the photo and the weather animations.
-  const lightOverlay=createLightOverlay({container:section,image,after:tint,onToggle:id=>requestToggle(id)});
+  // Outdoor lights: halos (night, entity on) over the photo and its night / weather layers.
+  const lightOverlay=createLightOverlay({container:section,image,after:frostCanvas,onToggle:id=>requestToggle(id)});
   const placingBanner=document.createElement("div");
   placingBanner.className="light-placing";placingBanner.hidden=true;placingBanner.setAttribute("role","status");
   section.append(placingBanner);
@@ -479,7 +479,7 @@ export function createPhotoView({ensureScene=null}={}) {
   testSection.append(resetTest);settings.append(testSection);
   // 💡 Outdoor lights: add / remove light.* or switch.*, name, halo colour, intensity,
   // position by a click on the photo, optional click to toggle. Everything is a draft change.
-  let lang=langOf(navigator.language),lightCandidates=null,lightLive={},userIsAdmin=false,placing=null,lightNotice="";
+  let lang="fr",lightCandidates=null,lightLive={},userIsAdmin=false,placing=null,lightNotice="";
   const lightsBox=document.createElement("fieldset");lightsBox.className="maison3d-lights-settings";
   const lightsLegend=document.createElement("legend");
   const lightsNote=document.createElement("p");
@@ -557,11 +557,13 @@ export function createPhotoView({ensureScene=null}={}) {
     const light=state.lights.find(l=>l.entity_id===id);if(!light)return;
     placing=id;settings.hidden=true;
     placingBanner.textContent=say(lang,"placing",{name:light.name||lightLive[id]?.name||id});
-    placingBanner.hidden=false;section.classList.add("placing-light");renderLights();
+    placingBanner.hidden=false;section.classList.add("placing-light");
+    document.documentElement.classList.add("placing-light");renderLights();
   }
   function stopPlacing(reopen=true){
     if(!placing)return;
     placing=null;placingBanner.hidden=true;section.classList.remove("placing-light");
+    document.documentElement.classList.remove("placing-light");
     if(reopen)settings.hidden=false;
     renderLights();
   }
@@ -996,7 +998,7 @@ export function createPhotoView({ensureScene=null}={}) {
       return;
     }
     if(event.data?.type!=="maison3d:conditions")return;
-    if(typeof event.data.language==="string"&&langOf(event.data.language)!==lang){lang=langOf(event.data.language);renderLightSettings()}
+    if(typeof event.data.language==="string"&&event.data.language&&langOf(event.data.language)!==lang){lang=langOf(event.data.language);renderLightSettings()}
     userIsAdmin=event.data.user_is_admin===true;
     const lightStates=event.data.light_states&&typeof event.data.light_states==="object"?event.data.light_states:{};
     lightLive={};
