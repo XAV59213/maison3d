@@ -7,7 +7,7 @@
 import {createPhotoCinematics} from "./photo-cinematics.js";
 import {createMoonOverlay} from "./moon-effects.js";
 import {automaticSeason,haHour,SEASON_LABELS,createSeasonEffects} from "./season-effects.js";
-import {DEFAULT_MAIN_PHOTO,allowedPhotoUrl,bundledPhoto,resolveMainPhoto,IMAGE_SLOTS,IMAGE_KEYS,pickWeatherPhoto,suggestedFileName} from "./photo-source.js";
+import {DEFAULT_MAIN_PHOTO,allowedPhotoUrl,bundledPhoto,resolveMainPhoto,IMAGE_SLOTS,IMAGE_KEYS,pickWeatherPhoto,suggestedFileName,responsiveSrcset,photoSizes} from "./photo-source.js";
 import {createFrostEffects,frostLevel,toCelsius} from "./frost-effects.js";
 import {onHaData,saveToHa,uploadToHa} from "./ha-storage.js";
 import {registerSection,markSaved,changed,createSaveControls,SAVE_STYLE} from "./draft.js";
@@ -609,6 +609,8 @@ export function createPhotoView({ensureScene=null}={}) {
   let haTimeZone="UTC";
   let lastAutoSeason="";
   let currentSrc="",active="day",lastFrame=0;
+  const imageSizes=()=>photoSizes({width:innerWidth,height:innerHeight,ratio:(image.naturalWidth/image.naturalHeight)||1286/914,dpr:devicePixelRatio||1});
+  addEventListener("resize",()=>{if(image.hasAttribute("srcset"))image.sizes=imageSizes()});
   let missingBundled=new Set();
   const failedImages=new Set();
   const isCardView=new URLSearchParams(window.location.search).get("mode")==="card";
@@ -661,7 +663,13 @@ export function createPhotoView({ensureScene=null}={}) {
     section.classList.toggle("night-photo",picked.nightPhoto&&!failedImages.has(candidate));
     const path=failedImages.has(candidate)
       ?(failedImages.has(mainPhoto)?DEFAULT:mainPhoto):candidate;
-    if(path!==currentSrc){currentSrc=path;image.src=path;error.hidden=true}
+    if(path!==currentSrc){
+      currentSrc=path;
+      // Bundled photos: 640 / 960 px copies (srcset); custom images stay as they are.
+      const srcset=responsiveSrcset(path);
+      if(srcset){image.sizes=imageSizes();image.srcset=srcset}else{image.removeAttribute("srcset");image.removeAttribute("sizes")}
+      image.src=path;error.hidden=true;
+    }
     const weatherTint=selected==="snow"||selected==="winter"?"linear-gradient(#e7f5ff18,#eaf7ff29)":
       selected==="storm"?"#101b3866":selected==="rain"?"#26344746":
       selected==="cloudy"?"#5b677523":selected==="fog"?"#c6ced62e":"transparent";

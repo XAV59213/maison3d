@@ -6,6 +6,7 @@
  *   de pièces attestées, un relevé ou des photos restent nécessaires.
  */
 import {buildBarnInterior,BARN_VIEW,BARN_PHOTO} from "./barn-interior.js";
+import {responsiveSrcset,photoSizes} from "./photo-source.js";
 // The buttons exist from the start (photo view included); the 3D part is attached by
 // scene3d.js once loaded: entering a building first asks ensureScene() to load it.
 export function createInteriorExplorer({photoView,ensureScene=null}){
@@ -55,7 +56,13 @@ export function createInteriorExplorer({photoView,ensureScene=null}){
   caption.textContent="Photo réelle — intérieur de la grange · « ⬡ Vue 3D » pour revenir à la 3D";
   realPhoto.append(realImg,caption);
   const showPhoto=on=>{
-    if(on&&!realImg.src)realImg.src=new URL(BARN_PHOTO,import.meta.url).href;
+    if(on){
+      // 640 / 960 / 1500 px copies: the phone loads the lightest one that stays sharp.
+      const full=new URL(BARN_PHOTO,import.meta.url);
+      realImg.sizes=photoSizes({width:innerWidth,height:innerHeight,ratio:1500/845,fit:"contain",dpr:devicePixelRatio||1});
+      if(!realImg.srcset)realImg.srcset=responsiveSrcset(full.pathname).replace(/\/maison3d-assets\/images\//g,new URL("./images/",import.meta.url).href);
+      if(!realImg.src)realImg.src=full.href;
+    }
     realPhoto.hidden=!on;photoBtn.setAttribute("aria-pressed",String(on));
     photoBtn.textContent=on?"⬡ Vue 3D":"📷 Photo réelle";
   };

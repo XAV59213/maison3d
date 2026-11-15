@@ -33,6 +33,7 @@ jobs:
           node --check custom_components/maison3d/www/photo-source.js
           node tests/test_main_photo.mjs
           node tests/test_weather_photos.mjs
+          node tests/test_responsive_photos.mjs
           node --check custom_components/maison3d/www/ha-storage.js
           node --check custom_components/maison3d/www/storage-bridge.js
           node tests/test_storage_bridge.mjs

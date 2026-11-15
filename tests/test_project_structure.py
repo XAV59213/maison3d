@@ -77,6 +77,21 @@ class TestMaison3D(unittest.TestCase):
         for name in ("photo-view.js", "interior-view.js", "barn-interior.js", "draft.js", "ha-storage.js"):
             self.assertNotRegex((www / name).read_text(encoding="utf-8"), r'from\s+"three', name)
 
+    def test_photo_srcset(self):
+        """Bundled photos get srcset/sizes (640 / 960 px copies); custom images do not."""
+        www = COMPONENT / "www"
+        source = (www / "photo-source.js").read_text(encoding="utf-8")
+        photo = (www / "photo-view.js").read_text(encoding="utf-8")
+        interior = (www / "interior-view.js").read_text(encoding="utf-8")
+        self.assertIn("export const RESPONSIVE_WIDTHS=[640,960];", source)
+        self.assertIn("export function responsiveSrcset(path)", source)
+        self.assertIn("export function photoSizes(", source)
+        self.assertIn('"/maison3d-assets/images/grange-interieur.webp":1500', source)
+        self.assertIn("if(srcset){image.sizes=imageSizes();image.srcset=srcset}else{image.removeAttribute(\"srcset\");image.removeAttribute(\"sizes\")}", photo)
+        self.assertIn("realImg.srcset=responsiveSrcset(", interior)
+        self.assertIn('fit:"contain"', interior)
+        self.assertTrue((ROOT / "scripts" / "generate_responsive_images.py").is_file())
+
     def test_manifest(self):
         manifest = json.loads((COMPONENT / "manifest.json").read_text(encoding="utf-8"))
         self.assertEqual(manifest["domain"], "maison3d")
@@ -200,11 +215,20 @@ class TestMaison3D(unittest.TestCase):
         # Exterior (house) photos share one frame; the real barn interior photo is separate.
         interior = www / "images" / "grange-interieur.webp"
         photos = [www / "maison3d-reference.webp",
-                  *sorted(p for p in (www / "images").glob("*.webp") if p != interior)]
+                  *sorted(p for p in (www / "images").glob("*.webp")
+                          if p != interior and not re.search(r"-(640|960)\.webp$", p.name))]
         self.assertEqual(len(photos), 19)
         for path in photos:
             self.assertEqual(webp_size(path), (1286, 914), path.name)
         self.assertEqual(webp_size(interior), (1500, 845))
+        # Lighter copies (srcset) of the main photo, the day/night photos and the barn photo.
+        for full in [www / "maison3d-reference.webp", interior,
+                     *sorted((www / "images").glob("*-jour.webp")), *sorted((www / "images").glob("*-nuit.webp"))]:
+            width, height = webp_size(full)
+            for w in (640, 960):
+                copy = full.with_name(f"{full.stem}-{w}.webp")
+                self.assertEqual(webp_size(copy), (w, round(height * w / width)), copy.name)
+                self.assertLess(copy.stat().st_size, full.stat().st_size, copy.name)
         # Bundled photos are WebP only (no JPEG copies left behind).
         self.assertEqual(sorted(p.name for p in www.rglob("*.jpg")), [])
         self.assertFalse((ROOT / "assets" / "maison3d-reference.jpg").exists())
