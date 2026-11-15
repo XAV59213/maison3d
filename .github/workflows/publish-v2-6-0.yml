@@ -1,0 +1,117 @@
+name: Publish Maison 3D v2.6.0
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/publish-v2-6-0.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    if: github.repository == 'XAV59213/maison3d'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Verify seasons in the bottom bar, entity selectors, effective values and version
+        run: |
+          python -m pip install --quiet voluptuous
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path("custom_components/maison3d")
+          www=root/"www"
+          manifest=json.loads((root/"manifest.json").read_text())
+          assert manifest["version"]=="2.6.0"
+          photo=(www/"photo-view.js").read_text()
+          panel=(www/"maison3d-panel.js").read_text()
+          card=(www/"maison3d-card.js").read_text()
+          editor=(www/"maison3d-card-editor.js").read_text()
+          values=(www/"sensor-values.js").read_text()
+          # PR #25 : saisons dans la barre du bas
+          assert "function placeSeasons(){" not in photo
+          assert "nav.append(seasonBreak,seasonalNav);" in photo
+          assert "document.body.append(section,nav,settings);" in photo
+          assert '"html.photo-active #maison3d-photo-controls{top:auto;bottom:10px}"' in photo
+          assert 'seasonPick.addEventListener("change",()=>chooseSeason(seasonPick.value));' in photo
+          # PR #26 : sélecteurs d'entités, valeurs effectives, préremplissage
+          assert '"maison3d:entity-options-request"' in photo and '"maison3d:entity-options"' in photo
+          assert "entities_effective" in photo and "state[key]=menuChoice(key,saved[key])" in photo
+          assert 'moon_entity:"sensor.moon_phase"' not in photo and 'moon_entity:"sensor.moon_phase"' not in panel
+          for name,src in (("panel",panel),("card",card)):
+              assert '"maison3d:entity-options-request"' in src, name
+              assert "entityOptions(" in src and "entities_effective" in src, name
+          assert '[["card",this._config],["menu",menu],["integration",integration]]' in card
+          assert '[["menu", this._choices], ["integration", configured]]' in panel
+          assert "control.entityFilter=entity=>entityMatches(key,entity);" in editor
+          for name in ("export function entityOptions","export function entityMatches","export function effectiveEntities","export function menuChoice","LEGACY_MENU_DEFAULTS"):
+              assert name in values, name
+          # Mots-clés en début de mot (« Bermerain » n'est pas « rain »)
+          assert "const wetWords=/(?:^|[^a-z])" in values and "const cloudWords=/(?:^|[^a-z])" in values
+          readme=Path("README.md").read_text()
+          assert "**Version actuelle : v2.6.0**" in readme and "Choisir les entités depuis la vue" in readme
+          PY
+          for f in custom_components/maison3d/www/*.js; do
+            node --check "$f"
+          done
+          for t in tests/*.mjs; do
+            node "$t"
+          done
+          python3 -m unittest discover -s tests -q
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          if gh release view v2.6.0 >/dev/null 2>&1; then
+            echo "v2.6.0 already exists"
+            exit 0
+          fi
+          cat >/tmp/notes.md <<'NOTES'
+          ## Maison 3D v2.6.0 — Saisons dans la barre du bas et sélecteurs d'entités
+
+          ### ⚠️ Changement de priorité des capteurs
+          - Un capteur **choisi dans le menu ⚙ Images / météo passe maintenant avant la configuration de l'intégration**. Avant, dans le panneau, ce choix était ignoré dès que l'intégration avait une valeur.
+          - L'ordre complet est : configuration de la carte → choix du menu → configuration de l'intégration → détection automatique.
+          - Le choix **Automatique** du menu reprend la configuration de l'intégration. Les anciennes valeurs fictives enregistrées par le menu (`sensor.moon_phase`, `sun.sun`) sont ignorées automatiquement.
+
+          ### 🍂 Saisons dans la barre du bas
+          - Printemps, Été, Automne, Hiver et Saisons auto quittent la colonne en haut à droite : ils font partie de la **barre de réglages en bas** de la vue photo.
+            - Sur grand écran, ils forment une ligne de boutons.
+            - Sur téléphone, en paysage et dans une carte étroite, ils deviennent un sélecteur **Saison** compact.
+          - En vue photo, la barre est en bas sur toutes les tailles d'écran. Il ne reste sur la photo que la bulle d'informations et la lune.
+          - Le choix de saison reste enregistré.
+
+          ### 🎛️ Sélecteurs d'entités
+          - Dans le menu ⚙, chaque capteur a un **sélecteur** rempli avec les entités Home Assistant adaptées :
+            - météo : `weather.*` ;
+            - soleil : `sun.*` ;
+            - lune : capteurs de phase ;
+            - température et vent : selon leur type ;
+            - nuages : capteurs en % ;
+            - pluie et neige : précipitations, humidité et vigilances Météo-France.
+          - Chaque entité est affichée avec son nom et son entity_id. Une recherche apparaît quand la liste est longue, et la saisie libre reste possible.
+          - L'éditeur de la carte utilise le sélecteur d'entités de Home Assistant, filtré de la même façon, et affiche la valeur héritée de l'intégration.
+
+          ### 🐞 Préremplissage corrigé
+          - Le menu affiche maintenant **l'entité réellement utilisée et d'où elle vient** (carte, menu, intégration ou détection automatique).
+          - Avant, il montrait des champs vides ou un faux `sensor.moon_phase` alors que l'intégration était configurée.
+          - Les mots-clés ne sont reconnus qu'en début de mot : un lieu comme « Bermerain » n'est plus pris pour un capteur de pluie.
+
+          ### Installer
+          Dans HACS, mettre à jour **Maison 3D vers v2.6.0**, redémarrer Home Assistant puis actualiser le navigateur (Ctrl + F5).
+
+          ### Contrôles
+          Les PR #25 et #26 ont passé :
+          - les tests Python et JavaScript, HACS et Hassfest ;
+          - des vérifications dans Chrome headless avec un Home Assistant simulé : absence de chevauchement sur iPhone en portrait et en paysage, dans une carte étroite et sur ordinateur ; sélecteurs, préremplissage et régressions.
+
+          Le rendu sur votre iPhone et votre Home Assistant réel reste à vérifier.
+          NOTES
+          sed -i 's/^          //' /tmp/notes.md
+          gh release create v2.6.0 --target "${GITHUB_SHA}" --latest --title "Maison 3D v2.6.0 — Saisons dans la barre du bas et sélecteurs d'entités" --notes-file /tmp/notes.md
