@@ -30,7 +30,8 @@
           "base_image_url": "Main photo (/local/…, /maison3d-media/…, HTTPS or media-source://…)",
           "effects_enabled": "Enable weather, lighting and seasonal effects",
           "frost_enabled": "Enable the frost effect when the temperature is at or below 0 °C",
-          "weather_photos_enabled": "Use the bundled/custom day and night weather photos"
+          "weather_photos_enabled": "Use the bundled/custom day and night weather photos",
+          "startup_grace_minutes": "Startup grace after Home Assistant start (0–60 min, default 15). During this time a late source (not found or unavailable, e.g. Netatmo) does not degrade the sensors status."
         }
       }
     },
@@ -59,6 +60,12 @@
           },
           "project_name": {
             "name": "Project name"
+          },
+          "startup_grace": {
+            "name": "Startup grace"
+          },
+          "startup_grace_minutes": {
+            "name": "Startup grace (minutes)"
           }
         }
       },

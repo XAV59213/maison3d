@@ -22,13 +22,9 @@ Elles sont générées à partir de `../maison3d-reference.webp` par `scripts/ge
 
 Pour les régénérer : `python3 scripts/generate_variant_images.py`.
 
-## Anciennes photos (conservées pour les configurations existantes)
+## Anciennes adresses (jour, nuageux, pluie, neige)
 
-`jour.webp`, `nuageux.webp`, `pluie.webp`, `neige.webp` restent accessibles (les anciennes adresses en `.jpg` aussi) sous `/maison3d-assets/images/…`, mais ne sont plus choisies automatiquement. Elles peuvent être (ré)importées depuis l'archive `maison3d_images_meteo.zip` avec :
-
-```bash
-python3 scripts/import_weather_images.py maison3d_images_meteo.zip
-```
+Les fichiers unsuffixed `jour.webp`, `nuageux.webp`, `pluie.webp` et `neige.webp` ne sont plus livrés. Les URL `/maison3d-assets/images/jour.webp` (ou `.jpg`), et de même pour `nuageux`, `pluie` et `neige`, sont redirigées vers les photos actuelles de jour : `clair-jour.webp`, `nuageux-jour.webp`, `pluie-jour.webp`, `neige-jour.webp`.
 
 ## Photo réelle de l'intérieur de la grange
 

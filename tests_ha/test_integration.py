@@ -61,10 +61,15 @@ async def test_single_translated_enum_sensor_and_cleanup(hass: HomeAssistant, tm
     assert state.attributes["sensor_statuses"]["weather_entity"]["state"] == "ok"
     assert state.attributes["sensor_statuses"]["moon_entity"]["state"] == "not_configured"
 
-    # An existing source that becomes unavailable is degraded at once (no grace).
+    # During the start-up grace period, unavailable is tolerated (late Netatmo).
     hass.states.async_set("weather.home", "unavailable")
     await hass.async_block_till_done()
+    assert hass.states.get(main.entity_id).state == "ok"
+    assert hass.states.get(main.entity_id).attributes["startup_grace"] is True
+    async_fire_time_changed(hass, dt_util.utcnow() + timedelta(minutes=15, seconds=1))
+    await hass.async_block_till_done()
     assert hass.states.get(main.entity_id).state == "degraded"
+    assert hass.states.get(main.entity_id).attributes["startup_grace"] is False
 
     assert entry.runtime_data.panel_registered is True
     assert entry.runtime_data.card_url.startswith("/maison3d-assets/maison3d-card.js?v=")
@@ -88,7 +93,7 @@ async def test_fresh_install_and_single_instance(hass: HomeAssistant, tmp_path) 
     # tolerated during the start-up grace period, degraded afterwards.
     assert state.state == "ok"
     assert state.attributes["startup_grace"] is True
-    async_fire_time_changed(hass, dt_util.utcnow() + timedelta(seconds=31))
+    async_fire_time_changed(hass, dt_util.utcnow() + timedelta(minutes=15, seconds=1))
     await hass.async_block_till_done()
     state = hass.states.get(entries[0].entity_id)
     assert state.state == "degraded"
@@ -136,11 +141,12 @@ async def test_startup_grace_for_late_entities(hass: HomeAssistant, tmp_path) ->
     hass.states.async_set("sensor.netatmo_wind", "12")
     await hass.async_block_till_done()
     assert hass.states.get(entity_id).state == "ok"
-    async_fire_time_changed(hass, dt_util.utcnow() + timedelta(seconds=40))
+    async_fire_time_changed(hass, dt_util.utcnow() + timedelta(minutes=16))
     await hass.async_block_till_done()
     state = hass.states.get(entity_id)
     assert state.state == "ok"
     assert state.attributes["sensor_statuses"]["wind_entity"]["state"] == "ok"
+    assert state.attributes["startup_grace"] is False
     # After the grace period a missing source is reported.
     hass.states.async_remove("sensor.netatmo_wind")
     await hass.async_block_till_done()
@@ -155,3 +161,29 @@ async def test_versioned_panel_url(hass: HomeAssistant, tmp_path) -> None:
     module_url = panel.config["_panel_custom"]["module_url"]
     assert module_url.startswith("/maison3d-assets/maison3d-panel.js?v=")
     assert module_url.split("?v=")[1] == entry.runtime_data.card_url.split("?v=")[1]
+
+
+async def test_startup_grace_unavailable_and_option(hass: HomeAssistant, tmp_path) -> None:
+    """Unavailable is tolerated during the configured grace, then reported."""
+    entry = await _entry(
+        hass, tmp_path,
+        options={"weather_entity": "weather.home", "sun_entity": "",
+                 "startup_grace_minutes": 2},
+    )
+    hass.states.async_set("weather.home", "unavailable")
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    _, entries = _sensor(hass)
+    entity_id = entries[0].entity_id
+    state = hass.states.get(entity_id)
+    assert state.state == "ok"
+    assert state.attributes["sensor_statuses"]["weather_entity"]["state"] == "unavailable"
+    assert state.attributes["startup_grace_minutes"] == 2
+    async_fire_time_changed(hass, dt_util.utcnow() + timedelta(minutes=1))
+    await hass.async_block_till_done()
+    assert hass.states.get(entity_id).state == "ok"
+    async_fire_time_changed(hass, dt_util.utcnow() + timedelta(minutes=2, seconds=1))
+    await hass.async_block_till_done()
+    state = hass.states.get(entity_id)
+    assert state.state == "degraded"
+    assert state.attributes["startup_grace"] is False

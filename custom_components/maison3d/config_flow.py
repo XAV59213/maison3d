@@ -9,7 +9,15 @@ from homeassistant import config_entries
 from homeassistant.core import callback
 from homeassistant.helpers import selector
 
-from .const import DEFAULT_PROJECT_NAME, DOMAIN, PROJECT_NAME_MAX
+from .const import (
+    DEFAULT_PROJECT_NAME,
+    DEFAULT_STARTUP_GRACE_MINUTES,
+    DOMAIN,
+    MAX_STARTUP_GRACE_MINUTES,
+    MIN_STARTUP_GRACE_MINUTES,
+    PROJECT_NAME_MAX,
+    startup_grace_minutes,
+)
 
 SENSOR_OPTIONS = {
     "weather_entity": ("weather",),
@@ -97,6 +105,11 @@ class Maison3DOptionsFlow(config_entries.OptionsFlowWithReload):
                 options["effects_enabled"] = bool(user_input.get("effects_enabled", True))
                 options["frost_enabled"] = bool(user_input.get("frost_enabled", True))
                 options["weather_photos_enabled"] = bool(user_input.get("weather_photos_enabled", False))
+                options["startup_grace_minutes"] = startup_grace_minutes(
+                    {"startup_grace_minutes": user_input.get(
+                        "startup_grace_minutes", DEFAULT_STARTUP_GRACE_MINUTES
+                    )}
+                )
                 return self.async_create_entry(data=options)
 
         schema = {}
@@ -137,6 +150,21 @@ class Maison3DOptionsFlow(config_entries.OptionsFlowWithReload):
                 else self.config_entry.options.get("weather_photos_enabled", False)
             ),
         })] = selector.BooleanSelector()
+        schema[vol.Optional("startup_grace_minutes", description={
+            "suggested_value": (
+                user_input.get("startup_grace_minutes", DEFAULT_STARTUP_GRACE_MINUTES)
+                if user_input is not None
+                else self.config_entry.options.get(
+                    "startup_grace_minutes", DEFAULT_STARTUP_GRACE_MINUTES
+                )
+            ),
+        })] = selector.NumberSelector(selector.NumberSelectorConfig(
+            min=MIN_STARTUP_GRACE_MINUTES,
+            max=MAX_STARTUP_GRACE_MINUTES,
+            step=1,
+            mode=selector.NumberSelectorMode.BOX,
+            unit_of_measurement="min",
+        ))
         return self.async_show_form(
             step_id="init",
             data_schema=vol.Schema(schema),

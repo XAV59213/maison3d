@@ -1,7 +1,7 @@
 // Cache-busting: the ?v=<version> of this module's URL is passed to its own imports.
 const VERSION=new URL(import.meta.url).searchParams.get("v")||"";
 const V=VERSION?"?v="+encodeURIComponent(VERSION):"";
-const [,{IMAGE_KEYS},{createStorageBridge},{createMediaResolver},{createHassTracker,isWeather},{readSensor,precipitation,sensorIssues,windKmh,menuChoice,effectiveEntities,entityOptions,ENTITY_KEYS},{createLightBridge,lightOptions}]=await Promise.all(["./maison3d-card-editor.js", "./photo-source.js", "./storage-bridge.js", "./media-resolver.js", "./hass-tracker.js", "./sensor-values.js", "./lights.js"].map(m=>import(m+V)));
+const [,{IMAGE_KEYS},{createStorageBridge},{createMediaResolver},{createHassTracker,isWeather},{readSensor,precipitation,sensorIssues,windKmh,menuChoice,effectiveEntities,entityOptions,ENTITY_KEYS},{createLightBridge,lightOptions},{t,langOf}]=await Promise.all(["./maison3d-card-editor.js", "./photo-source.js", "./storage-bridge.js", "./media-resolver.js", "./hass-tracker.js", "./sensor-values.js", "./lights.js", "./i18n.js"].map(m=>import(m+V)));
 /**
  * Maison 3D interactive Lovelace card.
  * Load as a JavaScript module resource: /maison3d-assets/maison3d-card.js
@@ -109,6 +109,10 @@ class Maison3DCard extends HTMLElement {
     );
   }
 
+  _lang(){
+    return langOf(this._hass?.locale?.language||this._hass?.language);
+  }
+
   _renderCard() {
     if (!this.isConnected || !this._config) return;
     if (!this.shadowRoot) this.attachShadow({mode:"open"});
@@ -116,6 +120,9 @@ class Maison3DCard extends HTMLElement {
       const title = this.shadowRoot.querySelector(".card-title");
       if (title) title.textContent = this._title();
       this._frame.style.height = this._config.height + "px";
+      const footer=this.shadowRoot.querySelector(".footer");
+      if(footer)footer.textContent=t(this._lang(),"card_footer");
+      this._frame.title=t(this._lang(),"card_iframe_title");
       return;
     }
     const style = document.createElement("style");
@@ -132,7 +139,7 @@ class Maison3DCard extends HTMLElement {
     heading.className="card-title";
     heading.textContent=this._title();
     const frame=document.createElement("iframe");
-    frame.title="Maison 3D interactive";
+    frame.title=t(this._lang(),"card_iframe_title");
     frame.loading="lazy";
     frame.src="/maison3d-assets/index.html?mode=card"+(VERSION?"&v="+encodeURIComponent(VERSION):"");
     frame.style.height=this._config.height+"px";
@@ -143,7 +150,7 @@ class Maison3DCard extends HTMLElement {
     });
     const footer=document.createElement("div");
     footer.className="footer";
-    footer.textContent="Vue 3D interactive · Ouvrir le panneau Maison 3D pour modifier les objets";
+    footer.textContent=t(this._lang(),"card_footer");
     card.append(heading,frame,footer);
     this.shadowRoot.replaceChildren(style,card);
     this._frame=frame;

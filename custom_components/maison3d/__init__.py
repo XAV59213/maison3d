@@ -13,6 +13,7 @@ from homeassistant.loader import async_get_integration
 
 from .const import ASSETS_URL, CARD_URL, DOMAIN, PANEL_PATH
 from .store import async_register_websocket
+from .legacy_photos import register_legacy_photo_redirects
 from .upload import async_register_upload
 
 _LOGGER = logging.getLogger(__name__)
@@ -55,6 +56,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: Maison3DConfigEntry) -> 
         await hass.http.async_register_static_paths(
             [StaticPathConfig(ASSETS_URL, str(assets), False)]
         )
+        register_legacy_photo_redirects(hass)
         await async_register_upload(hass)
         state["static_registered"] = True
 

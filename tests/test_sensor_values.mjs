@@ -87,6 +87,8 @@ assert.match(V.issueText(issues.temperature_entity),/sensor\.temp indisponible/)
 assert.equal(V.sensorIssue("moon_entity",s("sensor.x","Lune bleue")),"unrecognized");
 assert.equal(V.sensorIssue("moon_entity",states["sensor.phase_de_la_lune"]),null);
 assert.equal(V.issueText(null),"");
+assert.match(V.issueText(issues.temperature_entity,"temperature_entity","en"),/unavailable/);
+
 
 // Moon phases: French and English, accents and case.
 assert.equal(V.moonPhase("Premier croissant"),"waxing_crescent");
@@ -203,6 +205,13 @@ for(const id of ["sensor.alerte_neige_verglas","sensor.snow_depth","binary_senso
   assert.ok(M("snow_entity",s(id,"0")),id);
 for(const id of ["sensor.alerte_pluie_inondation","sensor.office_temperature","sensor.price","sensor.froid"])
   assert.ok(!M("snow_entity",s(id,"0")),id);
+
+// Timestamp sensors (e.g. next rain) and "chance" / probability % are not rain or snow.
+assert.ok(!M("rain_entity",s("sensor.bermerain_next_rain","2026-11-15T16:00:00+01:00",{device_class:"timestamp"})),"next_rain timestamp");
+assert.ok(!M("rain_entity",s("sensor.bermerain_rain_chance","40",{unit_of_measurement:"%"})),"rain chance %");
+assert.ok(!M("snow_entity",s("sensor.snow_chance","20",{unit_of_measurement:"%"})),"snow chance %");
+assert.ok(!M("snow_entity",s("sensor.next_snow","2026-12-01T00:00:00+01:00",{device_class:"timestamp"})),"next_snow timestamp");
+assert.ok(M("rain_entity",s("sensor.rain_rate","1",{device_class:"precipitation_intensity"})),"real rain still matches");
 
 // Wind in km/h whatever the unit (sensor unit first, else the weather's wind_speed_unit).
 const near=(a,b)=>assert.ok(Math.abs(a-b)<1e-6,a+" ≠ "+b);
