@@ -673,7 +673,7 @@ class TestMaison3D(unittest.TestCase):
         self.assertNotIn("state.moon_preview", photo)
         chooser = photo.split("const chooseSeason=key=>{", 1)[1].split("};", 1)[0]
         self.assertNotIn("persist()", chooser)
-        self.assertIn("const PREVIEW_MS=120000;", photo)
+        self.assertIn("const PREVIEW_MS=Number(globalThis.__maison3dPreviewMs)||120000;", photo)
         self.assertIn("testButtons.set(key,btn)", photo)
         self.assertIn('resetTest.textContent="◉ Revenir à la météo réelle"', photo)
         for phase in ("new_moon","waxing_crescent","first_quarter",
