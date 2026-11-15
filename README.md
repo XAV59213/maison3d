@@ -268,7 +268,7 @@ Dans le menu **⚙ Images / météo** (panneau **et** carte), la zone **« Mode 
 
 Avec les photos météo activées, chaque test affiche aussi la photo `<météo>-<jour|nuit>.webp` correspondante.
 
-À droite de la vue photo, les boutons **Printemps, Été, Automne, Hiver et Saisons auto** donnent un accès direct aux saisons ; ce menu se place sous la bulle d'état et passe en 2 colonnes sur les écrans bas (téléphone à l'horizontale).
+Dans la vue photo, les saisons **Printemps, Été, Automne, Hiver et Saisons auto** font partie de la **barre de réglages en bas** : une ligne de boutons sous les autres réglages sur grand écran, un sélecteur **Saison** compact sur téléphone, en paysage et dans une carte étroite. Rien n'est posé sur la photo à part la bulle d'état (en haut à droite) et la lune. Le choix est enregistré comme les autres réglages photo.
 
 ## 🌙 Lune, saisons et météo animée
 
@@ -276,7 +276,7 @@ Le module dessine la lune comme un disque lumineux dans le ciel, avec masque de 
 
 Les animations météo sont **des effets visuels superposés à une photographie** : pluie, neige, reflets doux, brume, rafales, éclairs, rayons solaires et feuilles. Leur intensité est réglable de **0 à 200 %** et peut être désactivée.
 
-Les saisons suivent le calendrier local en mode Auto ; les boutons de droite permettent de les forcer pour un aperçu. Une vraie photo enneigée présente de la neige sur les éléments de la propriété ; un simple filtre animé ne remplace pas une photographie d'hiver.
+Les saisons suivent le calendrier local en mode Auto ; les boutons (ou le sélecteur) Saison de la barre du bas permettent de les forcer pour un aperçu. Une vraie photo enneigée présente de la neige sur les éléments de la propriété ; un simple filtre animé ne remplace pas une photographie d'hiver.
 
 ## 🎨 Personnaliser les images
 
@@ -314,7 +314,7 @@ Les quatre saisons suivent **la date locale et le fuseau horaire configurés dan
 
 **Mode automatique :** la date est vérifiée pendant le fonctionnement de la vue, ce qui permet de changer de saison au passage de minuit, même sans changement de capteur météo. Les conditions météo (pluie, orage, vent, etc.) restent indépendantes et peuvent s'ajouter à l'effet saisonnier.
 
-**Mode manuel :** les cinq boutons fixes à droite permettent de tester Printemps, Été, Automne, Hiver et Auto. Le bouton **◉ Saisons auto** rétablit le calendrier de Home Assistant.
+**Mode manuel :** les saisons de la barre du bas (cinq boutons, ou le sélecteur Saison sur petit écran) permettent de tester Printemps, Été, Automne, Hiver et Auto. Le bouton **◉ Saisons auto** rétablit le calendrier de Home Assistant.
 
 Les saisons météorologiques ne coïncident pas exactement avec les dates astronomiques des équinoxes et solstices.
 

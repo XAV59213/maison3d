@@ -134,9 +134,12 @@ class TestMaison3D(unittest.TestCase):
         self.assertEqual(sorted(p.name for p in www.rglob("*.jpg")), [])
         self.assertFalse((ROOT / "assets" / "maison3d-reference.jpg").exists())
         photo = (www / "photo-view.js").read_text(encoding="utf-8")
-        self.assertIn("function placeSeasons(){", photo)
-        self.assertIn("const top=Math.max(st.bottom+8,innerHeight*.12);", photo)
-        self.assertIn('seasonalNav.classList.toggle("compact",bottom-top<215);', photo)
+        # Seasons are part of the bottom settings bar (no column over the photo).
+        self.assertNotIn("function placeSeasons(){", photo)
+        self.assertIn("nav.append(seasonBreak,seasonalNav);", photo)
+        self.assertIn("document.body.append(section,nav,settings);", photo)
+        self.assertIn('"html.photo-active #maison3d-photo-controls{top:auto;bottom:10px}"', photo)
+        self.assertIn('seasonPick.addEventListener("change",()=>chooseSeason(seasonPick.value));', photo)
         panel = (www / "maison3d-panel.js").read_text(encoding="utf-8")
         self.assertIn("min-height:240px", panel)
 
