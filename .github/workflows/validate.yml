@@ -46,6 +46,8 @@ jobs:
           node --check custom_components/maison3d/www/moon-effects.js
           node --check custom_components/maison3d/www/season-effects.js
           node tests/test_seasons.mjs
+          node --check custom_components/maison3d/www/draft.js
+          node tests/test_draft.mjs
           node --check custom_components/maison3d/www/frost-effects.js
           node tests/test_frost.mjs
           node --check custom_components/maison3d/www/photo-cinematics.js

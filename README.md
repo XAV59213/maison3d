@@ -63,7 +63,7 @@ Chaque utilisateur peut désormais utiliser **sa propre photographie de maison**
 
 La configuration de l'intégration propose **Activer les effets météo, lumineux et saisonniers**. L'éditeur Lovelace permet de laisser la valeur héritée, de l'activer ou de la désactiver pour une carte précise.
 
-Dans la vue photo, **✦ Effets ON / ○ Effets OFF** et la case **Activer les effets météo, lumineux et saisonniers** permettent une bascule locale immédiate. Quand les effets sont désactivés, la photo de la propriété reste affichée sans pluie, neige, orage, lune dessinée, coloration météo ou assombrissement nocturne. La météo Home Assistant reste reçue, et les effets pourront être réactivés. Le choix manuel local de la vue est enregistré dans le navigateur.
+Dans la vue photo, **✦ Effets ON / ○ Effets OFF** et la case **Activer les effets météo, lumineux et saisonniers** permettent une bascule locale immédiate. Quand les effets sont désactivés, la photo de la propriété reste affichée sans pluie, neige, orage, lune dessinée, coloration météo ou assombrissement nocturne. La météo Home Assistant reste reçue, et les effets pourront être réactivés. Le choix s'enregistre avec le bouton 💾 Enregistrer.
 
 Exemple de carte :
 
@@ -286,7 +286,7 @@ Dans le menu **⚙ Images / météo** (panneau **et** carte), la zone **« Mode 
 
 Avec les photos météo activées, chaque test affiche aussi la photo `<météo>-<jour|nuit>.webp` correspondante.
 
-Dans la vue photo, les saisons **Printemps, Été, Automne, Hiver et Saisons auto** font partie de la **barre de réglages en bas** : une ligne de boutons sous les autres réglages sur grand écran, un sélecteur **Saison** compact sur téléphone, en paysage et dans une carte étroite. Rien n'est posé sur la photo à part la bulle d'état (en haut à droite) et la lune. Le choix est enregistré comme les autres réglages photo.
+Dans la vue photo, les saisons **Printemps, Été, Automne, Hiver et Saisons auto** font partie de la **barre de réglages en bas** : une ligne de boutons sous les autres réglages sur grand écran, un sélecteur **Saison** compact sur téléphone, en paysage et dans une carte étroite. Rien n'est posé sur la photo à part la bulle d'état (en haut à droite) et la lune. Le choix s'applique tout de suite et s'enregistre, comme les autres réglages photo, avec le bouton 💾 Enregistrer.
 
 ## 🌙 Lune, saisons et météo animée
 
@@ -370,7 +370,7 @@ La géométrie 3D est approximative et ne doit pas être présentée comme la vr
 
 Plus besoin de copier les fichiers à la main dans `/config/www/` : la photo principale et les photos météo peuvent être envoyées depuis l'interface Home Assistant (ordinateur ou téléphone).
 
-- **Vue photo :** **⚙ Images / météo** → **📤 Envoyer une photo depuis cet appareil**. Choisissez l'emplacement (photo principale, ou une photo météo comme *Neige · nuit*), puis **Choisir et envoyer…**. La photo est enregistrée, appliquée tout de suite et retenue dans la sauvegarde Home Assistant. Pour une photo météo, l'option **Photos météo** est activée automatiquement.
+- **Vue photo :** **⚙ Images / météo** → **📤 Envoyer une photo depuis cet appareil**. Choisissez l'emplacement (photo principale, ou une photo météo comme *Neige · nuit*), puis **Choisir et envoyer…**. La photo est envoyée et appliquée tout de suite ; cliquez sur **💾 Enregistrer** pour la garder dans la sauvegarde Home Assistant. Pour une photo météo, l'option **Photos météo** est activée automatiquement.
 - **Éditeur de la carte Lovelace :** bouton **📤 Envoyer une photo…** sous l'image principale et dans la section des images météo (choisissez d'abord l'emplacement). Le chemin obtenu est écrit dans la configuration de la carte.
 - **Médiathèque Home Assistant :** dans l'éditeur de la carte, le sélecteur **Médias** permet de choisir une image déjà présente dans *Médias → Médias locaux*. La valeur `media-source://...` est enregistrée dans la carte et convertie en adresse signée au moment de l'affichage (renouvelée automatiquement). Une valeur `media-source://...` est aussi acceptée dans **Configurer → Image principale**.
 
@@ -386,10 +386,16 @@ Détails :
 Le plan 3D (objets, positions), les réglages du menu ⚙ (images, capteurs, saison, intensité…) et la vue choisie sont **enregistrés dans Home Assistant** (`.storage/maison3d.data`), plus seulement dans le navigateur : on retrouve le même projet sur le PC, la tablette et le téléphone. Ils sont aussi inclus dans les sauvegardes de Home Assistant.
 
 - **Premier lancement après la mise à jour** : si ce navigateur avait déjà un projet, il est copié une fois dans Home Assistant.
-- **Enregistrement** : automatique, regroupé (≈ 1 s après la dernière modification). Le bas de l'écran indique « Sauvegardé dans Home Assistant à … ».
+- **Enregistrement : uniquement avec le bouton 💾 Enregistrer.** Chaque modification (vue photo, menu ⚙, saisons, boutons « Tester » des saisons, objets de la vue 3D, import JSON…) s'applique tout de suite à l'écran mais **n'est pas enregistrée** : ni dans Home Assistant, ni dans le navigateur.
+  - Le bouton **💾 Enregistrer** est dans la barre des vues (photo, plan 2D et 3D) et en haut du panneau ⚙. Il est grisé sans modification et devient orange avec « ● Modifications non enregistrées » dès qu'il y en a une.
+  - **↶ Annuler** revient au dernier état enregistré.
+  - Après le clic, « Enregistré ✓ » s'affiche, ou un message d'erreur (les modifications sont alors gardées pour réessayer).
+  - Fermer ou recharger la page avec des modifications en attente affiche un avertissement du navigateur.
+  - Changer de vue (photo, plan 2D, 3D) ou de point de vue 3D (Façade, Aérienne…) n'est pas une modification ; la vue affichée est retenue au prochain enregistrement.
 - **Droits** : tout utilisateur connecté voit le projet ; seuls les **administrateurs** peuvent l'enregistrer. Pour les autres, les modifications restent dans leur navigateur.
 - **Hors connexion / ancienne version** : le navigateur garde une copie (cache) et sert de secours.
-- **Export / import JSON** : toujours disponibles ; un import est enregistré dans Home Assistant.
+- **Export / import JSON** : toujours disponibles ; un import s'affiche tout de suite et s'enregistre avec 💾 Enregistrer.
+- **Envoi de photo** (📤) : le fichier est envoyé tout de suite dans `/config/www/maison3d/` (action explicite) ; son utilisation comme photo s'enregistre avec 💾 Enregistrer.
 - Les réglages propres à une carte (titre, hauteur, capteurs, images…) restent dans la configuration de la carte.
 
 Commandes websocket : `maison3d/get` (lecture) et `maison3d/save` (administrateur).

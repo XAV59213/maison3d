@@ -27,7 +27,7 @@ html.compact-scene #maison3d-photo-controls,html.compact-scene #maison3d-present
 <script>if(new URLSearchParams(location.search).get("mode")==="card")document.documentElement.classList.add("card-mode");</script>
 <div id="view"></div><div class="brand">⌂ Maison 3D<small>Mode édition · <span class="project-name">Maison 3D</span></small></div>
 <nav class="toolbar"><button class="on" id="tab3d">▣ 3D</button><button id="topview">▤ Plan 2D</button><button id="terrain">△ Terrain</button><button id="addsteps">▤ Escalier</button><button id="addtree">♧ Végétation</button><button id="addchair">▣ Mobilier</button><button id="toggle">⚙ Édition</button></nav>
-<div id="hint">☀ Scène éditable · Déplacement, rotation, taille · Sauvegarde locale</div>
+<div id="hint">☀ Scène éditable · Déplacement, rotation, taille · 💾 Enregistrer pour garder</div>
 <div class="side"><button id="orbit" title="Vue générale">⌂</button><button id="duplicate" title="Dupliquer">▣</button><button id="remove" title="Supprimer">⌫</button><button id="export" title="Exporter JSON">⇩</button><button id="import" title="Importer JSON">⇧</button></div>
 <div class="modes"><button class="on" data-time="day">☀ Jour</button><button data-time="evening">◒ Soir</button><button data-time="night">☾ Nuit</button><button id="weather">☁ Météo</button></div>
 <div class="bottom">📁 Projet : <span class="project-name">Maison 3D</span> · <span id="save">Enregistré localement</span></div>
@@ -39,7 +39,7 @@ html.compact-scene #maison3d-photo-controls,html.compact-scene #maison3d-present
 <input type="file" id="file" accept="application/json" hidden>
 <script type="application/json" id="maison3d-importmap">{"imports":{"three":"./vendor/three/three.module.min.js","three/addons/":"./vendor/three/addons/"}}</script>
 <script>/* Cache-busting: index.html?v=<version> (set by the card / panel) adds ?v= to every module of this page, then the import map is inserted. */
-(()=>{const MODULES=["architecture.js","frost-effects.js","ha-storage.js","hass-tracker.js","interior-view.js","maison3d-card-editor.js","maison3d-card.js","maison3d-panel.js","media-resolver.js","moon-effects.js","photo-cinematics.js","photo-source.js","photo-view.js","presentation.js","scene-layout.js","season-effects.js","sensor-values.js","storage-bridge.js","weather-effects.js","world-ambience.js"];
+(()=>{const MODULES=["architecture.js","draft.js","frost-effects.js","ha-storage.js","hass-tracker.js","interior-view.js","maison3d-card-editor.js","maison3d-card.js","maison3d-panel.js","media-resolver.js","moon-effects.js","photo-cinematics.js","photo-source.js","photo-view.js","presentation.js","scene-layout.js","season-effects.js","sensor-values.js","storage-bridge.js","weather-effects.js","world-ambience.js"];
 const map=JSON.parse(document.getElementById("maison3d-importmap").textContent);const v=new URLSearchParams(location.search).get("v");
 if(v&&/^[\w.+-]{1,40}$/.test(v)){const q="?v="+encodeURIComponent(v),abs=u=>new URL(u,location.href).href;
 map.imports.three+=q;map.imports["three/addons/controls/OrbitControls.js"]="./vendor/three/addons/controls/OrbitControls.js"+q;
@@ -53,7 +53,8 @@ import {createPhotoView} from "./photo-view.js";
 import {createPresentation} from "./presentation.js";
 import {createWorldAmbience} from "./world-ambience.js";
 import {createArchitectureKit} from "./architecture.js";
-import {onHaData,onHaSaved,saveToHa} from "./ha-storage.js";
+import {onHaData,saveToHa} from "./ha-storage.js";
+import {registerSection,markSaved,changed,onDraft} from "./draft.js";
 import {createSceneLayout} from "./scene-layout.js";
 import {createInteriorExplorer} from "./interior-view.js";
 const KEY="maison3d-v2-layout";const view=document.getElementById("view");const scene=new THREE.Scene();scene.background=new THREE.Color(0x89b7e7);scene.fog=new THREE.Fog(0x89b7e7,45,115);
@@ -116,10 +117,12 @@ const select=document.getElementById("objects"),ids=["x","z","w","d","h","r"];fu
 function choose(id){selected=data.find(o=>o.id===id);refreshSelect();if(outline){scene.remove(outline);outline.geometry.dispose();outline.material.dispose();outline=null}if(selected&&meshes.get(id)){outline=new THREE.BoxHelper(meshes.get(id),0x00d8ff);scene.add(outline)}}
 // Saved in Home Assistant (shared by every device) when possible; localStorage stays as cache / offline fallback.
 const saveStatus=t=>{document.getElementById("save").textContent=t};
-function save(){let local=true;try{localStorage.setItem(KEY,JSON.stringify(data))}catch(err){local=false;console.warn("Maison 3D: storage unavailable",err)}
-if(saveToHa({layout:data}))saveStatus("Enregistrement dans Home Assistant…");else saveStatus(local?"Sauvegardé dans ce navigateur à "+new Date().toLocaleTimeString("fr-FR"):"Sauvegarde locale impossible — exportez en JSON")}
+// Draft: every edit shows immediately; « 💾 Enregistrer » (bar at the top) saves it
+// in this browser and in Home Assistant, « ↶ Annuler » restores the saved layout (draft.js).
+function save(){changed()}
 const validLayout=items=>Array.isArray(items)&&items.every(o=>o&&typeof o.id==="string"&&typeof o.type==="string");
-onHaSaved(({ok,error})=>saveStatus(ok?"Sauvegardé dans Home Assistant à "+new Date().toLocaleTimeString("fr-FR"):"Non enregistré dans Home Assistant ("+(error==="admin_required"?"administrateur requis":error)+") — gardé dans ce navigateur"));
+let loadStatus="Enregistré localement";
+onDraft(({dirty,kind,text})=>saveStatus(kind==="saving"||kind==="saved"||kind==="error"?text:dirty?"● Modifications non enregistrées — 💾 Enregistrer":loadStatus));
 // Project name chosen in the integration options or the card (neutral default « Maison 3D »).
 let projectName="Maison 3D";
 window.addEventListener("message",event=>{if(event.source!==window.parent||event.origin!==location.origin||event.data?.type!=="maison3d:conditions")return;
@@ -150,15 +153,24 @@ createSceneLayout();
 const worldAmbience=createWorldAmbience({THREE,scene,sun});
 atmosphere.update();
 redraw();if(selected)choose(selected.id);
+registerSection("layout",{get:()=>data,
+  apply:saved=>{data=saved;selected=data.find(o=>o.id===selected?.id)||null;redraw()},
+  writeLocal:value=>localStorage.setItem(KEY,JSON.stringify(value))});
 // Load the project saved in Home Assistant; first time, migrate this browser's layout to it.
 onHaData((ha,{connected,canSave})=>{
-  if(!connected){saveStatus("Enregistré dans ce navigateur");return}
+  const show=text=>{loadStatus=text;changed()};
+  if(!connected){show("Enregistré dans ce navigateur");return}
   if(validLayout(ha.layout)){
     if(JSON.stringify(ha.layout)!==JSON.stringify(data)){data=structuredClone(ha.layout);selected=null;redraw()}
+    // Cache of the layout saved in Home Assistant (not a new change).
     try{localStorage.setItem(KEY,JSON.stringify(data))}catch{}
-    saveStatus("Enregistré dans Home Assistant");
-  }else if(canSave&&localStorage.getItem(KEY)){saveToHa({layout:data});saveStatus("Copie du projet de ce navigateur vers Home Assistant…")}
-  else saveStatus(canSave?"Projet par défaut · sera enregistré dans Home Assistant":"Lecture seule (administrateur requis pour enregistrer)");
+    markSaved("layout");
+    show("Enregistré dans Home Assistant");
+  }else if(canSave&&localStorage.getItem(KEY)){
+    // One-time migration of the layout already saved in this browser.
+    saveToHa({layout:data});show("Copie du projet de ce navigateur vers Home Assistant…");
+  }
+  else show(canSave?"Projet par défaut · 💾 Enregistrer pour le garder dans Home Assistant":"Lecture seule dans Home Assistant (administrateur requis) · enregistrement dans ce navigateur");
 });
 addEventListener("resize",()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});// Pause everything when the page is hidden or the Lovelace card is off-screen;
 // skip the WebGL render when the opaque photo view covers the 3D scene.

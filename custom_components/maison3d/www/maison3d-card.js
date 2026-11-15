@@ -51,6 +51,8 @@ class Maison3DCard extends HTMLElement {
   }
 
   connectedCallback() {
+    if (!this._onBeforeUnload) this._onBeforeUnload=event=>{if(this._dirty){event.preventDefault();event.returnValue=""}};
+    window.addEventListener("beforeunload",this._onBeforeUnload);
     // Shared project (3D layout, photo settings) saved in Home Assistant; card
     // overrides stay in the card configuration.
     if (!this._storage) {
@@ -76,6 +78,8 @@ class Maison3DCard extends HTMLElement {
   // ⚙ menu of the view: entity choices and the list of candidates for its selectors.
   _onFrameMessage(event) {
     if (event.origin!==window.location.origin || !this._frame || event.source!==this._frame.contentWindow) return;
+    // Unsaved changes in the view (draft): warn before leaving the page.
+    if (event.data?.type==="maison3d:dirty") {this._dirty=event.data.dirty===true;return}
     if (event.data?.type==="maison3d:entity-options-request") {
       if (this._hass) this._frame.contentWindow.postMessage({type:"maison3d:entity-options",options:entityOptions(this._hass.states||{})},window.location.origin);
       return;
@@ -86,6 +90,7 @@ class Maison3DCard extends HTMLElement {
   }
 
   disconnectedCallback() {
+    window.removeEventListener("beforeunload",this._onBeforeUnload);
     this._loaded = false;
     window.removeEventListener("message", this._onStorageMessage);
     this._storage?.flush();
