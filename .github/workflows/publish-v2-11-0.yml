@@ -1,0 +1,89 @@
+name: Publish Maison 3D v2.11.0
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/publish-v2-11-0.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    if: github.repository == 'XAV59213/maison3d'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Verify Animations option, version and tests
+        run: |
+          python -m pip install --quiet voluptuous pillow
+          python - <<'PY'
+          import json,re
+          from pathlib import Path
+          root=Path("custom_components/maison3d")
+          www=root/"www"
+          manifest=json.loads((root/"manifest.json").read_text())
+          assert manifest["version"]=="2.11.0"
+          readme=Path("README.md").read_text()
+          assert "**Version actuelle : v2.11.0**" in readme
+          assert "option **Animations**" in readme
+          motion=(www/"motion-level.js").read_text()
+          assert 'export const MOTION_MODES=["auto","always","never"];' in motion
+          assert "export function motionLevel(){" in motion
+          assert "MOTION_REDUCED=.2" in motion
+          assert "(prefers-reduced-motion: reduce)" in motion
+          photo=(www/"photo-view.js").read_text()
+          assert 'motion:"auto"' in photo
+          assert 'id="maison3d-motion-option"' in photo
+          assert "setMotionMode(state.motion)" in photo
+          for name in ("season-effects.js","photo-cinematics.js","frost-effects.js",
+                       "weather-effects.js","world-ambience.js","photo-view.js"):
+              src=(www/name).read_text()
+              assert 'from "./motion-level.js"' in src, name
+              assert "prefers-reduced-motion" not in src, name
+          page=(www/"index.html").read_text()
+          assert "motion-level.js" in page
+          PY
+          for f in custom_components/maison3d/www/*.js; do
+            node --check "$f"
+          done
+          for t in tests/*.mjs; do
+            node "$t"
+          done
+          python3 -m unittest discover -s tests -q
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          if gh release view v2.11.0 >/dev/null 2>&1; then
+            echo "v2.11.0 already exists"
+            exit 0
+          fi
+          cat >/tmp/notes.md <<'NOTES'
+          ## Maison 3D v2.11.0 — Option Animations (Auto / Toujours / Jamais)
+
+          ### 🎞 Les feuilles ne restent plus figées sous Windows (#34)
+          - Sur un PC où les effets d'animation sont désactivés (`prefers-reduced-motion`), les feuilles d'automne restaient complètement immobiles.
+          - Nouvelle option **Animations** dans le menu ⚙, appliquée tout de suite et enregistrée avec **💾 Enregistrer**, comme les autres réglages :
+            - **Auto** (défaut) : suit le système. Si la réduction est active, le mouvement reste **lent** (environ 20 % de la vitesse, moins de particules) au lieu d'être figé.
+            - **Toujours** : ignore la préférence du système.
+            - **Jamais** : les effets s'affichent sans s'animer.
+          - En Auto, un indicateur **« animations réduites par le système »** apparaît dans le menu ⚙ lorsque la réduction est active.
+          - L'option s'applique à tous les effets (saisons, cinématiques, gel, météo et particules 3D) via un module partagé, et suit les changements de préférence du système.
+
+          ### Installer
+          Dans HACS, mettre à jour **Maison 3D vers v2.11.0**, puis redémarrer Home Assistant. Pas besoin de vider le cache du navigateur.
+
+          ### Contrôles
+          - La PR #34 a passé les tests Python et JavaScript (dont les trois modes, le mouvement lent en Auto, et le brouillon 💾), HACS, Hassfest, et un test headless Chrome avec émulation de `prefers-reduced-motion`.
+          - Le workflow de publication revérifie l'option Animations et relance les tests.
+
+          Le rendu sur votre Home Assistant réel reste à vérifier.
+          NOTES
+          sed -i 's/^          //' /tmp/notes.md
+          gh release create v2.11.0 --target "${GITHUB_SHA}" --latest --title "Maison 3D v2.11.0 — Option Animations (Auto / Toujours / Jamais)" --notes-file /tmp/notes.md
