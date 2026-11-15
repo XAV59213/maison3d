@@ -154,7 +154,7 @@ Les quatre anciennes photos ci-dessous restent livrées pour compatibilité (URL
 5. Aller dans **Paramètres → Appareils et services → Ajouter une intégration** et chercher **Maison 3D**.
 6. Ouvrir le panneau **Maison 3D** dans la barre latérale.
 
-**Version actuelle : v2.7.0**. [Releases officielles](https://github.com/XAV59213/maison3d/releases).
+**Version actuelle : v2.8.0**. [Releases officielles](https://github.com/XAV59213/maison3d/releases).
 
 <details>
 <summary>Installation manuelle</summary>
