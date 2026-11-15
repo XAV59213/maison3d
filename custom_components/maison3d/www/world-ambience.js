@@ -3,6 +3,8 @@
  * Uses condition events from the verified Home Assistant weather bridge.
  * Particles live in 3D (not a photographic overlay), so orbiting retains depth.
  */
+import {motionLevel} from "./motion-level.js";
+
 export function createWorldAmbience({THREE,scene,sun}) {
   const COUNT=680;
   const geometry=new THREE.BufferGeometry();
@@ -80,11 +82,14 @@ export function createWorldAmbience({THREE,scene,sun}) {
   update();
   function frame(time) {
     if(!particles.visible)return;
+    const level=motionLevel();
+    if(level===0)return;
     if(time-last<30)return;
-    const dt=Math.min((time-last)/1000||.033,.07);
+    const dt=Math.min((time-last)/1000||.033,.07)*level;
     last=time;
     const pos=geometry.attributes.position;
-    for(let i=0;i<COUNT;i++){
+    const used=level<1?Math.max(3,Math.round(COUNT*level)):COUNT;
+    for(let i=0;i<used;i++){
       let x=pos.getX(i),y=pos.getY(i),z=pos.getZ(i);
       const speed=velocities[i],swirl=Math.sin(time*.0014+phases[i]);
       y-=dt*speed*(kind==="rain"?19:kind==="snow"?2.1:1.8);

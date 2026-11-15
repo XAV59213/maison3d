@@ -11,6 +11,7 @@ import {DEFAULT_MAIN_PHOTO,allowedPhotoUrl,bundledPhoto,resolveMainPhoto,IMAGE_S
 import {createFrostEffects,frostLevel,toCelsius} from "./frost-effects.js";
 import {onHaData,saveToHa,uploadToHa} from "./ha-storage.js";
 import {registerSection,markSaved,changed,createSaveControls,SAVE_STYLE} from "./draft.js";
+import {MOTION_MODES,motionLevel,motionCount,motionMode,setMotionMode,systemReduced,onMotionChange,motionLocale} from "./motion-level.js";
 import {moonPhase,weatherKind,issueText,toKmh,menuChoice,SOURCE_LABELS,ENTITY_KEYS as SENSOR_KEYS} from "./sensor-values.js";
 export function createPhotoView({ensureScene=null}={}) {
   // ensureScene(): loads the 3D scene (three.js) on demand; the photo never needs it.
@@ -27,7 +28,7 @@ export function createPhotoView({ensureScene=null}={}) {
     images:defaults(),base_image_url:"",moon_entity:"",
     weather_entity:"",sun_entity:"",
     temperature_entity:"",wind_entity:"",rain_entity:"",snow_entity:"",cloud_entity:"",
-    enabled:true,model_view:"3d",mode:"auto",effect:true,effect_override:null,frost:true,frost_override:null,frost_preview:false,season:"auto",effect_intensity:1,moon_preview:"auto",use_weather_photos:false,weather_photos_override:null
+    enabled:true,model_view:"3d",mode:"auto",effect:true,effect_override:null,frost:true,frost_override:null,frost_preview:false,season:"auto",effect_intensity:1,motion:"auto",moon_preview:"auto",use_weather_photos:false,weather_photos_override:null
   };
   // Apply saved settings (Home Assistant or this browser), keeping only valid values.
   const ENTITY_KEYS=["moon_entity","weather_entity","sun_entity","temperature_entity","wind_entity","rain_entity","snow_entity","cloud_entity"];
@@ -50,11 +51,14 @@ export function createPhotoView({ensureScene=null}={}) {
       else if(!("weather_photos_override" in saved)&&saved.use_weather_photos===true)state.weather_photos_override=true; // before v2.3.9
       if(typeof state.weather_photos_override==="boolean")state.use_weather_photos=state.weather_photos_override;
       if(Number.isFinite(saved.effect_intensity))state.effect_intensity=Math.min(2,Math.max(0,saved.effect_intensity));
+      if(typeof saved.motion==="string"&&MOTION_MODES.includes(saved.motion))state.motion=saved.motion;
+      setMotionMode(state.motion);
       if(typeof saved.mode==="string"&&["auto",...AMBIANCES].includes(saved.mode))state.mode=saved.mode;
       if(typeof saved.season==="string"&&["auto","spring","summer","autumn","winter"].includes(saved.season))state.season=saved.season;
       if(typeof saved.moon_preview==="string"&&["auto","new_moon","waxing_crescent","first_quarter","waxing_gibbous","full_moon","waning_gibbous","last_quarter","waning_crescent"].includes(saved.moon_preview))state.moon_preview=saved.moon_preview;
   }
   try{applySaved(JSON.parse(localStorage.getItem(STORAGE)))}catch{}
+  setMotionMode(state.motion);
   // Saved in Home Assistant (shared) when possible; this browser keeps a cache / offline copy.
   const saveable=()=>{const copy={...state,images:{...state.images}};delete copy.frost_preview;delete copy.effect;delete copy.frost;return copy};
   // Draft: a change is shown immediately but only saved by « 💾 Enregistrer » (draft.js).
@@ -519,6 +523,32 @@ export function createPhotoView({ensureScene=null}={}) {
     persist();
   });
   strengthLabel.append(strength,strengthValue);settings.append(strengthLabel);
+  const motionText=motionLocale();
+  const motionLabel=document.createElement("label");
+  motionLabel.id="maison3d-motion-option";
+  const motionTitle=document.createElement("span");motionTitle.textContent=motionText.title;
+  const motionSelect=document.createElement("select");
+  motionSelect.setAttribute("aria-label",motionText.title);
+  for(const key of MOTION_MODES){
+    const option=document.createElement("option");option.value=key;option.textContent=motionText[key];motionSelect.append(option);
+  }
+  motionSelect.value=state.motion;
+  const motionHint=document.createElement("span");motionHint.className="motion-hint";motionHint.textContent=motionText.hint;
+  const motionReduced=document.createElement("span");
+  motionReduced.className="motion-reduced";motionReduced.setAttribute("role","status");
+  motionReduced.textContent=motionText.reduced;
+  const refreshMotionHint=()=>{
+    motionSelect.value=motionMode();
+    motionReduced.hidden=!(motionMode()==="auto"&&systemReduced());
+  };
+  motionSelect.addEventListener("change",()=>{
+    state.motion=MOTION_MODES.includes(motionSelect.value)?motionSelect.value:"auto";
+    setMotionMode(state.motion);persist();refreshMotionHint();
+  });
+  motionLabel.append(motionTitle,motionSelect,motionHint,motionReduced);
+  settings.append(motionLabel);
+  refreshers.push(()=>{motionSelect.value=state.motion;refreshMotionHint()});
+  onMotionChange(refreshMotionHint);refreshMotionHint();
   const reset=document.createElement("button");reset.type="button";reset.textContent="Réinitialiser les images";
   reset.addEventListener("click",()=>{
     if(!confirm("Réinitialiser toutes les URLs personnalisées ?"))return;
@@ -599,6 +629,9 @@ export function createPhotoView({ensureScene=null}={}) {
     "#maison3d-photo-settings label input[type=text],#maison3d-photo-settings select{display:block;width:100%;",
     "box-sizing:border-box;margin-top:4px;padding:9px;color:white;background:#273c56;border:1px solid #72869a;border-radius:7px}",
     "#maison3d-photo-settings .checkbox{display:flex;align-items:center;gap:9px}",
+    "#maison3d-photo-settings .motion-hint{display:block;margin-top:4px;font-size:11px;color:#a9c4de;line-height:1.35}",
+    "#maison3d-photo-settings .motion-reduced{display:block;margin-top:4px;font-size:11px;color:#f3c77a}",
+    "#maison3d-photo-settings .motion-reduced[hidden]{display:none}",
     // Photo view: the settings bar sits at the bottom on every screen; only the
     // information bubble (and the moon) stay over the photo at the top.
     "html.photo-active #maison3d-photo-controls{top:auto;bottom:10px}",
@@ -903,7 +936,8 @@ export function createPhotoView({ensureScene=null}={}) {
       kind==="rain"?190:kind==="storm"?235:
       kind==="wind"?100:0;
     const type=kind;
-    const scaledCount=Math.floor(count*Math.min(state.effect_intensity,2));
+    const level=motionLevel();
+    const scaledCount=motionCount(Math.floor(count*Math.min(state.effect_intensity,2)));
     while(particles.length<scaledCount)particles.push(spawn(w,h));
     particles.length=scaledCount;
     const windy=type==="wind"||live.windSpeed>18; // km/h
@@ -911,13 +945,13 @@ export function createPhotoView({ensureScene=null}={}) {
       const p=particles[i];
       if(type==="snow"){
         ctx.fillStyle="#f7fbffdf";ctx.beginPath();ctx.arc(p.x,p.y,1.1+p.speed,0,Math.PI*2);ctx.fill();
-        p.y+=p.speed*1.3;p.x+=Math.sin(time*.001+p.turn)*.75;
+        p.y+=p.speed*1.3*level;p.x+=Math.sin(time*.001+p.turn)*.75*level;
       }else if(type==="rain"||type==="storm"){
         ctx.strokeStyle="#b6dfffbd";ctx.lineWidth=1.1;
         ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(p.x-4,p.y+18);ctx.stroke();
-        p.y+=p.speed*8;p.x+=1.2;
+        p.y+=p.speed*8*level;p.x+=1.2*level;
       }else{
-        ctx.save();ctx.translate(p.x,p.y);ctx.rotate(time*.001+p.turn);
+        ctx.save();ctx.translate(p.x,p.y);ctx.rotate(time*.001*level+p.turn);
         if(type==="petals"){
           ctx.fillStyle=["#f9cadd","#ef9abf","#fff0f6"][i%3];
           ctx.beginPath();ctx.ellipse(0,0,4,2.5,.4,0,Math.PI*2);ctx.fill();
@@ -926,12 +960,12 @@ export function createPhotoView({ensureScene=null}={}) {
           ctx.fillRect(-3,-5,6,10);
         }
         ctx.restore();
-        p.y+=p.speed*(type==="wind"?.55:1.1);
-        p.x+=(windy?3:1)+Math.sin(time*.001+p.turn);
+        p.y+=p.speed*(type==="wind"?.55:1.1)*level;
+        p.x+=((windy?3:1)+Math.sin(time*.001+p.turn))*level;
       }
       if(p.y>h+12||p.x>w+15){p.x=Math.random()*w;p.y=-15}
     }
-    if(type==="wind" || (state.mode==="auto" && test.weather==="auto" && live.windSpeed>=25)){ // km/h
+    if(level>0&&(type==="wind" || (state.mode==="auto" && test.weather==="auto" && live.windSpeed>=25))){ // km/h
       // Transparent gust streaks make strong wind visually distinct.
       ctx.save();
       const gustAlpha=Math.min(.34,.08+.06*state.effect_intensity);
@@ -946,7 +980,7 @@ export function createPhotoView({ensureScene=null}={}) {
       }
       ctx.restore();
     }
-    if(type==="storm" && Math.random()<.015){
+    if(type==="storm" && level>=1 && Math.random()<.015){
       // Draw a jagged lightning bolt from cloud level, not just a white flash.
       const startX=w*(.15+Math.random()*.7);
       let x=startX,y=0;
@@ -982,6 +1016,8 @@ export function createPhotoView({ensureScene=null}={}) {
     selectMode.value=state.mode;seasonSelect.value=state.season;seasonPick.value=state.season;
     moonPreview.value=state.moon_preview;frostInput.checked=state.frost;
     strengthValue.textContent=Math.round(state.effect_intensity*100)+" %";
+    if(!MOTION_MODES.includes(state.motion))state.motion="auto";
+    setMotionMode(state.motion);
     for(const key of SENSOR_KEYS)renderEntityField(key,true);
     requestEntities();update();
   }

@@ -4,6 +4,8 @@
  * Mar 1 spring, Jun 1 summer, Sep 1 autumn, Dec 1 winter.
  * Doesn't modify entity states or the approved original photograph.
  */
+import {motionLevel,motionCount} from "./motion-level.js";
+
 export const SEASONS=["spring","summer","autumn","winter"];
 export const SEASON_LABELS={
   spring:"Printemps",summer:"Été",autumn:"Automne",winter:"Hiver"
@@ -41,9 +43,6 @@ export function automaticSeason(timeZone,now=new Date()){
 }
 export function createSeasonEffects(canvas){
   const ctx=canvas.getContext("2d",{alpha:true});
-  const motion=window.matchMedia?.("(prefers-reduced-motion: reduce)");
-  let reduced=!!motion?.matches;
-  motion?.addEventListener?.("change",e=>{reduced=e.matches});
   let width=1,height=1,dpr=1,particles=[],previousSeason="";
   function resize(){
     const box=canvas.getBoundingClientRect();
@@ -81,7 +80,8 @@ export function createSeasonEffects(canvas){
     }else if(season==="summer"){
       const x=width*.22,y=height*.09;
       const g=ctx.createRadialGradient(x,y,2,x,y,width*.8);
-      const pulse=reduced?1:.88+.12*Math.sin(time*.0005);
+      const level=motionLevel();
+      const pulse=level===0?1:.88+.12*Math.sin(time*.0005*level);
       g.addColorStop(0,"rgba(255,227,139,"+(.20*power*pulse)+")");
       g.addColorStop(1,"rgba(255,227,139,0)");
       ctx.fillStyle=g;ctx.fillRect(0,0,width,height);
@@ -97,9 +97,10 @@ export function createSeasonEffects(canvas){
       ctx.fillStyle=g;ctx.fillRect(0,height*.62,width,height*.38);
     }
     if(season==="summer"&&!night)return;
-    for(const p of particles.slice(0,count)){
+    const level=motionLevel();
+    for(const p of particles.slice(0,motionCount(count))){
       if(season==="summer"){
-        const alpha=(reduced?.14:.08+.1*Math.sin(time*.001+p.angle))*power;
+        const alpha=(level===0?.14:.08+.1*Math.sin(time*.001*level+p.angle))*power;
         const g=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,11);
         g.addColorStop(0,"rgba(255,239,159,"+alpha+")");
         g.addColorStop(1,"rgba(255,239,159,0)");
@@ -114,14 +115,16 @@ export function createSeasonEffects(canvas){
           :["#d89d3dcc","#bd6e29c9","#c45a21bc","#e4b04acc"][p.palette];
         ctx.beginPath();ctx.ellipse(0,0,p.radius*1.2,p.radius*.65,0,0,Math.PI*2);ctx.fill();ctx.restore();
       }
-      if(!reduced){
-        p.x+=(season==="autumn"?2:season==="spring"?.35:0)+Math.sin(time*.001+p.angle)*.6;
-        p.y+=p.speed*(season==="winter"?1.6:season==="spring"?.9:.45);
-        p.angle+=season==="autumn"?.023:.012;
+      if(level>0){
+        p.x+=((season==="autumn"?2:season==="spring"?.35:0)+Math.sin(time*.001*level+p.angle)*.6)*level;
+        p.y+=p.speed*(season==="winter"?1.6:season==="spring"?.9:.45)*level;
+        p.angle+=(season==="autumn"?.023:.012)*level;
       }
       if(p.y>height+12||p.x>width+12){p.x=Math.random()*width;p.y=-10}
     }
   }
+  function snapshot(){return particles.map(p=>({x:p.x,y:p.y,angle:p.angle}))}
+  function reset(season="autumn"){resize();populate(season)}
   resize();
-  return {frame,resize};
+  return {frame,resize,snapshot,reset};
 }

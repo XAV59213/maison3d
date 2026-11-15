@@ -86,3 +86,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: home-assistant/actions/hassfest@master
+
+  motion-headless:
+    name: Animations headless
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: browser-actions/setup-chrome@v1
+        id: chrome
+      - name: Run reduced-motion particle test
+        env:
+          CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}
+        run: |
+          npm install --no-save puppeteer-core
+          node tests/headless/test_motion_reduced.mjs

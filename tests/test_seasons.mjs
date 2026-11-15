@@ -1,9 +1,8 @@
 import assert from "node:assert/strict";
-import {readFileSync} from "node:fs";
+import {pathToFileURL} from "node:url";
 
-const source=readFileSync("custom_components/maison3d/www/season-effects.js","utf8");
 const {automaticSeason,haCalendarDate,haHour}=await import(
-  "data:text/javascript;base64,"+Buffer.from(source).toString("base64")
+  pathToFileURL("custom_components/maison3d/www/season-effects.js").href
 );
 const at=iso=>new Date(iso);
 const cases=[

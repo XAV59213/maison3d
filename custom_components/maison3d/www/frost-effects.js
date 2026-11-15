@@ -4,6 +4,8 @@
  * texture is drawn once per size/level change; each frame only blits it and
  * draws a handful of sparkles, so the cost stays tiny.
  */
+import {motionLevel} from "./motion-level.js";
+
 export const FROST_FULL_AT=-5;
 
 /** Convert a reading to °C (accepts °F when the unit says so). */
@@ -20,9 +22,6 @@ export function frostLevel(celsius){
 
 export function createFrostEffects(canvas){
   const ctx=canvas.getContext("2d",{alpha:true});
-  const motion=window.matchMedia?.("(prefers-reduced-motion: reduce)");
-  let reduced=!!motion?.matches;
-  motion?.addEventListener?.("change",e=>{reduced=e.matches});
   let width=1,height=1,dpr=1,texture=null,layer=null,layerLevel=-1,current=0,cleared=true;
   let sparkles=[];
   function seeded(seed){return()=>{seed=(seed*1664525+1013904223)>>>0;return seed/4294967296}}
@@ -103,8 +102,9 @@ export function createFrostEffects(canvas){
   function frame(time,target){
     const box=canvas.getBoundingClientRect();
     if(Math.abs(box.width-width)>2||Math.abs(box.height-height)>2||!texture&&target>0)resize();
-    // Creep in/out smoothly instead of popping (instant with reduced motion).
-    current=reduced?target:current+(target-current)*(target<current?.12:.04);
+    // Creep in/out smoothly; static (Jamais) snaps, Auto+reduced creeps slowly.
+    const motion=motionLevel();
+    current=motion===0?target:current+(target-current)*(target<current?.12:.04)*motion;
     if(Math.abs(target-current)<.004)current=target;
     if(current<=.005){current=0;clear();return}
     const level=Math.round(current*50)/50;
@@ -112,7 +112,7 @@ export function createFrostEffects(canvas){
     ctx.clearRect(0,0,width,height);cleared=false;
     ctx.drawImage(layer,0,0,width,height);
     for(const s of sparkles){
-      const twinkle=reduced?.55:Math.max(0,Math.sin(time*.002*s.speed+s.phase));
+      const twinkle=motion===0?.55:Math.max(0,Math.sin(time*.002*s.speed*motion+s.phase));
       const alpha=twinkle*twinkle*current;
       if(alpha<.05)continue;
       ctx.fillStyle="rgba(255,255,255,"+alpha.toFixed(2)+")";

@@ -300,6 +300,14 @@ Le module dessine la lune comme un disque lumineux dans le ciel, avec masque de 
 
 Les animations météo sont **des effets visuels superposés à une photographie** : pluie, neige, reflets doux, brume, rafales, éclairs, rayons solaires et feuilles. Leur intensité est réglable de **0 à 200 %** et peut être désactivée.
 
+Dans le menu **⚙**, l'option **Animations** a trois valeurs, enregistrées avec **💾 Enregistrer** comme les autres réglages :
+
+- **Auto** (défaut) suit le système (`prefers-reduced-motion`). Si Windows (ou le navigateur) réduit les animations, les feuilles et les autres particules gardent un **mouvement lent** (environ 20 % de la vitesse, moins de particules) au lieu de se figer.
+- **Toujours** ignore cette préférence du système.
+- **Jamais** affiche les effets sans les animer.
+
+En Auto, un indicateur **« animations réduites par le système »** apparaît dans le menu ⚙ lorsque la réduction est active.
+
 Les saisons suivent le calendrier local en mode Auto ; les boutons (ou le sélecteur) Saison de la barre du bas permettent de les forcer pour un aperçu. Une vraie photo enneigée présente de la neige sur les éléments de la propriété ; un simple filtre animé ne remplace pas une photographie d'hiver.
 
 ## 🎨 Personnaliser les images

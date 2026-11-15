@@ -191,7 +191,7 @@ class TestMaison3D(unittest.TestCase):
         self.assertIn("nav.append(photoBtn,planBtn,modelBtn,nightBtn,dayBtn,autoBtn,effectsBtn,optionsBtn,saveControls)", photo)
         self.assertIn("frost.frame(time,frostTarget())", photo)
         self.assertIn("frost.frame(time,0)", photo)
-        self.assertIn("prefers-reduced-motion", frost)
+        self.assertIn('from "./motion-level.js"', frost)
         # Every sensor key is accepted from the ⚙ menu ("" = inherit).
         self.assertIn('this._choices = Object.fromEntries(ENTITY_KEYS.map(key => [key, ""]));', panel)
         self.assertIn("for(const key of ENTITY_KEYS)this._choices[key]=menuChoice(key,event.data[key]);", panel)
@@ -200,6 +200,31 @@ class TestMaison3D(unittest.TestCase):
             self.assertIn("frost_enabled", tr["options"]["step"]["init"]["data"])
         strings = json.loads((COMPONENT / "strings.json").read_text(encoding="utf-8"))
         self.assertIn("frost_enabled", strings["options"]["step"]["init"]["data"])
+
+
+    def test_animation_motion_option(self):
+        """Animations Auto / Always / Never: shared motionLevel, ⚙ menu, draft, all effect modules."""
+        www = COMPONENT / "www"
+        motion = (www / "motion-level.js").read_text(encoding="utf-8")
+        photo = (www / "photo-view.js").read_text(encoding="utf-8")
+        self.assertIn('export const MOTION_MODES=["auto","always","never"];', motion)
+        self.assertIn("export function motionLevel(){", motion)
+        self.assertIn('MOTION_QUERY="(prefers-reduced-motion: reduce)"', motion)
+        self.assertIn("MOTION_REDUCED=.2", motion)
+        self.assertIn("animations réduites par le système", motion)
+        self.assertIn("animations reduced by the system", motion)
+        for name in ("season-effects.js", "photo-cinematics.js", "frost-effects.js",
+                     "weather-effects.js", "world-ambience.js", "photo-view.js"):
+            source = (www / name).read_text(encoding="utf-8")
+            self.assertIn('from "./motion-level.js"', source, name)
+        for name in ("season-effects.js", "photo-cinematics.js", "frost-effects.js",
+                     "weather-effects.js", "world-ambience.js"):
+            self.assertNotIn("prefers-reduced-motion", (www / name).read_text(encoding="utf-8"), name)
+        self.assertIn('motion:"auto"', photo)
+        self.assertIn('id="maison3d-motion-option"', photo)
+        self.assertIn("setMotionMode(state.motion)", photo)
+        self.assertIn('motionReduced.hidden=!(motionMode()==="auto"&&systemReduced())', photo)
+        self.assertIn('registerSection("photo_settings"', photo)
 
     def test_weather_test_mode(self):
         """Forced weather + day/night, kept in memory only, reset by « Revenir à la météo réelle »."""

@@ -3,6 +3,8 @@
  * Real Home Assistant conditions are supplied by parent panel via postMessage.
  * Local clock + seasonal effects are fallbacks, never marketed as actual weather.
  */
+import {motionLevel,motionCount} from "./motion-level.js";
+
 export function createAtmosphere({scene, sun, renderer}) {
   const canvas = document.createElement("canvas");
   canvas.id = "maison3d-weather-overlay";
@@ -111,7 +113,8 @@ export function createAtmosphere({scene, sun, renderer}) {
     const w=window.innerWidth,h=window.innerHeight;
     ctx.clearRect(0,0,w,h);
     const weather=mode();
-    const count=weather==="rain"?180:weather==="snow"?110:weather==="leaves"?35:0;
+    const level=motionLevel();
+    const count=motionCount(weather==="rain"?180:weather==="snow"?110:weather==="leaves"?35:0);
     while(particles.length<count) particles.push(spawn());
     particles.length=count;
     for(const particle of particles) {
@@ -119,16 +122,16 @@ export function createAtmosphere({scene, sun, renderer}) {
       if(weather==="rain") {
         ctx.strokeStyle="#c8e7ff99";ctx.lineWidth=1.3;
         ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x-3,y+13);ctx.stroke();
-        particle.y+=particle.speed*8;particle.x+=1.4;
+        particle.y+=particle.speed*8*level;particle.x+=1.4*level;
       } else if(weather==="snow") {
         ctx.fillStyle="#f1f7ffdf";
         ctx.beginPath();ctx.arc(x,y,1.2+particle.speed,0,Math.PI*2);ctx.fill();
-        particle.y+=particle.speed*1.3;particle.x+=Math.sin(now*.001+particle.sway)*0.6;
+        particle.y+=particle.speed*1.3*level;particle.x+=Math.sin(now*.001+particle.sway)*0.6*level;
       } else if(weather==="leaves") {
-        ctx.save();ctx.translate(x,y);ctx.rotate(now*.001+particle.sway);
+        ctx.save();ctx.translate(x,y);ctx.rotate((now*.001*level)+particle.sway);
         ctx.fillStyle=["#b96c20","#e6ad42","#bf4c19"][Math.floor(particle.sway*3)%3];
         ctx.fillRect(-3,-5,6,10);ctx.restore();
-        particle.y+=particle.speed*1.35;particle.x+=Math.sin(now*.001+particle.sway)*1.3;
+        particle.y+=particle.speed*1.35*level;particle.x+=Math.sin(now*.001+particle.sway)*1.3*level;
       }
       if(particle.y>h+15 || particle.x>w+15 || particle.x < -15) {
         Object.assign(particle,spawn());particle.y=-15;
