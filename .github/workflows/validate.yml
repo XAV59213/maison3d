@@ -111,3 +111,4 @@ jobs:
           npm install --no-save puppeteer-core
           node tests/headless/test_motion_reduced.mjs
           node tests/headless/test_visites_mobile.mjs
+          node tests/headless/test_i18n_en_screens.mjs

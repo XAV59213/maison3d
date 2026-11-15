@@ -4,6 +4,7 @@
  * Local clock + seasonal effects are fallbacks, never marketed as actual weather.
  */
 import {motionLevel,motionCount} from "./motion-level.js";
+import {t,onUiLang,labelOf,uiLang} from "./i18n.js";
 
 export function createAtmosphere({scene, sun, renderer}) {
   const canvas = document.createElement("canvas");
@@ -75,9 +76,10 @@ export function createAtmosphere({scene, sun, renderer}) {
     sun.intensity = night ? 0.14 : evening ? 1.5 : cloudy ? 1.15 : 3;
     renderer.toneMappingExposure = night ? 0.6 : evening ? 0.85 : 1;
     const temp = typeof live?.temperature === "number" ? live.temperature+"°C · " : "";
-    const display = manualWeather ? "Simulation "+manualWeather : live?.weather || "Météo non connectée";
-    const source = manualWeather || manualTime ? "Aperçu manuel" : live?.weather ? "Home Assistant" : "Simulation locale";
-    const light = night ? "Nuit" : evening ? "Soir" : "Jour";
+    const kind=manualWeather?labelOf(uiLang(),manualWeather)||manualWeather:"";
+    const display = manualWeather ? t("wx_sim",{kind}) : live?.weather || t("wx_unconnected");
+    const source = manualWeather || manualTime ? t("status_manual") : live?.weather ? t("wx_ha") : t("wx_local");
+    const light = night ? t("status_night") : evening ? t("label_evening") : t("status_day");
     status.textContent = "☁ "+temp+display+" · "+light+" · "+source;
     window.dispatchEvent(new CustomEvent("maison3d:weather", {detail:{
       weather: manualWeather ?? live?.weather ?? null,
@@ -148,15 +150,15 @@ export function createAtmosphere({scene, sun, renderer}) {
   });
   const weatherButton=document.getElementById("weather");
   if(weatherButton) {
-    weatherButton.title="Prévisualiser pluie, neige, soleil (clic pour changer)";
+    weatherButton.title=t("wx_preview_title");
     weatherButton.addEventListener("click",() => {
       manualWeather=manualWeather===null?"rain":manualWeather==="rain"?"snow":manualWeather==="snow"?"sunny":null;
       update();
     });
   }
   const autoButton=document.createElement("button");
-  autoButton.textContent="◉ Auto";
-  autoButton.title="Suivre automatiquement Home Assistant / le soleil";
+  autoButton.textContent=t("auto");
+  autoButton.title=t("wx_follow");
   autoButton.classList.add("on");
   autoButton.onclick=() => {
     manualTime=null;manualWeather=null;
@@ -165,6 +167,8 @@ export function createAtmosphere({scene, sun, renderer}) {
     update();
   };
   document.querySelector(".modes")?.appendChild(autoButton);
+  const paintWeather=()=>{autoButton.textContent=t("auto");autoButton.title=t("wx_follow");weatherButton.title=t("wx_preview_title");update()};
+  onUiLang(paintWeather);
   document.querySelectorAll("[data-time]").forEach(button => button.addEventListener("click",() => autoButton.classList.remove("on")));
   setInterval(update,60000);
   update();

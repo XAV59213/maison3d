@@ -11,7 +11,7 @@ import {createPresentation} from "./presentation.js";
 import {createWorldAmbience} from "./world-ambience.js";
 import {createArchitectureKit} from "./architecture.js";
 import {onHaData,saveToHa,browserCopySections} from "./ha-storage.js";
-import {t} from "./i18n.js";
+import {t,onUiLang} from "./i18n.js";
 import {registerSection,markSaved,changed,onDraft} from "./draft.js";
 import {createSceneLayout} from "./scene-layout.js";
 export function startScene({photoView,interior,isOffscreen=()=>false}){
@@ -74,7 +74,7 @@ export function startScene({photoView,interior,isOffscreen=()=>false}){
   const select=document.getElementById("objects"),ids=["x","z","w","d","h","r"];
   const barnRow=document.createElement("label");barnRow.id="barn-example-option";barnRow.style.cssText="display:block;margin-top:8px;font-size:12px;color:#d5dee7";
   const barnCheck=document.createElement("input");barnCheck.type="checkbox";
-  barnRow.append(barnCheck,document.createTextNode(" Aménagement réaliste (projet exemple)"));
+  const barnLabel=document.createTextNode(t("barn_example"));barnRow.append(barnCheck,barnLabel);
   document.getElementById("editor")?.append(barnRow);
   barnCheck.addEventListener("change",()=>{if(!selected||selected.type!=="building")return;selected.interior=barnCheck.checked?"barn":"off";save();interior?.refresh()});
   function syncBarnOption(){const allow=selected?.type==="building";barnRow.hidden=!allow;if(allow)barnCheck.checked=selected.interior==="barn"||(selected.id==="grange"&&selected.interior!=="off");}
@@ -86,8 +86,9 @@ export function startScene({photoView,interior,isOffscreen=()=>false}){
   // in this browser and in Home Assistant, « ↶ Annuler » restores the saved layout (draft.js).
   function save(){changed()}
   const validLayout=items=>Array.isArray(items)&&items.every(o=>o&&typeof o.id==="string"&&typeof o.type==="string");
-  let loadStatus="Enregistré localement";
-  onDraft(({dirty,kind,text})=>saveStatus(kind==="saving"||kind==="saved"||kind==="error"?text:dirty?"● Modifications non enregistrées — 💾 Enregistrer":loadStatus));
+  let loadStatusKey="saved_locally";
+  const loadStatusText=()=>t(loadStatusKey);
+  onDraft(({dirty,kind,text})=>saveStatus(kind==="saving"||kind==="saved"||kind==="error"?text:dirty?t("dirty_3d"):loadStatusText()));
   // Project name chosen in the integration options or the card (neutral default « Maison 3D »).
   let projectName="Maison 3D";
   window.addEventListener("message",event=>{if(event.source!==window.parent||event.origin!==location.origin||event.data?.type!=="maison3d:conditions")return;
@@ -98,17 +99,18 @@ export function startScene({photoView,interior,isOffscreen=()=>false}){
   const ray=new THREE.Raycaster(),pointer=new THREE.Vector2();renderer.domElement.addEventListener("pointerdown",e=>{pointer.set(e.clientX/innerWidth*2-1,1-e.clientY/innerHeight*2);ray.setFromCamera(pointer,camera);const hits=ray.intersectObjects([...meshes.values()],true);if(hits.length){let g=hits[0].object;while(g.parent&&!g.userData.id)g=g.parent;if(g.userData.id){choose(g.userData.id);if(ray.ray.intersectPlane(dragPlane,dragHit)){dragOffset.set(selected.x-dragHit.x,0,selected.z-dragHit.z);moving=true;controls.enabled=false}}}});
   renderer.domElement.addEventListener("pointermove",e=>{if(!moving||!selected)return;pointer.set(e.clientX/innerWidth*2-1,1-e.clientY/innerHeight*2);ray.setFromCamera(pointer,camera);if(ray.ray.intersectPlane(dragPlane,dragHit)){selected.x=Math.round((dragHit.x+dragOffset.x)*4)/4;selected.z=Math.round((dragHit.z+dragOffset.z)*4)/4;let g=meshes.get(selected.id);if(g){g.position.x=selected.x;g.position.z=selected.z;if(outline)outline.update()}ids.slice(0,2).forEach(k=>document.getElementById(k).value=selected[k])}});
   function endDrag(){if(moving){moving=false;controls.enabled=true;save()}}renderer.domElement.addEventListener("pointerup",endDrag);renderer.domElement.addEventListener("pointercancel",endDrag);window.addEventListener("pointerup",endDrag);
-  function add(type){const id=type+Date.now();data.push({id,name:({building:"Bâtiment",tree:"Arbre",shed:"Abri",wall:"Muret",road:"Chemin",gate:"Portail",pool:"Piscine",swing:"Balançoire",steps:"Escalier",furniture:"Mobilier"})[type]||type,type,x:0,z:17,w:3,d:3,h:2,r:0});selected=data.at(-1);redraw();save()}
-  function duplicate(){if(!selected)return;const cp={...selected,id:selected.type+Date.now(),name:selected.name+" (copie)",x:selected.x+2,z:selected.z+2};data.push(cp);selected=cp;redraw();save()}
+  const typeName=type=>({building:"type_building",tree:"type_tree",shed:"type_shed_short",wall:"type_wall",road:"type_road_short",gate:"type_gate",pool:"type_pool",swing:"type_swing",steps:"type_steps",furniture:"type_furniture"})[type];
+  function add(type){const id=type+Date.now();data.push({id,name:typeName(type)?t(typeName(type)):type,type,x:0,z:17,w:3,d:3,h:2,r:0});selected=data.at(-1);redraw();save()}
+  function duplicate(){if(!selected)return;const cp={...selected,id:selected.type+Date.now(),name:selected.name+t("copy_suffix"),x:selected.x+2,z:selected.z+2};data.push(cp);selected=cp;redraw();save()}
   function del(){if(!selected)return;data=data.filter(o=>o.id!==selected.id);redraw();save()}
   document.getElementById("add").onclick=()=>add(document.getElementById("kind").value);document.getElementById("copy").onclick=duplicate;document.getElementById("duplicate").onclick=duplicate;document.getElementById("del").onclick=del;document.getElementById("remove").onclick=del;
-  document.getElementById("reset").onclick=()=>{if(confirm("Revenir à la disposition initiale ?")){data=structuredClone(defaultItems);redraw();save()}};
+  document.getElementById("reset").onclick=()=>{if(confirm(t("reset_confirm"))){data=structuredClone(defaultItems);redraw();save()}};
   document.getElementById("addtree").onclick=()=>add("tree");document.getElementById("addchair").onclick=()=>add("furniture");document.getElementById("terrain").onclick=()=>add("wall");document.getElementById("addsteps").onclick=()=>add("steps");
   document.getElementById("toggle").onclick=()=>document.getElementById("editor").classList.toggle("hidden");
   document.getElementById("topview").onclick=()=>{presentation.cancel();camera.position.set(0,60,.1);controls.target.set(0,0,0);controls.update()};
   document.getElementById("tab3d").onclick=document.getElementById("orbit").onclick=()=>{presentation.cancel();camera.position.set(31,23,35);controls.target.set(0,1,0);controls.update()};
   document.getElementById("export").onclick=()=>{let blob=new Blob([JSON.stringify({version:2,items:data},null,2)],{type:"application/json"});let a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=(projectName.normalize("NFKD").replace(/[\u0300-\u036f]/g,"").replace(/[^\w-]+/g,"-").replace(/^-+|-+$/g,"").toLowerCase()||"maison3d")+"-projet.json";a.click();URL.revokeObjectURL(a.href)};
-  document.getElementById("import").onclick=()=>document.getElementById("file").click();document.getElementById("file").onchange=async e=>{try{const obj=JSON.parse(await e.target.files[0].text());if(!Array.isArray(obj.items))throw Error("Format attendu : items[]");data=obj.items.filter(o=>o&&typeof o.id==="string"&&/^[a-z0-9_-]{1,80}$/i.test(o.id)&&typeof o.type==="string"&&["building","garage","ramp","shed","terrace","wall","gate","pool","swing","tree","furniture","steps","road"].includes(o.type)&&["x","z","w","d","h","r"].every(k=>Number.isFinite(Number(o[k])))&&o.w>0&&o.d>0&&o.h>0).map(o=>({...o,name:String(o.name||o.id).slice(0,120),interior:o.interior==="barn"||o.interior==="off"?o.interior:undefined}));if(!data.length)throw Error("Aucun objet valide");redraw();save()}catch(err){alert("Import impossible : "+err.message)}};
+  document.getElementById("import").onclick=()=>document.getElementById("file").click();document.getElementById("file").onchange=async e=>{try{const obj=JSON.parse(await e.target.files[0].text());if(!Array.isArray(obj.items))throw Error(t("import_format"));data=obj.items.filter(o=>o&&typeof o.id==="string"&&/^[a-z0-9_-]{1,80}$/i.test(o.id)&&typeof o.type==="string"&&["building","garage","ramp","shed","terrace","wall","gate","pool","swing","tree","furniture","steps","road"].includes(o.type)&&["x","z","w","d","h","r"].every(k=>Number.isFinite(Number(o[k])))&&o.w>0&&o.d>0&&o.h>0).map(o=>({...o,name:String(o.name||o.id).slice(0,120),interior:o.interior==="barn"||o.interior==="off"?o.interior:undefined}));if(!data.length)throw Error(t("import_none"));redraw();save()}catch(err){alert(t("import_fail",{error:err.message}))}};
   const atmosphere=createAtmosphere({scene,sun,renderer});
   const presentation=createPresentation({THREE,camera,controls});
   interior.attach({THREE,scene,camera,controls,getItems:()=>data,getMeshes:()=>meshes,presentation});
@@ -122,20 +124,21 @@ export function startScene({photoView,interior,isOffscreen=()=>false}){
     writeLocal:value=>localStorage.setItem(KEY,JSON.stringify(value))});
   // Load the project saved in Home Assistant; first time, migrate this browser's layout to it.
   onHaData((ha,{connected,canSave})=>{
-    const show=text=>{loadStatus=text;changed()};
-    if(!connected){show("Enregistré dans ce navigateur");return}
+    const show=key=>{loadStatusKey=key;changed()};
+    if(!connected){show("saved_in_browser");return}
     if(validLayout(ha.layout)){
       if(JSON.stringify(ha.layout)!==JSON.stringify(data)){data=structuredClone(ha.layout);selected=null;redraw()}
       // Cache of the layout saved in Home Assistant (not a new change).
       try{localStorage.setItem(KEY,JSON.stringify(data))}catch{}
       markSaved("layout");
-      show(browserCopySections().includes("layout")?t("browserCopy"):"Enregistré dans Home Assistant");
+      show(browserCopySections().includes("layout")?"browserCopy":"saved_in_ha");
     }else if(canSave&&localStorage.getItem(KEY)){
       // One-time migration of the layout already saved in this browser.
-      saveToHa({layout:data});show("Copie du projet de ce navigateur vers Home Assistant…");
+      saveToHa({layout:data});show("copying_to_ha");
     }
-    else show(canSave?"Projet par défaut · 💾 Enregistrer pour le garder dans Home Assistant":"Lecture seule dans Home Assistant (administrateur requis) · enregistrement dans ce navigateur");
+    else show(canSave?"default_project_hint":"readonly_ha");
   });
+  onUiLang(()=>{barnLabel.textContent=t("barn_example");changed()});
   addEventListener("resize",()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});// Pause everything when the page is hidden or the Lovelace card is off-screen;
   // skip the WebGL render when the opaque photo view covers the 3D scene.
   const sceneVisible=()=>!document.documentElement.classList.contains("photo-active");

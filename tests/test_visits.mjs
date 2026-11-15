@@ -39,5 +39,14 @@ assert.equal(V.visitButtonLabel(custom),"🚪 Intérieur Atelier bois");
 assert.equal(V.photoButtonLabel(grange,false),"📷 Photo de la grange");
 assert.equal(V.photoButtonLabel(grange,true),"⬡ Vue 3D");
 assert.equal(V.photoButtonLabel(custom,false),"📷 Photo de Atelier bois");
-assert.equal(V.INTERIOR_DISCLAIMER.includes("Volumes intérieurs provisoires"),true);
+assert.equal(V.INTERIOR_DISCLAIMER().includes("Volumes intérieurs provisoires"),true);
+const {setUiLang,t,textKeys,UI_TEXT}=await import(pathToFileURL("custom_components/maison3d/www/i18n.js").href);
+setUiLang("en");
+assert.equal(V.visitButtonLabel(maison),"🚪 House interior");
+assert.equal(V.visitButtonLabel(grange),"🏚 Barn interior");
+assert.equal(V.photoButtonLabel(grange,false),t("visit_photo_barn"));
+assert.equal(V.photoButtonLabel(grange,true),t("visit_photo_3d"));
+assert.ok(V.INTERIOR_DISCLAIMER().includes("Provisional")||V.INTERIOR_DISCLAIMER().toLowerCase().includes("interior"));
+setUiLang("fr");
+
 console.log("visits helpers OK");

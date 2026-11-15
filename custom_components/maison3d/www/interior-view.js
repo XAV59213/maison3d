@@ -5,6 +5,7 @@
  * on by default for the shipped grange, and only offered for a building.
  * The 📷 photo button is shown only when that building has a photo.
  */
+import {t,onUiLang} from "./i18n.js";
 import {buildBarnInterior,BARN_VIEW,BARN_PHOTO} from "./barn-interior.js";
 import {responsiveSrcset,photoSizes} from "./photo-source.js";
 import {
@@ -36,7 +37,7 @@ export function createInteriorExplorer({photoView,ensureScene=null}){
   const buildingOf=key=>items().find(item=>item.id===key);
   const nav=document.createElement("nav");
   nav.id="maison3d-interior-navigation";
-  nav.setAttribute("aria-label","Visites intérieures Maison 3D");
+  nav.setAttribute("aria-label",t("visit_nav"));
   const buttons=new Map();
   function add(key,text){
     const b=document.createElement("button");b.type="button";b.textContent=text;
@@ -49,19 +50,19 @@ export function createInteriorExplorer({photoView,ensureScene=null}){
     nav.append(b);buttons.set(key,b);
     return b;
   }
-  add("outside","↩ Extérieur");
+  add("outside",t("visit_outside"));
   // Real interior photo (only while visiting a building that has one).
   const photoBtn=document.createElement("button");
-  photoBtn.type="button";photoBtn.textContent="📷 Photo de la grange";photoBtn.className="interior-photo-btn";
-  photoBtn.title="Afficher la photo de l'intérieur de la grange";
+  photoBtn.type="button";photoBtn.textContent=t("visit_photo_barn");photoBtn.className="interior-photo-btn";
+  photoBtn.title=t("visit_photo_title",{name:t("building_fallback")});
   photoBtn.setAttribute("aria-pressed","false");photoBtn.hidden=true;
   nav.append(photoBtn);
   const realPhoto=document.createElement("figure");
   realPhoto.id="maison3d-interior-photo";realPhoto.hidden=true;
   const realImg=document.createElement("img");
-  realImg.alt="Photo de l'intérieur de la grange";realImg.decoding="async";
+  realImg.alt=t("visit_photo_alt",{name:t("building_fallback")});realImg.decoding="async";
   const caption=document.createElement("figcaption");
-  caption.textContent="Photo de la grange · « ⬡ Vue 3D » pour revenir à la 3D";
+  caption.textContent=t("visit_photo_caption",{photo:t("visit_photo_barn").replace(/^📷 /,""),back:t("visit_photo_3d")});
   realPhoto.append(realImg,caption);
   const showPhoto=on=>{
     const current=buildingOf(active);
@@ -79,7 +80,7 @@ export function createInteriorExplorer({photoView,ensureScene=null}){
   photoBtn.addEventListener("click",()=>showPhoto(realPhoto.hidden));
   const label=document.createElement("span");
   label.className="interior-disclaimer";
-  label.textContent=INTERIOR_DISCLAIMER;
+  label.textContent=INTERIOR_DISCLAIMER();
   label.hidden=true;
   nav.append(label);
   function disclaimerEnabled(){
@@ -133,7 +134,7 @@ export function createInteriorExplorer({photoView,ensureScene=null}){
       }
       b.setAttribute("aria-pressed",String(item.id===active));
     }
-    buttons.get("outside")?.setAttribute("aria-pressed",String(active==="outside"));
+    const outside=buttons.get("outside");if(outside){outside.textContent=t("visit_outside");outside.setAttribute("aria-pressed",String(active==="outside"))}
     if(active!=="outside"&&!wanted.has(active))enter("outside");
     else applyVisitChrome();
   }
@@ -141,15 +142,15 @@ export function createInteriorExplorer({photoView,ensureScene=null}){
     const current=buildingOf(active);
     const showNotice=active!=="outside"&&!isBarnInterior(current)&&disclaimerEnabled();
     label.hidden=!showNotice;
-    label.textContent=INTERIOR_DISCLAIMER;
+    label.textContent=INTERIOR_DISCLAIMER();
     const showPic=active!=="outside"&&hasInteriorPhoto(current);
     photoBtn.hidden=!showPic;
     if(!showPic)showPhoto(false);
     else{
       photoBtn.textContent=photoButtonLabel(current,!realPhoto.hidden);
       photoBtn.title=photoButtonTitle(current);
-      realImg.alt="Photo de l'intérieur de "+(current?current.name||current.id:"bâtiment");
-      caption.textContent=photoButtonLabel(current,false).replace(/^📷 /,"")+" · « ⬡ Vue 3D » pour revenir à la 3D";
+      realImg.alt=t("visit_photo_alt",{name:current?current.name||current.id:t("building_fallback")});
+      caption.textContent=t("visit_photo_caption",{photo:photoButtonLabel(current,false).replace(/^📷 /,""),back:t("visit_photo_3d")});
     }
   }
   function placeNav(){
@@ -293,5 +294,6 @@ export function createInteriorExplorer({photoView,ensureScene=null}){
   }
   syncVisitButtons();
   placeNav();
+    onUiLang(()=>{nav.setAttribute("aria-label",t("visit_nav"));syncVisitButtons();});
   return {attach,enter,refresh,showPhoto,syncVisitButtons,get active(){return active}};
 }

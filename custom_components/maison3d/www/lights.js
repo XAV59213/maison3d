@@ -8,7 +8,7 @@
  * default, for administrators only or every Home Assistant user (checked by the card /
  * panel, then by Home Assistant itself).
  */
-import {langOf} from "./i18n.js";
+import {langOf,t,uiLang} from "./i18n.js";
 export {langOf};
 export const LIGHT_DOMAINS=["light","switch"];
 export const MAX_LIGHTS=24;
@@ -61,7 +61,7 @@ export function lightOptions(states,limit=300){
   return Object.values(states||{})
     .filter(e=>isLightEntity(e?.entity_id))
     .map(e=>({id:e.entity_id,name:typeof e.attributes?.friendly_name==="string"&&e.attributes.friendly_name.trim()?e.attributes.friendly_name.trim().slice(0,80):e.entity_id}))
-    .sort((a,b)=>(a.id.startsWith("light.")?0:1)-(b.id.startsWith("light.")?0:1)||a.name.localeCompare(b.name,"fr"))
+    .sort((a,b)=>(a.id.startsWith("light.")?0:1)-(b.id.startsWith("light.")?0:1)||a.name.localeCompare(b.name,uiLang()==="fr"?"fr":"en"))
     .slice(0,limit);
 }
 /**
@@ -127,21 +127,12 @@ export function createLightBridge({getHass,getFrame,onChange}){
     get mode(){return mode}
   };
 }
+export const say=(lang,key,vars={})=>t(lang,"light_"+key,vars);
+const LIGHT_KEYS=["legend","note","add","choose","none","name","color","intensity","place","remove","placing","cancel","toggle","toggleOff","toggleAdmins","toggleUsers","on","off","unavailable","missing","denied","toggled","full","position","halo_title","clickTitle"];
 export const TEXT={
-  fr:{legend:"💡 Lumières extérieures",note:"La nuit, un halo s'affiche sur la photo quand la lumière est allumée (couleur et luminosité de la lampe). Placez chaque lumière d'un clic sur la photo. 💾 Enregistrer pour garder.",
-    add:"➕ Ajouter",choose:"Choisir une lumière (light.* ou switch.*)…",none:"Aucune lumière configurée.",name:"Nom",color:"Couleur du halo",
-    intensity:"Intensité",place:"📍 Placer",remove:"✕ Retirer",placing:"Touchez la photo à l'emplacement de « {name} » · Échap pour annuler",
-    cancel:"Annuler",toggle:"Allumer / éteindre d'un clic sur la photo",toggleOff:"Désactivé",toggleAdmins:"Administrateurs seulement",toggleUsers:"Tous les utilisateurs Home Assistant",
-    on:"allumée",off:"éteinte",unavailable:"indisponible",missing:"introuvable",denied:"Action refusée par Home Assistant",toggled:"Commande envoyée",full:"Maximum atteint",
-    position:"Position",clickTitle:"{name} : cliquer pour allumer / éteindre"},
-  en:{legend:"💡 Outdoor lights",note:"At night, a halo is shown on the photo while the light is on (colour and brightness of the lamp). Place each light with a click on the photo. 💾 Save to keep.",
-    add:"➕ Add",choose:"Choose a light (light.* or switch.*)…",none:"No light configured.",name:"Name",color:"Halo colour",
-    intensity:"Intensity",place:"📍 Place",remove:"✕ Remove",placing:"Tap the photo where « {name} » is · Esc to cancel",
-    cancel:"Cancel",toggle:"Turn on / off with a click on the photo",toggleOff:"Disabled",toggleAdmins:"Administrators only",toggleUsers:"Every Home Assistant user",
-    on:"on",off:"off",unavailable:"unavailable",missing:"not found",denied:"Refused by Home Assistant",toggled:"Command sent",full:"Maximum reached",
-    position:"Position",clickTitle:"{name}: click to turn on / off"}
+  fr:Object.fromEntries(LIGHT_KEYS.map(k=>[k,t("fr","light_"+k)])),
+  en:Object.fromEntries(LIGHT_KEYS.map(k=>[k,t("en","light_"+k)]))
 };
-export const say=(lang,key,vars={})=>(TEXT[lang]?.[key]??TEXT.fr[key]??key).replace(/\{(\w+)\}/g,(_,k)=>vars[k]??"");
 /**
  * DOM layer over the photo: one halo per light that is on (night), plus markers while
  * the settings are open and click targets when toggling is allowed.
