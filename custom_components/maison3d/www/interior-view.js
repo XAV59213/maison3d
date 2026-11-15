@@ -30,6 +30,7 @@ export function createInteriorExplorer({THREE,scene,camera,controls,getItems,get
   const label=document.createElement("span");
   label.className="interior-disclaimer";
   label.textContent="Volumes intérieurs provisoires — plans à confirmer";
+  label.hidden=true;
   nav.append(label);
   const style=document.createElement("style");
   style.textContent=[
