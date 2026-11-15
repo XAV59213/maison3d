@@ -346,15 +346,25 @@ Les commandes **▣ Photo réelle**, **▤ Plan 2D** et **⬡ 3D éditable** res
 
 Le choix entre plan 2D et vue 3D est mémorisé localement. Il n'est plus nécessaire de rechercher le bouton derrière la photo ; la barre d'outils 3D reste disponible selon le mode présentation ou édition.
 
-## 🚪 Visite 3D de la maison et de la grange (première étape)
+## 🚪 Visite 3D de la maison et de la grange
 
 Trois commandes permettent d'ouvrir directement les volumes **Intérieur maison**, **Intérieur grange** et **Extérieur** depuis le moteur 3D.
 
 Les nouvelles vues sont de **véritables géométries Three.js**, avec sols, murs, éclairages et quelques éléments d'ameublement de démonstration. Les dimensions de départ reprennent celles des objets déjà enregistrés dans le projet, y compris si vous les avez modifiées.
 
-**Important :** faute de plans et de photographies intérieures, les pièces visibles sont des **volumes provisoires**, pas une reconstitution fidèle de la maison ou de la grange. Le mode intérieur n'efface pas vos bâtiments ni vos données : le bâtiment extérieur concerné est seulement masqué le temps de la visite et réapparaît lorsque vous revenez dehors. Les caméras intérieures sont distinctes de la vue photo météo.
+**Grange : intérieur réaliste d'après la photo réelle.** L'intérieur de la grange est désormais aménagé à partir d'une photographie prise depuis l'entrée : pièce d'environ **5 × 15 m** (profondeur ≈ 3 fois la largeur), plafond blanc à **2,5 m** avec spots encastrés, sol carrelé gris façon parquet. On y retrouve, de l'entrée vers le fond :
 
-Pour obtenir une visite **réaliste et exacte**, il faudra ensuite relever les dimensions et la distribution des pièces, les emplacements des portes/fenêtres, les étages, les escaliers et, si possible, disposer de photographies des deux intérieurs.
+- **à gauche (1er tiers)** : rack serveur vitré, paravent en osier, étagère en fer forgé, bureau en bois clair avec deux écrans et fauteuil ; plus loin sur le mur, fenêtre à volets et climatiseur, panneau jaune, porte vitrée ;
+- **au centre (2e tiers)** : grande table en bois clair et chaises orange ;
+- **au fond** : canapé d'angle en cuir noir, écran de projection avec enceintes, boule à facettes ;
+- **au fond à droite** : bar arrondi façon bambou, tabourets, étagères à bouteilles, réfrigérateur ;
+- **à droite** : moto de tourisme rouge (2e tiers), armoires blanches et borne d'arcade contre le mur derrière elle, volière au premier plan.
+
+Dans la grange, la barre de visite affiche un bouton **📷 Photo réelle** : il ouvre la photo (`images/grange-interieur.webp`) en plein écran ; **⬡ Vue 3D** revient au modèle. Pendant la visite, le reste de la scène, le soleil et les effets météo extérieurs sont masqués ; tout réapparaît en revenant à l'**Extérieur**.
+
+Les dimensions et positions sont **estimées** à partir de la photo (aucun relevé) et le mobilier est simplifié en volumes : la vue est fidèle dans sa disposition, pas au centimètre.
+
+**Maison :** faute de plans et de photographies intérieures, l'intérieur de la maison reste un **volume provisoire**, pas une reconstitution fidèle. Le mode intérieur n'efface pas vos bâtiments ni vos données : le bâtiment extérieur concerné est seulement masqué le temps de la visite et réapparaît lorsque vous revenez dehors. Les caméras intérieures sont distinctes de la vue photo météo.
 
 ## 🏗️ Vue 3D et édition
 
