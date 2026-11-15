@@ -2,13 +2,11 @@
  * Animated atmospheric layers above the approved house photo.
  * Canvas overlays are screen-space visual effects, not a physical 3D model.
  */
+import {motionLevel} from "./motion-level.js";
+
 export function createPhotoCinematics(canvas) {
   const ctx=canvas.getContext("2d",{alpha:true});
   let width=1,height=1,dpr=1;
-  let reduced=matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const onMotion=(e)=>{reduced=e.matches};
-  const media=matchMedia("(prefers-reduced-motion: reduce)");
-  media.addEventListener?.("change",onMotion);
   function resize() {
     const rect=canvas.getBoundingClientRect();
     width=Math.max(1,rect.width);height=Math.max(1,rect.height);
@@ -127,7 +125,7 @@ export function createPhotoCinematics(canvas) {
     if(!enabled||!width||!height)return;
     const value=clamp(safe(Number(intensity),1),0,2);
     if(value<=0)return;
-    const actualTime=reduced?0:time;
+    const actualTime=time*motionLevel();
     if(["cloudy","rain","storm","snow","wind"].includes(condition)) {
       clouds(actualTime,condition==="storm"?.40:.24*value,wind);
     }

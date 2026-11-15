@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
-import {readFileSync} from "node:fs";
-const text=readFileSync("custom_components/maison3d/www/frost-effects.js","utf8");
-const {frostLevel,toCelsius,FROST_FULL_AT}=await import("data:text/javascript;base64,"+Buffer.from(text).toString("base64"));
+import {pathToFileURL} from "node:url";
+const {frostLevel,toCelsius,FROST_FULL_AT}=await import(pathToFileURL("custom_components/maison3d/www/frost-effects.js").href);
 assert.equal(FROST_FULL_AT,-5);
 assert.equal(frostLevel(5),0);
 assert.equal(frostLevel(0.1),0);
