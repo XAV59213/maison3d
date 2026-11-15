@@ -18,7 +18,7 @@ const fromParent=data=>fire("message",{source:parent,origin:"http://ha",data});
 const www=name=>pathToFileURL("custom_components/maison3d/www/"+name).href;
 const ha=await import(www("ha-storage.js"));
 const D=await import(www("draft.js"));
-const T=await import(www("ui-text.js"));
+const T=await import(www("i18n.js"));
 const tick=()=>new Promise(r=>setTimeout(r,0));
 const KEY="maison3d:draft:v1:"+window.name;
 const child=(name,env)=>{const r=spawnSync(process.execPath,[process.argv[1],name],{env:{...process.env,...env},encoding:"utf8"});

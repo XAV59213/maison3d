@@ -11,7 +11,7 @@ import {createPresentation} from "./presentation.js";
 import {createWorldAmbience} from "./world-ambience.js";
 import {createArchitectureKit} from "./architecture.js";
 import {onHaData,saveToHa,browserCopySections} from "./ha-storage.js";
-import {t} from "./ui-text.js";
+import {t} from "./i18n.js";
 import {registerSection,markSaved,changed,onDraft} from "./draft.js";
 import {createSceneLayout} from "./scene-layout.js";
 export function startScene({photoView,interior,isOffscreen=()=>false}){

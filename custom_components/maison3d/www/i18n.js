@@ -92,7 +92,7 @@ const TEXT={
     ed_pick_media:"Choisir dans Médias",ed_media_chosen:"Média choisi",
     previewTitle:"Aperçu temporaire : {what} · non enregistré · se termine seul après 2 min",
     previewBack:"↩ Revenir",previewBackTitle:"Terminer l'aperçu (revenir à la saison réglée)",
-    previewSeason:"Aperçu : {name}",seasonBubbles:"Aperçu des saisons (temporaire, non enregistré)",
+    previewSeason:"Aperçu : {name}",seasonPickIdle:"👁 Aperçu saison",seasonBubbles:"Aperçu des saisons (temporaire, non enregistré)",
     moonPreview:"Aperçu de la phase de lune (temporaire, non enregistré)",moonFromSensor:"Depuis le capteur Home Assistant",
     fixedSeason:"Saison fixe (réglage enregistré avec 💾)",fixedAuto:"Auto (calendrier Home Assistant)",
     previewStatus:"👁 Aperçu",moonPreviewStatus:"Lune en aperçu",
@@ -197,7 +197,7 @@ const TEXT={
     ed_pick_media:"Choose from Media",ed_media_chosen:"Media chosen",
     previewTitle:"Temporary preview: {what} · not saved · ends by itself after 2 min",
     previewBack:"↩ Back",previewBackTitle:"End the preview (back to the chosen season)",
-    previewSeason:"Preview: {name}",seasonBubbles:"Season preview (temporary, not saved)",
+    previewSeason:"Preview: {name}",seasonPickIdle:"👁 Season preview",seasonBubbles:"Season preview (temporary, not saved)",
     moonPreview:"Moon phase preview (temporary, not saved)",moonFromSensor:"From the Home Assistant sensor",
     fixedSeason:"Fixed season (setting saved with 💾)",fixedAuto:"Auto (Home Assistant calendar)",
     previewStatus:"👁 Preview",moonPreviewStatus:"Moon preview",
@@ -213,6 +213,7 @@ const TEXT={
     ed_inherited:"Inherited: {id} — {source}",ed_empty_auto:"Empty: automatic detection"
   }
 };
+export {TEXT as UI_TEXT};
 
 let lang="fr";
 const subscribers=new Set();

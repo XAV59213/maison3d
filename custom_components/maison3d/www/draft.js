@@ -12,7 +12,7 @@
  * asks « Restaurer les modifications non enregistrées ? » (Restaurer / Ignorer).
  */
 import {saveToHa,onHaSaved,haStorageStatus,onHaData,keepBrowserCopy,onBrowserCopy,useHaVersion} from "./ha-storage.js";
-import {t,onUiLang,uiLang} from "./ui-text.js";
+import {t,onUiLang,uiLang} from "./i18n.js";
 const sections=new Map();
 const listeners=new Set();
 let status={kind:"idle",text:""},saving=false,clearTimer=null,waiter=null;
