@@ -12,7 +12,9 @@ import {createFrostEffects,frostLevel,toCelsius} from "./frost-effects.js";
 import {onHaData,saveToHa,uploadToHa} from "./ha-storage.js";
 import {registerSection,markSaved,changed,createSaveControls,SAVE_STYLE} from "./draft.js";
 import {moonPhase,weatherKind,issueText,toKmh,menuChoice,SOURCE_LABELS,ENTITY_KEYS as SENSOR_KEYS} from "./sensor-values.js";
-export function createPhotoView() {
+export function createPhotoView({ensureScene=null}={}) {
+  // ensureScene(): loads the 3D scene (three.js) on demand; the photo never needs it.
+  const withScene=fn=>Promise.resolve(ensureScene?.()).then(fn,()=>{});
   const KEYS=IMAGE_KEYS;
   const LABELS={...Object.fromEntries(IMAGE_SLOTS),fog:"Brouillard",clear:"Clair",frost:"Gel"};
   // Weather/season ambiences selectable as a fixed (saved) ambience.
@@ -701,6 +703,7 @@ export function createPhotoView() {
     section.hidden=!state.enabled;
     if(!state.enabled){section.style.display="none"}else{section.style.display="block"}
     document.documentElement.classList.toggle("photo-active",state.enabled);
+    if(!state.enabled)withScene(()=>{});
   }
   photoBtn.addEventListener("click",()=>{state.enabled=true;persist();update()});
   // ☾ / ☀ preview night or day immediately (test mode, not saved); ◉ Auto returns to real data.
@@ -712,7 +715,7 @@ export function createPhotoView() {
     settings.hidden=true;
     persist();update();
     // Reuse the existing camera controls so the editor remains consistent.
-    document.getElementById(view==="2d"?"topview":"tab3d")?.click();
+    withScene(()=>document.getElementById(view==="2d"?"topview":"tab3d")?.click());
   };
   planBtn.addEventListener("click",()=>setModelView("2d"));
   modelBtn.addEventListener("click",()=>setModelView("3d"));
@@ -953,7 +956,7 @@ export function createPhotoView() {
   requestEntities();
   update();
   if(!state.enabled && state.model_view==="2d"){
-    document.getElementById("topview")?.click();
+    withScene(()=>document.getElementById("topview")?.click());
   }
   return {frame,update,state};
 }

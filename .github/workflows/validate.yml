@@ -27,6 +27,7 @@ jobs:
           node --check custom_components/maison3d/www/presentation.js
           node --check custom_components/maison3d/www/interior-view.js
           node --check custom_components/maison3d/www/barn-interior.js
+          node --check custom_components/maison3d/www/scene3d.js
           node --check custom_components/maison3d/www/world-ambience.js
           node --check custom_components/maison3d/www/photo-view.js
           node --check custom_components/maison3d/www/photo-source.js

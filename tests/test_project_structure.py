@@ -7,13 +7,20 @@ import unittest
 ROOT = Path(__file__).resolve().parents[1]
 COMPONENT = ROOT / "custom_components" / "maison3d"
 
+def app_page():
+    """index.html + scene3d.js: the editable 3D scene is a module loaded on demand."""
+    www = COMPONENT / "www"
+    return (www / "index.html").read_text(encoding="utf-8") + "\n" + (www / "scene3d.js").read_text(encoding="utf-8")
+
+
 class TestMaison3D(unittest.TestCase):
     def test_house_barn_interior_explorer(self):
-        page=(COMPONENT/"www"/"index.html").read_text(encoding="utf-8")
+        page=app_page()
         module=(COMPONENT/"www"/"interior-view.js").read_text(encoding="utf-8")
         self.assertIn('from "./interior-view.js"',page)
         self.assertIn('"interior-view.js"',page)
-        self.assertIn("createInteriorExplorer({THREE,scene,camera,controls",page)
+        self.assertIn("createInteriorExplorer({photoView,ensureScene})",page)
+        self.assertIn("interior.attach({THREE,scene,camera,controls",page)
         self.assertIn('interior?.refresh()',page)
         for marker in (
             'add("outside","↩ Extérieur")',
@@ -31,7 +38,7 @@ class TestMaison3D(unittest.TestCase):
 
     def test_realistic_barn_interior(self):
         www=COMPONENT/"www"
-        page=(www/"index.html").read_text(encoding="utf-8")
+        page=app_page()
         module=(www/"interior-view.js").read_text(encoding="utf-8")
         barn=(www/"barn-interior.js").read_text(encoding="utf-8")
         self.assertIn('"barn-interior.js"',page)
@@ -52,6 +59,24 @@ class TestMaison3D(unittest.TestCase):
                        "camera.layers.set(BARN_LAYER)","camera.layers.mask=layersBefore","interior-barn"):
             self.assertIn(marker,module)
 
+    def test_three_loaded_on_demand(self):
+        """The photo and the Lovelace card never load three.js: only the 3D view / plan / interior visits do."""
+        www = COMPONENT / "www"
+        page = (www / "index.html").read_text(encoding="utf-8")
+        main = re.search(r'<script type="module">(.*?)</script>', page, re.S).group(1)
+        self.assertNotIn('from "three"', main)
+        self.assertNotIn("three/addons", main)
+        self.assertIn('import("./scene3d.js")', main)
+        self.assertIn('id="maison3d-scene-loading"', page)
+        self.assertIn("Chargement de la 3D…", page)
+        scene = (www / "scene3d.js").read_text(encoding="utf-8")
+        self.assertIn('import * as THREE from "three";', scene)
+        self.assertIn("export function startScene(", scene)
+        photo = (www / "photo-view.js").read_text(encoding="utf-8")
+        self.assertIn("export function createPhotoView({ensureScene=null}={})", photo)
+        for name in ("photo-view.js", "interior-view.js", "barn-interior.js", "draft.js", "ha-storage.js"):
+            self.assertNotRegex((www / name).read_text(encoding="utf-8"), r'from\s+"three', name)
+
     def test_manifest(self):
         manifest = json.loads((COMPONENT / "manifest.json").read_text(encoding="utf-8"))
         self.assertEqual(manifest["domain"], "maison3d")
@@ -64,7 +89,7 @@ class TestMaison3D(unittest.TestCase):
             self.assertIn("config", json.loads(path.read_text(encoding="utf-8")))
 
     def test_html_and_weather_module(self):
-        page = (COMPONENT / "www" / "index.html").read_text(encoding="utf-8")
+        page = app_page()
         effects = (COMPONENT / "www" / "weather-effects.js").read_text(encoding="utf-8")
         self.assertIn('id="maison3d-importmap"', page)
         self.assertIn('el.type="importmap"', page)
@@ -78,7 +103,7 @@ class TestMaison3D(unittest.TestCase):
     def test_three_is_bundled_locally(self):
         """Three.js and its addons must load from vendor/, never from a CDN."""
         www = COMPONENT / "www"
-        page = (www / "index.html").read_text(encoding="utf-8")
+        page = app_page()
         for name in ("jsdelivr", "unpkg", "cdn."):
             self.assertNotIn(name, page)
         importmap = json.loads(re.search(r'<script type="application/json" id="maison3d-importmap">(.*?)</script>', page, re.S).group(1))
@@ -96,15 +121,16 @@ class TestMaison3D(unittest.TestCase):
     def test_webgl_memory_and_render_pause(self):
         """Removed 3D groups free GPU memory; rendering pauses when not visible."""
         www = COMPONENT / "www"
-        page = (www / "index.html").read_text(encoding="utf-8")
+        page = app_page()
         card = (www / "maison3d-card.js").read_text(encoding="utf-8")
         self.assertIn("function disposeUnused(groups)", page)
         self.assertIn("o.geometry.dispose()", page)
         self.assertIn("if(!used.has(m))m.dispose()", page)
         self.assertIn("disposeUnused(old)", page)
-        self.assertIn("if(document.hidden||offscreen)return", page)
+        self.assertIn("if(document.hidden||isOffscreen())return", page)
+        self.assertIn("if(!document.hidden&&!offscreen)photoView.frame(time)", page)
         self.assertIn('classList.contains("photo-active")', page)
-        self.assertIn('e.data?.type!=="maison3d:visibility"', page)
+        self.assertIn('e.data?.type==="maison3d:visibility"', page)
         self.assertIn("e.source!==window.parent||e.origin!==location.origin", page)
         self.assertIn("new IntersectionObserver", card)
         self.assertIn('type:"maison3d:visibility"', card)
@@ -236,7 +262,7 @@ class TestMaison3D(unittest.TestCase):
     def test_scene_bars_never_overlap(self):
         """Edit-mode floating bars are laid out by scene-layout.js (brand no longer hidden)."""
         www = COMPONENT / "www"
-        page = (www / "index.html").read_text(encoding="utf-8")
+        page = app_page()
         self.assertIn('import {createSceneLayout} from "./scene-layout.js";', page)
         self.assertIn("createSceneLayout();", page)
         self.assertIn("html.compact-scene", page)
@@ -259,7 +285,7 @@ class TestMaison3D(unittest.TestCase):
         self.assertIn('vol.Optional("project_name"', flow)
         self.assertIn('"project_name":', (COMPONENT / "sensor.py").read_text(encoding="utf-8"))
         www = COMPONENT / "www"
-        page = (www / "index.html").read_text(encoding="utf-8")
+        page = app_page()
         self.assertEqual(page.count('<span class="project-name">Maison 3D</span>'), 2)
         self.assertIn("project_name:", (www / "maison3d-panel.js").read_text(encoding="utf-8"))
         card = (www / "maison3d-card.js").read_text(encoding="utf-8")
@@ -299,7 +325,7 @@ class TestMaison3D(unittest.TestCase):
     def test_project_saved_in_home_assistant(self):
         """3D layout, photo settings and view saved in HA through the parent bridge."""
         www = COMPONENT / "www"
-        page = (www / "index.html").read_text(encoding="utf-8")
+        page = app_page()
         self.assertIn('import {onHaData,saveToHa} from "./ha-storage.js";', page)
         self.assertIn('registerSection("layout",', page)
         photo = (www / "photo-view.js").read_text(encoding="utf-8")
@@ -328,7 +354,7 @@ class TestMaison3D(unittest.TestCase):
 
     def test_interactive_lovelace_card(self):
         card = (COMPONENT / "www" / "maison3d-card.js").read_text(encoding="utf-8")
-        page = (COMPONENT / "www" / "index.html").read_text(encoding="utf-8")
+        page = app_page()
         self.assertIn('customElements.define("maison3d-card"', card)
         self.assertIn("custom:maison3d-card", card)
         self.assertIn("maison3d:conditions", card)
@@ -360,7 +386,7 @@ class TestMaison3D(unittest.TestCase):
 
     def test_architecture_module(self):
         architecture = (COMPONENT / "www" / "architecture.js").read_text(encoding="utf-8")
-        page = (COMPONENT / "www" / "index.html").read_text(encoding="utf-8")
+        page = app_page()
         self.assertIn("createArchitectureKit", architecture)
         for expected in ("gableRoof", "masonryTexture", "window(", "house(", "terrace(", "wall(", "ramp(", "landscape("):
             self.assertIn(expected, architecture)
@@ -369,7 +395,7 @@ class TestMaison3D(unittest.TestCase):
         self.assertIn("architecture.landscape(scene)", page)
 
     def test_realistic_views_and_live_3d_weather(self):
-        page = (COMPONENT / "www" / "index.html").read_text(encoding="utf-8")
+        page = app_page()
         presentation = (COMPONENT / "www" / "presentation.js").read_text(encoding="utf-8")
         ambience = (COMPONENT / "www" / "world-ambience.js").read_text(encoding="utf-8")
         effects = (COMPONENT / "www" / "weather-effects.js").read_text(encoding="utf-8")
@@ -388,7 +414,7 @@ class TestMaison3D(unittest.TestCase):
 
     def test_editable_photo_seasons_weather_and_moon(self):
         photo = (COMPONENT / "www" / "photo-view.js").read_text(encoding="utf-8")
-        html = (COMPONENT / "www" / "index.html").read_text(encoding="utf-8")
+        html = app_page()
         panel = (COMPONENT / "www" / "maison3d-panel.js").read_text(encoding="utf-8")
         card = (COMPONENT / "www" / "maison3d-card.js").read_text(encoding="utf-8")
         self.assertTrue((COMPONENT / "www" / "maison3d-reference.webp").is_file())
@@ -508,7 +534,7 @@ class TestMaison3D(unittest.TestCase):
     def test_photo_moon_preview_and_right_hand_season_buttons(self):
         photo = (COMPONENT / "www" / "photo-view.js").read_text(encoding="utf-8")
         moon = (COMPONENT / "www" / "moon-effects.js").read_text(encoding="utf-8")
-        html = (COMPONENT / "www" / "index.html").read_text(encoding="utf-8")
+        html = app_page()
         self.assertIn('from "./moon-effects.js"', photo)
         self.assertIn("createMoonOverlay({container:section})", photo)
         self.assertIn("skyMoon.draw(", photo)
@@ -542,7 +568,7 @@ class TestMaison3D(unittest.TestCase):
 
     def test_2d_plan_accessible_from_photo_and_restores_mode(self):
         photo = (COMPONENT / "www" / "photo-view.js").read_text(encoding="utf-8")
-        app = (COMPONENT / "www" / "index.html").read_text(encoding="utf-8")
+        app = app_page()
         self.assertIn('planBtn.textContent="▤ Plan 2D"', photo)
         self.assertIn('nav.append(photoBtn,planBtn,modelBtn', photo)
         self.assertIn('planBtn.addEventListener("click",()=>setModelView("2d"))', photo)
@@ -663,7 +689,7 @@ class TestMaison3D(unittest.TestCase):
         """Nothing is saved automatically: draft + « 💾 Enregistrer » / « ↶ Annuler » (2D and 3D)."""
         www = COMPONENT / "www"
         photo = (www / "photo-view.js").read_text(encoding="utf-8")
-        page = (www / "index.html").read_text(encoding="utf-8")
+        page = app_page()
         presentation = (www / "presentation.js").read_text(encoding="utf-8")
         draft = (www / "draft.js").read_text(encoding="utf-8")
         self.assertIn("const persist=()=>changed();", photo)
@@ -702,7 +728,7 @@ class TestMaison3D(unittest.TestCase):
         self.assertIn('frame.src = "/maison3d-assets/index.html" + V;', panel)
         self.assertIn('frame.title = "Maison 3D";', panel)
         self.assertNotIn("V2.0", panel)
-        page = (www / "index.html").read_text(encoding="utf-8")
+        page = app_page()
         self.assertNotIn("V2.0", page)
         modules = json.loads(re.search(r"const MODULES=(\[[^\]]*\])", page).group(1))
         self.assertEqual(set(modules), {path.name for path in www.glob("*.js")})
