@@ -92,6 +92,19 @@ class TestMaison3D(unittest.TestCase):
         self.assertIn('fit:"contain"', interior)
         self.assertTrue((ROOT / "scripts" / "generate_responsive_images.py").is_file())
 
+    def test_card_bottom_bar_folds(self):
+        """Lovelace card: « ☰ Menu » / « ▾ Réduire » folds the bar; display state, never a draft change."""
+        photo = (COMPONENT / "www" / "photo-view.js").read_text(encoding="utf-8")
+        start = photo.index('const BAR_KEY="maison3d:card-bar:v1";')
+        block = photo[start:photo.index("nav.prepend(barToggle);", start)]
+        for marker in ('"☰ Menu":"▾ Réduire"', "setBar(barChoice?barChoice===\"collapsed\":narrowCard())",
+                       "innerWidth<=600", 'localStorage.setItem(BAR_KEY,collapsed?"collapsed":"expanded")'):
+            self.assertIn(marker, block)
+        self.assertNotIn("changed()", block)
+        self.assertNotIn("persist()", block)
+        self.assertIn("html.card-mode #maison3d-photo-controls.collapsed>:not(.bar-toggle):not(.maison3d-save.dirty){display:none!important}", photo)
+        self.assertIn("#maison3d-photo-controls .bar-toggle{display:none}", photo)
+
     def test_manifest(self):
         manifest = json.loads((COMPONENT / "manifest.json").read_text(encoding="utf-8"))
         self.assertEqual(manifest["domain"], "maison3d")
@@ -722,7 +735,9 @@ class TestMaison3D(unittest.TestCase):
         self.assertEqual(photo.count("saveToHa("), 1)
         self.assertEqual(page.count("saveToHa("), 1)
         self.assertNotIn("saveToHa(", presentation)
-        self.assertEqual(photo.count("localStorage.setItem("), 2)
+        # + the folded / unfolded card bar (display state, not a setting).
+        self.assertEqual(photo.count("localStorage.setItem("), 3)
+        self.assertEqual(photo.count("localStorage.setItem(BAR_KEY,"), 1)
         self.assertIn('textContent="💾 Enregistrer"', draft)
         self.assertIn('textContent="↶ Annuler"', draft)
         self.assertIn("● Modifications non enregistrées", draft)

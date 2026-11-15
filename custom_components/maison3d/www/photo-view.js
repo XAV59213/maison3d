@@ -119,6 +119,28 @@ export function createPhotoView({ensureScene=null}={}) {
   // « 💾 Enregistrer / ↶ Annuler » in the bar shared by the photo, the 2D plan and the 3D view.
   const saveControls=createSaveControls();
   nav.append(photoBtn,planBtn,modelBtn,nightBtn,dayBtn,autoBtn,effectsBtn,optionsBtn,saveControls);
+  // Lovelace card: the bottom bar folds into one « ☰ Menu » button (folded by default on a
+  // narrow card or a phone). Display state only: never a change for « 💾 Enregistrer »;
+  // the choice is remembered in this browser like the other navigation states.
+  const BAR_KEY="maison3d:card-bar:v1";
+  const barToggle=document.createElement("button");
+  barToggle.type="button";barToggle.className="bar-toggle";
+  barToggle.setAttribute("aria-controls","maison3d-photo-controls");
+  const narrowCard=()=>innerWidth<=600||(Math.min(screen.width,screen.height)<=600&&matchMedia("(pointer:coarse)").matches);
+  let barChoice=null;
+  try{const v=localStorage.getItem(BAR_KEY);if(v==="collapsed"||v==="expanded")barChoice=v}catch{}
+  const setBar=collapsed=>{
+    nav.classList.toggle("collapsed",collapsed);
+    barToggle.textContent=collapsed?"☰ Menu":"▾ Réduire";
+    barToggle.title=collapsed?"Afficher la barre de commandes":"Réduire la barre de commandes";
+    barToggle.setAttribute("aria-expanded",String(!collapsed));
+  };
+  setBar(barChoice?barChoice==="collapsed":narrowCard());
+  barToggle.addEventListener("click",()=>{
+    const collapsed=!nav.classList.contains("collapsed");setBar(collapsed);
+    try{localStorage.setItem(BAR_KEY,collapsed?"collapsed":"expanded")}catch{}
+  });
+  nav.prepend(barToggle);
   // Seasons live in the bottom/bar controls (no column on the photo): buttons on
   // a row of their own when there is room, a compact « Saison » selector otherwise.
   const seasonalNav=document.createElement("div");
@@ -580,6 +602,11 @@ export function createPhotoView({ensureScene=null}={}) {
     "html.card-mode #maison3d-photo-controls{top:auto;bottom:6px;left:6px;gap:3px}",
     "html.card-mode #maison3d-photo-controls button{padding:6px;font-size:11px}",
     "html.card-mode #maison3d-photo-status{top:8px;right:8px}",
+    "#maison3d-photo-controls .bar-toggle{display:none}",
+    "html.card-mode #maison3d-photo-controls .bar-toggle{display:inline-block;background:#31445d}",
+    // Folded: only « ☰ Menu », plus « 💾 Enregistrer » while there are unsaved changes.
+    "html.card-mode #maison3d-photo-controls.collapsed{padding:4px}",
+    "html.card-mode #maison3d-photo-controls.collapsed>:not(.bar-toggle):not(.maison3d-save.dirty){display:none!important}",
     "html.photo-active #maison3d-presentation,html.photo-active #maison3d-weather-status{display:none!important}",
     "@media(max-width:700px){#maison3d-photo-controls{top:auto;bottom:8px;left:8px}",
     "#maison3d-photo-status{top:8px;right:8px;font-size:11px}}"
