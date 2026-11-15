@@ -1,0 +1,106 @@
+name: Publish Maison 3D v2.12.0
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/publish-v2-12-0.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    if: github.repository == 'XAV59213/maison3d'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Verify diagnostic sensors, outdoor lights, version and tests
+        run: |
+          python -m pip install --quiet voluptuous
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root = Path("custom_components/maison3d")
+          www = root / "www"
+          manifest = json.loads((root / "manifest.json").read_text())
+          assert manifest["version"] == "2.12.0"
+          assert "**Version actuelle : v2.12.0**" in Path("README.md").read_text()
+          keys = ("season_mode", "season", "photo", "ambience", "day_night")
+          sensor = (root / "sensor.py").read_text()
+          assert "EntityCategory.DIAGNOSTIC" in sensor
+          assert 'self.entity_id = f"sensor.maison3d_{self.key}"' in sensor
+          assert 'self._attr_unique_id = f"{entry.entry_id}_{self.key}"' in sensor
+          assert (root / "state_logic.py").is_file()
+          for key in keys:
+              assert f'key = "{key}"' in sensor, key
+          for name in ("strings.json", "translations/en.json", "translations/fr.json"):
+              data = json.loads((root / name).read_text())
+              for key in keys:
+                  assert data["entity"]["sensor"][key]["name"], (name, key)
+          icons = json.loads((root / "icons.json").read_text())
+          assert all(key in icons["entity"]["sensor"] for key in keys)
+          lights = (www / "lights.js").read_text()
+          assert 'export const DEFAULT_TOGGLE="off";' in lights
+          assert '"lights.js"' in (www / "index.html").read_text()
+          view = (www / "photo-view.js").read_text()
+          assert 'lights:[],light_toggle:"off"' in view
+          for name in ("maison3d-card.js", "maison3d-panel.js"):
+              assert "createLightBridge" in (www / name).read_text(), name
+          PY
+          for f in custom_components/maison3d/www/*.js; do
+            node --check "$f"
+          done
+          for t in tests/*.mjs; do
+            node "$t"
+          done
+          python -m compileall -q custom_components/maison3d
+          python3 -m unittest discover -s tests -q
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          if gh release view v2.12.0 >/dev/null 2>&1; then
+            echo "v2.12.0 already exists"
+            exit 0
+          fi
+          cat >/tmp/notes.md <<'NOTES'
+          ## Maison 3D v2.12.0 — Capteurs de diagnostic et lumières extérieures la nuit
+
+          ### 🩺 Nouveaux capteurs de diagnostic (#33)
+          Sur l'appareil **Maison 3D**, catégorie *Diagnostic*, noms traduits en français et en anglais :
+
+          | Entité | unique_id | Valeur |
+          |---|---|---|
+          | `sensor.maison3d_season_mode` (Mode des saisons) | `<entry_id>_season_mode` | `auto` / `fixed`, saison fixée en attribut |
+          | `sensor.maison3d_season` (Saison active) | `<entry_id>_season` | printemps, été, automne, hiver |
+          | `sensor.maison3d_photo` (Photo affichée) | `<entry_id>_photo` | nom du fichier, URL complète en attribut |
+          | `sensor.maison3d_ambience` (Ambiance météo) | `<entry_id>_ambience` | jour, nuit, nuageux, pluie, neige, vent, orage, brouillard ou saison |
+          | `sensor.maison3d_day_night` (Jour ou nuit) | `<entry_id>_day_night` | `day` / `night` |
+
+          - Calculés par Home Assistant avec les mêmes règles que la vue : connus sans navigateur ouvert.
+          - Mis à jour à chaque 💾 Enregistrer, quand une entité utilisée change, et toutes les 5 minutes.
+          - Non reflétés : le mode test, les réglages propres à une carte Lovelace, une image qui ne charge pas dans un navigateur.
+          - Les attributs volumineux (URL, entités) ne sont pas historisés.
+
+          ### 💡 Lumières extérieures la nuit
+          - ⚙ Images / météo → 💡 Lumières extérieures : ajouter des `light.*` ou `switch.*`, les placer d'un clic sur la photo, choisir le nom, la couleur et l'intensité du halo.
+          - La nuit, un halo s'affiche seulement si la lumière est allumée, avec sa couleur (`rgb_color`) et sa luminosité (`brightness`).
+          - Option : allumer / éteindre d'un clic sur la photo. Désactivée par défaut ; « administrateurs seulement » ou « tous les utilisateurs ».
+          - Tout passe par le brouillon 💾 Enregistrer / ↶ Annuler. Rendu léger, sans three.js, sur la carte et le panneau.
+
+          ### Installer
+          Dans HACS, mettre à jour **Maison 3D vers v2.12.0**, puis redémarrer Home Assistant (nouveaux capteurs).
+
+          ### Contrôles
+          - La PR #33 a passé les tests Python, JavaScript, HACS et Hassfest. Tests sur un vrai cœur Home Assistant (capteurs) et tests headless (lumières).
+          - Le workflow de publication vérifie les capteurs, les lumières et la version, puis relance les tests.
+
+          Le rendu sur votre Home Assistant réel reste à vérifier.
+          NOTES
+          sed -i 's/^          //' /tmp/notes.md
+          gh release create v2.12.0 --target "${GITHUB_SHA}" --latest --title "Maison 3D v2.12.0 — Capteurs de diagnostic et lumières extérieures la nuit" --notes-file /tmp/notes.md
