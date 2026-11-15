@@ -29,3 +29,7 @@ Pour les régénérer : `python3 scripts/generate_variant_images.py`.
 ```bash
 python3 scripts/import_weather_images.py maison3d_images_meteo.zip
 ```
+
+## Photo réelle de l'intérieur de la grange
+
+`grange-interieur.webp` (WebP qualité 80, 1500×845) est la photo réelle de l'intérieur de la grange, prise depuis l'entrée. Elle s'affiche avec le bouton **📷 Photo réelle** de la visite **Intérieur grange** et sert de référence au modèle 3D (`barn-interior.js`). Elle n'est pas utilisée par la vue photo météo.

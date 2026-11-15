@@ -29,6 +29,29 @@ class TestMaison3D(unittest.TestCase):
         ):
             self.assertIn(marker,module)
 
+    def test_realistic_barn_interior(self):
+        www=COMPONENT/"www"
+        page=(www/"index.html").read_text(encoding="utf-8")
+        module=(www/"interior-view.js").read_text(encoding="utf-8")
+        barn=(www/"barn-interior.js").read_text(encoding="utf-8")
+        self.assertIn('"barn-interior.js"',page)
+        self.assertIn('from "./barn-interior.js"',module)
+        room=re.search(r"BARN_ROOM=\{width:([\d.]+),depth:([\d.]+),height:([\d.]+)\}",barn)
+        self.assertIsNotNone(room)
+        width,depth,height=map(float,room.groups())
+        self.assertAlmostEqual(depth/width,3,delta=.3)
+        self.assertAlmostEqual(height,2.5,delta=.1)
+        self.assertIn('BARN_PHOTO="./images/grange-interieur.webp"',barn)
+        photo=www/"images"/"grange-interieur.webp"
+        self.assertTrue(photo.is_file())
+        self.assertEqual(photo.read_bytes()[8:12],b"WEBP")
+        self.assertLess(photo.stat().st_size,400_000)
+        for marker in ("rack","bureau","table","canapé","écran de projection","bar","moto","volière","armoires","arcade"):
+            self.assertIn(marker,barn.lower())
+        for marker in ("📷 Photo réelle","⬡ Vue 3D","maison3d-interior-photo","drawBarn(building)",
+                       "camera.layers.set(BARN_LAYER)","camera.layers.mask=layersBefore","interior-barn"):
+            self.assertIn(marker,module)
+
     def test_manifest(self):
         manifest = json.loads((COMPONENT / "manifest.json").read_text(encoding="utf-8"))
         self.assertEqual(manifest["domain"], "maison3d")
@@ -148,10 +171,14 @@ class TestMaison3D(unittest.TestCase):
             raise AssertionError(path.name)
 
         www = COMPONENT / "www"
-        photos = [www / "maison3d-reference.webp", *sorted((www / "images").glob("*.webp"))]
+        # Exterior (house) photos share one frame; the real barn interior photo is separate.
+        interior = www / "images" / "grange-interieur.webp"
+        photos = [www / "maison3d-reference.webp",
+                  *sorted(p for p in (www / "images").glob("*.webp") if p != interior)]
         self.assertEqual(len(photos), 19)
         for path in photos:
             self.assertEqual(webp_size(path), (1286, 914), path.name)
+        self.assertEqual(webp_size(interior), (1500, 845))
         # Bundled photos are WebP only (no JPEG copies left behind).
         self.assertEqual(sorted(p.name for p in www.rglob("*.jpg")), [])
         self.assertFalse((ROOT / "assets" / "maison3d-reference.jpg").exists())
