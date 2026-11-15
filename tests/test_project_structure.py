@@ -103,7 +103,7 @@ class TestMaison3D(unittest.TestCase):
         start = photo.index('const BAR_KEY="maison3d:card-bar:v1";')
         block = photo[start:photo.index("nav.prepend(barToggle);", start)]
         for marker in ('"☰ Menu":"▾ Réduire"', "setBar(barChoice?barChoice===\"collapsed\":narrowCard())",
-                       "innerWidth<=600", 'localStorage.setItem(BAR_KEY,collapsed?"collapsed":"expanded")'):
+                       "innerWidth<=600", 'localStorage.setItem(BAR_KEY,barChoice)'):
             self.assertIn(marker, block)
         self.assertNotIn("changed()", block)
         self.assertNotIn("persist()", block)

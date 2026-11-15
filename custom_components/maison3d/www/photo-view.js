@@ -136,9 +136,12 @@ export function createPhotoView({ensureScene=null}={}) {
     barToggle.setAttribute("aria-expanded",String(!collapsed));
   };
   setBar(barChoice?barChoice==="collapsed":narrowCard());
+  // Until the user chooses, follow the card width (Lovelace may resize it after loading).
+  addEventListener("resize",()=>{if(!barChoice)setBar(narrowCard())});
   barToggle.addEventListener("click",()=>{
     const collapsed=!nav.classList.contains("collapsed");setBar(collapsed);
-    try{localStorage.setItem(BAR_KEY,collapsed?"collapsed":"expanded")}catch{}
+    barChoice=collapsed?"collapsed":"expanded";
+    try{localStorage.setItem(BAR_KEY,barChoice)}catch{}
   });
   nav.prepend(barToggle);
   // Seasons live in the bottom/bar controls (no column on the photo): buttons on
