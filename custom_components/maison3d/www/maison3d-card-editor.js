@@ -1,6 +1,8 @@
 import {allowedPhotoUrl,bundledPhoto,DEFAULT_MAIN_PHOTO,IMAGE_SLOTS,suggestedFileName} from "./photo-source.js";
 import {uploadPhoto} from "./storage-bridge.js";
 import {MEDIA_PREFIX} from "./media-resolver.js";
+import {sensorIssue,issueText} from "./sensor-values.js";
+import {createHassTracker} from "./hass-tracker.js";
 const editorUrl=value=>allowedPhotoUrl(value)||(typeof value==="string"&&value.startsWith(MEDIA_PREFIX)&&value.length<500&&!/[\u0000-\u001f]/.test(value));
 /**
  * Visual configuration editor for the custom Maison 3D Lovelace card.
@@ -10,6 +12,7 @@ class Maison3DCardEditor extends HTMLElement {
   constructor() {
     super();
     this._config = {};
+    this._tracker = createHassTracker();
     this.attachShadow({mode:"open"});
   }
   setConfig(config) {
@@ -21,6 +24,21 @@ class Maison3DCardEditor extends HTMLElement {
     this.shadowRoot.querySelectorAll("ha-entity-picker").forEach(picker => picker.hass=hass);
     this.shadowRoot.querySelectorAll(".tools ha-selector").forEach(picker => picker.hass=hass);
     this.shadowRoot.querySelectorAll(".tools > button").forEach(button => {button.disabled=hass?.user?.is_admin!==true});
+    this._showSensorWarnings();
+  }
+  // Discreet warning under a chosen sensor: unknown value, unavailable, not found.
+  _showSensorWarnings() {
+    const states=this._hass?.states;
+    if(!states||!this.shadowRoot)return;
+    const integration=this._tracker.diagnostic(states)?.attributes?.entities||{};
+    this.shadowRoot.querySelectorAll(".sensor-warning").forEach(warn=>{
+      const key=warn.dataset.key;
+      const id=this._config[key]||integration[key]||"";
+      const entity=id?states[id]:undefined;
+      const issue=id?sensorIssue(key,entity):null;
+      const text=issue?issueText({entity_id:id,issue,state:entity?String(entity.state).slice(0,40):null},key):"";
+      warn.textContent=text;warn.hidden=!text;
+    });
   }
   connectedCallback() {
     if(this._config)this._render();
@@ -55,6 +73,7 @@ class Maison3DCardEditor extends HTMLElement {
       "border:1px solid var(--divider-color,#999);border-radius:7px;padding:8px}",
       "p{color:var(--secondary-text-color,#777);font-size:12px;line-height:1.5}",
       ".help{font-size:11px;color:var(--secondary-text-color)}",
+      ".sensor-warning{display:block;margin-top:4px;font-size:11px;color:var(--warning-color,#b26a00)}.sensor-warning[hidden]{display:none}",
       ".row{display:flex;align-items:center;gap:10px}",
       ".row input{width:auto;min-height:auto}",
       ".tools{flex-wrap:wrap;margin-top:8px}.tools button{padding:7px 10px;border-radius:7px;cursor:pointer}"
@@ -165,15 +184,15 @@ class Maison3DCardEditor extends HTMLElement {
 
 
     const pickers=section("Capteurs Home Assistant",
-      "Facultatif : vide = entités choisies dans l'intégration, puis détection automatique (première entité weather.*, sun.sun).");
+      "Facultatif : vide = entités choisies dans l'intégration, puis détection automatique (première entité weather.*, sun.sun, capteur de lune : id avec moon ou lune, ou phase reconnue).");
     const entities=[
       ["weather_entity","Météo actuelle",["weather"]],
       ["sun_entity","Soleil / jour et nuit",["sun"]],
       ["moon_entity","Phase de lune (ton module)",["sensor"]],
       ["temperature_entity","Température extérieure",["sensor"]],
       ["wind_entity","Vent / vitesse",["sensor"]],
-      ["rain_entity","Pluie (intensité ou présence)",["sensor","binary_sensor"]],
-      ["snow_entity","Neige (intensité ou présence)",["sensor","binary_sensor"]],
+      ["rain_entity","Pluie (intensité, présence ou vigilance Météo-France)",["sensor","binary_sensor"]],
+      ["snow_entity","Neige (intensité, présence ou vigilance Météo-France)",["sensor","binary_sensor"]],
       ["cloud_entity","Nuages (pourcentage ou présence)",["sensor","binary_sensor"]]
     ];
     for(const [key,labelText,domains] of entities){
@@ -185,9 +204,13 @@ class Maison3DCardEditor extends HTMLElement {
       picker.value=this._config[key]??"";
       picker.addEventListener("value-changed",event=>{
         this._changed(key,event.detail?.value||"");
+        this._showSensorWarnings();
       });
-      pickers.append(label,picker);
+      const warn=document.createElement("small");
+      warn.className="sensor-warning";warn.dataset.key=key;warn.hidden=true;warn.setAttribute("role","status");
+      pickers.append(label,picker,warn);
     }
+    this._showSensorWarnings();
     const images=section("Images personnalisées (facultatif)",
       "Utilisées quand les photos météo jour/nuit sont activées. Chaque URL est modifiable. Place les photos dans /config/www/maison3d/ puis renseigne par exemple /local/maison3d/neige-nuit.jpg. Ordre : image jour/nuit de la météo → image de la météo → image Jour ou Nuit → photo principale.");
     const keys=IMAGE_SLOTS;

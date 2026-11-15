@@ -38,6 +38,8 @@ jobs:
           node tests/test_upload_photo.mjs
           node --check custom_components/maison3d/www/scene-layout.js
           node tests/test_scene_layout.mjs
+          node --check custom_components/maison3d/www/sensor-values.js
+          node tests/test_sensor_values.mjs
           node --check custom_components/maison3d/www/hass-tracker.js
           node tests/test_hass_tracker.mjs
           node --check custom_components/maison3d/www/moon-effects.js

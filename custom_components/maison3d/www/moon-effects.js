@@ -2,6 +2,7 @@
  *  The phase follows the configured Home Assistant sensor. Without a phase
  *  sensor the visual is labelled illustrative, never described as actual.
  */
+import {moonPhase} from "./sensor-values.js";
 export function createMoonOverlay({container}) {
   const canvas=document.createElement("canvas");
   canvas.className="maison3d-sky-moon";
@@ -20,23 +21,8 @@ export function createMoonOverlay({container}) {
   const phases=["new_moon","waxing_crescent","first_quarter","waxing_gibbous",
     "full_moon","waning_gibbous","last_quarter","waning_crescent"];
   let lastSignature="";
-  function normalize(value) {
-    if(typeof value!=="string")return null;
-    const raw=value.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
-    const key=raw.replace(/[\s-]+/g,"_");
-    const aliases={
-      nouvelle_lune:"new_moon",premier_croissant:"waxing_crescent",
-      premier_quartier:"first_quarter",lune_gibbeuse_croissante:"waxing_gibbous",
-      gibbeuse_croissante:"waxing_gibbous",pleine_lune:"full_moon",
-      lune_gibbeuse_decroissante:"waning_gibbous",gibbeuse_decroissante:"waning_gibbous",
-      dernier_quartier:"last_quarter",dernier_croissant:"waning_crescent",
-      waxing_crescent:"waxing_crescent",waning_crescent:"waning_crescent",
-      waxing_gibbous:"waxing_gibbous",waning_gibbous:"waning_gibbous",
-      first_quarter:"first_quarter",last_quarter:"last_quarter",
-      full_moon:"full_moon",new_moon:"new_moon"
-    };
-    return aliases[key]||null;
-  }
+  // Shared parser: English/French phase names, accents and case (sensor-values.js).
+  const normalize=moonPhase;
   // Render the illuminated lunar disc with a pixel-free mask based on a
   // sphere's orthographic projection; no external images or libraries needed.
   function draw(phase,night=true,visible=true,intensity=1){

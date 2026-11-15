@@ -6,28 +6,38 @@
  * weather, sun, moon, sensors) and compares their state objects by reference,
  * so nothing is recomputed or posted when an unrelated entity changes.
  */
+import {isMoon as moonSensor,moonRank} from "./sensor-values.js";
 export const RESCAN_MS=30000;
 export const isDiagnostic=entity=>entity?.attributes?.maison3d_config===true;
 export const isWeather=entity=>Boolean(entity?.entity_id?.startsWith("weather.")&&entity.state!=="unknown"&&entity.state!=="unavailable");
-export const isMoon=entity=>Boolean(entity?.entity_id?.startsWith("sensor.")&&entity.entity_id.includes("moon")&&entity.state!=="unavailable");
+// Moon: id with moon / lune (phase_lune, moon_phase…) or a state that is a known phase.
+export const isMoon=moonSensor;
 export function createHassTracker({now=()=>Date.now()}={}){
   const found=new Map();
   let snapshot=new Map();
   // Entity matching `test`, memoised by entity id; a miss is rescanned at most every RESCAN_MS.
-  function find(key,states,test){
+  // With `rank`, every match is compared and the best one wins (first on a tie).
+  function find(key,states,test,rank){
     const hit=found.get(key);
     if(hit?.id){
       const entity=states[hit.id];
       if(entity&&test(entity))return entity;
     }else if(hit&&now()-hit.at<RESCAN_MS)return undefined;
     let match;
-    for(const id in states){if(test(states[id])){match=states[id];break}}
+    let best=-Infinity;
+    for(const id in states){
+      if(!test(states[id]))continue;
+      if(!rank){match=states[id];break}
+      const score=rank(states[id]);
+      if(score>best){best=score;match=states[id]}
+    }
     found.set(key,{id:match?.entity_id||"",at:now()});
     return match;
   }
   return {
     find,
     diagnostic:states=>find("diagnostic",states,isDiagnostic),
+    moon:states=>find("moon",states,isMoon,moonRank),
     /** entries: [[key, object], …]. True if any object (or the list of keys) differs from the previous call. */
     changed(entries){
       const next=new Map(entries);
