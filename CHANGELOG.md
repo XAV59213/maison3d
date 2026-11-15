@@ -4,6 +4,14 @@ Les notes de chaque version officielle. Lorsqu’un tag `vX.Y.Z` est poussé, le
 
 Les notes des versions antérieures à v2.10.1 restent sur la [page Releases](https://github.com/XAV59213/maison3d/releases).
 
+## v2.15.0 — Visites génériques et chrome mobile 390 px
+
+- Les bâtiments à visiter sont choisis parmi les objets du projet 3D ; les boutons des bâtiments absents sont masqués.
+- L’aménagement réaliste de la grange est un projet exemple, actif par défaut et désactivable.
+- Le libellé « Volumes intérieurs provisoires » est optionnel et masqué par défaut.
+- Le bouton 📷 n’apparaît que si le bâtiment a une photo, sous le nom « Photo de la grange » (ou du bâtiment).
+- Sur mobile 390 px (portrait et paysage) : une seule barre d’ambiance en 3D, barre Extérieur/Intérieur dans ☰ Menu, barre du bas repliable aussi dans le panneau.
+
 ## v2.14.0 — Aperçus temporaires, Saison fixe, brouillon et remplacements
 
 - Aperçus temporaires des saisons et de la phase de lune : rien n’est enregistré, l’aperçu se termine avec « ↩ Revenir » ou au bout de 2 minutes.
