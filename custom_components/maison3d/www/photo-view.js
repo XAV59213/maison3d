@@ -112,26 +112,44 @@ export function createPhotoView() {
   const effectsBtn=document.createElement("button");
   effectsBtn.type="button";effectsBtn.title="Activer ou désactiver les effets animés";
   nav.append(photoBtn,planBtn,modelBtn,nightBtn,dayBtn,autoBtn,effectsBtn,optionsBtn);
-  const seasonalNav=document.createElement("nav");
+  // Seasons live in the bottom/bar controls (no column on the photo): buttons on
+  // a row of their own when there is room, a compact « Saison » selector otherwise.
+  const seasonalNav=document.createElement("div");
   seasonalNav.id="maison3d-photo-seasons";
+  seasonalNav.setAttribute("role","group");
   seasonalNav.setAttribute("aria-label","Tester les saisons de la vue photo");
   const seasonButtons=new Map();
-  for(const [key,label] of [
+  const SEASON_CHOICES=[
     ["spring","🌸 Printemps"],["summer","☀ Été"],
     ["autumn","🍂 Automne"],["winter","❄ Hiver"],["auto","◉ Saisons auto"]
-  ]){
+  ];
+  const chooseSeason=key=>{
+    state.enabled=true;state.season=key;
+    state.mode=key==="auto"?"auto":key;
+    selectMode.value=state.mode;
+    seasonSelect.value=key;
+    persist();update();
+  };
+  for(const [key,label] of SEASON_CHOICES){
     const btn=document.createElement("button");
     btn.type="button";btn.textContent=label;
     btn.title="Tester : "+label;
-    btn.addEventListener("click",()=>{
-      state.enabled=true;state.season=key;
-      state.mode=key==="auto"?"auto":key;
-      selectMode.value=state.mode;
-      seasonSelect.value=key;
-      persist();update();
-    });
+    btn.addEventListener("click",()=>chooseSeason(key));
     seasonalNav.append(btn);seasonButtons.set(key,btn);
   }
+  const seasonPickLabel=document.createElement("label");
+  seasonPickLabel.className="season-select";
+  const seasonPick=document.createElement("select");
+  seasonPick.setAttribute("aria-label","Saison");
+  for(const [key,label] of SEASON_CHOICES){
+    const option=document.createElement("option");option.value=key;option.textContent=label;seasonPick.append(option);
+  }
+  seasonPick.addEventListener("change",()=>chooseSeason(seasonPick.value));
+  seasonPickLabel.append(seasonPick);
+  seasonalNav.append(seasonPickLabel);
+  const seasonBreak=document.createElement("span");
+  seasonBreak.className="row-break";seasonBreak.setAttribute("aria-hidden","true");
+  nav.append(seasonBreak,seasonalNav);
   const TEST_WEATHERS=[["clear","☀ Clair"],["cloudy","☁ Nuageux"],["rain","🌧 Pluie"],
     ["storm","⚡ Orage (éclairs)"],["snow","❄ Neige"],["wind","💨 Vent"],["fog","🌫 Brouillard"],["frost","🧊 Gel"]];
   const test={weather:"auto",time:"auto"};
@@ -434,16 +452,23 @@ export function createPhotoView() {
     "#maison3d-photo-settings .main-photo-preview img{position:static;width:100%;height:auto;",
     "max-height:165px;object-fit:contain;border-radius:7px;background:#1d2e43}",
     "#maison3d-photo-settings .main-photo-preview img[hidden]{display:none}",
-    "#maison3d-photo-seasons{position:fixed;right:12px;top:26%;z-index:9;",
-    "display:grid;gap:5px;padding:7px;border-radius:12px;background:#101923ee;",
-    "max-width:145px;max-height:45vh;overflow:auto;overscroll-behavior:contain}",
-    "#maison3d-photo-seasons button{border:0;border-radius:7px;background:#29405b;",
-    "color:white;text-align:left;padding:9px;cursor:pointer;font:12px system-ui}",
-    "#maison3d-photo-seasons button[aria-pressed=true]{background:#1477dc}",
-    "html:not(.photo-active) #maison3d-photo-seasons{display:none}",
-    "#maison3d-photo-seasons.compact{grid-template-columns:1fr 1fr;gap:4px;padding:4px;max-width:190px}",
-    "#maison3d-photo-seasons.compact button{padding:5px 7px;font-size:11px}",
-    "#maison3d-photo-seasons.compact button:last-child{grid-column:1/-1}",
+    "#maison3d-photo-controls .row-break{flex-basis:100%;height:0}",
+    "#maison3d-photo-seasons{display:flex;flex-wrap:wrap;align-items:center;gap:inherit}",
+    "#maison3d-photo-controls #maison3d-photo-seasons button{background:#29405b}",
+    "#maison3d-photo-controls #maison3d-photo-seasons button[aria-pressed=true]{background:#1477dc}",
+    "#maison3d-photo-seasons .season-select{display:none;margin:0}",
+    "#maison3d-photo-seasons select{border:0;border-radius:8px;background:#29405b;color:#fff;padding:9px 6px;font:13px system-ui;cursor:pointer;max-width:150px}",
+    "html.card-mode #maison3d-photo-seasons select{padding:6px 4px;font-size:11px}",
+    "@media(max-height:500px){html.photo-active #maison3d-photo-controls{gap:4px;padding:5px}html.photo-active #maison3d-photo-controls button{padding:6px 8px;font-size:12px}#maison3d-photo-seasons select{padding:6px 4px;font-size:12px}}",
+    "html:not(.photo-active) #maison3d-photo-seasons,html:not(.photo-active) #maison3d-photo-controls .row-break{display:none}",
+    // Compact screens (phones, narrow cards, short landscape): one « Saison » selector.
+    "@media(max-width:899px),(max-height:500px){#maison3d-photo-controls .row-break,#maison3d-photo-seasons button{display:none}",
+    "#maison3d-photo-seasons .season-select{display:flex}}",
+    // Wide screens: the bar keeps its width, the seasons take a second row under it.
+    "@media(min-width:900px) and (min-height:501px){html.photo-active #maison3d-photo-controls{display:grid;",
+    "grid-template-columns:repeat(8,auto);justify-content:start}",
+    "html.photo-active #maison3d-photo-controls .row-break{display:none}",
+    "html.photo-active #maison3d-photo-seasons{grid-column:1/-1}}",
     ".maison3d-test-states{border:1px solid #66778c;border-radius:8px;margin-top:12px}",
     ".maison3d-upload{border:1px solid #66778c;border-radius:8px;margin-top:12px;display:grid;gap:6px}",
     ".maison3d-upload legend{font-size:13px;font-weight:bold}.maison3d-upload span{font-size:12px;opacity:.85}",
@@ -451,8 +476,6 @@ export function createPhotoView() {
     ".maison3d-test-states .test-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}",
     ".maison3d-test-states button{padding:8px;border-radius:6px}",
     ".maison3d-test-states button[aria-pressed=true]{background:#1579ea!important}",
-    "@media(max-width:700px){#maison3d-photo-seasons{top:25%;right:5px;max-width:98px;",
-    "padding:4px}#maison3d-photo-seasons button{padding:6px;font-size:10px}}",
     "#maison3d-photo-controls{position:fixed;top:10px;left:10px;z-index:8;display:flex;gap:6px;background:#101923e5;",
     "padding:7px;border-radius:13px;max-width:calc(100vw - 20px);flex-wrap:wrap}",
     "#maison3d-photo-controls button,#maison3d-photo-settings button{border:0;border-radius:8px;",
@@ -470,6 +493,9 @@ export function createPhotoView() {
     "#maison3d-photo-settings label input[type=text],#maison3d-photo-settings select{display:block;width:100%;",
     "box-sizing:border-box;margin-top:4px;padding:9px;color:white;background:#273c56;border:1px solid #72869a;border-radius:7px}",
     "#maison3d-photo-settings .checkbox{display:flex;align-items:center;gap:9px}",
+    // Photo view: the settings bar sits at the bottom on every screen; only the
+    // information bubble (and the moon) stay over the photo at the top.
+    "html.photo-active #maison3d-photo-controls{top:auto;bottom:10px}",
     "html.card-mode #maison3d-photo-controls{top:auto;bottom:6px;left:6px;gap:3px}",
     "html.card-mode #maison3d-photo-controls button{padding:6px;font-size:11px}",
     "html.card-mode #maison3d-photo-status{top:8px;right:8px}",
@@ -478,7 +504,7 @@ export function createPhotoView() {
     "#maison3d-photo-status{top:8px;right:8px;font-size:11px}}"
   ].join("");
   document.head.append(style);
-  document.body.append(section,nav,seasonalNav,settings);
+  document.body.append(section,nav,settings);
   let live={weather:null,sun:null,temperature:null,temperatureUnit:"",windSpeed:0,moon:null,rain:null,snow:null,cloud:null,storm_alert:false,ice_alert:false};
   // Ambience from Home Assistant only (null = no weather signal); see sensor-values.js.
   const liveKind=()=>weatherKind({...live,stormAlert:live.storm_alert,iceAlert:live.ice_alert,
@@ -558,6 +584,7 @@ export function createPhotoView() {
     skyMoon.draw(phaseName,night,state.effect&&Boolean(phaseName),state.effect_intensity);
     moon.textContent=""; // The phase is rendered on the sky, including daytime.
     for(const [key,btn] of seasonButtons)btn.setAttribute("aria-pressed",String(state.season===key));
+    seasonPick.value=state.season;
     for(const [key,btn] of testButtons)btn.setAttribute("aria-pressed",String(test.weather===key));
     for(const [key,btn] of timeButtons)btn.setAttribute("aria-pressed",String(test.time===key));
     for(const [key,btn] of seasonTests)btn.setAttribute("aria-pressed",String(state.season===key));
@@ -586,19 +613,6 @@ export function createPhotoView() {
     section.hidden=!state.enabled;
     if(!state.enabled){section.style.display="none"}else{section.style.display="block"}
     document.documentElement.classList.toggle("photo-active",state.enabled);
-    placeSeasons();
-  }
-  // Right-hand seasons menu: always below the status bubble and above a bottom
-  // button bar, compact (2 columns) on short screens, so nothing overlaps.
-  function placeSeasons(){
-    if(!state.enabled)return;
-    const st=status.getBoundingClientRect(),bar=nav.getBoundingClientRect();
-    const top=Math.max(st.bottom+8,innerHeight*.12);
-    const atBottom=bar.top>innerHeight/2&&bar.right>innerWidth-160;
-    const bottom=atBottom?bar.top-8:innerHeight-8;
-    seasonalNav.classList.toggle("compact",bottom-top<215);
-    seasonalNav.style.top=Math.round(top)+"px";
-    seasonalNav.style.maxHeight=Math.max(60,Math.round(bottom-top))+"px";
   }
   photoBtn.addEventListener("click",()=>{state.enabled=true;persist();update()});
   // ☾ / ☀ preview night or day immediately (test mode, not saved); ◉ Auto returns to real data.
@@ -708,7 +722,7 @@ export function createPhotoView() {
     canvas.height=Math.max(1,Math.round(r.height*dpr));
     ctx.setTransform(dpr,0,0,dpr,0,0);
   }
-  window.addEventListener("resize",()=>{resize();placeSeasons()});
+  window.addEventListener("resize",resize);
   resize();
   const spawn=(w,h)=>({x:Math.random()*w,y:Math.random()*h,
     speed:.6+Math.random()*1.7,turn:Math.random()*7});
