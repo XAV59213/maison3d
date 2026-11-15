@@ -60,6 +60,102 @@
             "name": "Project name"
           }
         }
+      },
+      "season_mode": {
+        "name": "Season mode",
+        "state": {
+          "auto": "Automatic seasons",
+          "fixed": "Fixed season"
+        },
+        "state_attributes": {
+          "fixed_season": {
+            "name": "Fixed season",
+            "state": {
+              "spring": "Spring",
+              "summer": "Summer",
+              "autumn": "Autumn",
+              "winter": "Winter"
+            }
+          }
+        }
+      },
+      "season": {
+        "name": "Active season",
+        "state": {
+          "spring": "Spring",
+          "summer": "Summer",
+          "autumn": "Autumn",
+          "winter": "Winter"
+        }
+      },
+      "photo": {
+        "name": "Photo shown",
+        "state_attributes": {
+          "url": {
+            "name": "Photo URL"
+          },
+          "source": {
+            "name": "Photo source"
+          },
+          "weather_photos": {
+            "name": "Weather photos"
+          }
+        }
+      },
+      "ambience": {
+        "name": "Weather ambience",
+        "state": {
+          "day": "Day",
+          "night": "Night",
+          "cloudy": "Cloudy",
+          "rain": "Rain",
+          "snow": "Snow",
+          "wind": "Wind",
+          "storm": "Storm",
+          "fog": "Fog",
+          "spring": "Spring",
+          "summer": "Summer",
+          "autumn": "Autumn",
+          "winter": "Winter"
+        },
+        "state_attributes": {
+          "ambience_mode": {
+            "name": "Ambience mode",
+            "state": {
+              "auto": "Automatic",
+              "fixed": "Fixed in the settings"
+            }
+          },
+          "weather_kind": {
+            "name": "Live weather"
+          },
+          "frost": {
+            "name": "Frost"
+          },
+          "effects": {
+            "name": "Effects"
+          },
+          "entities": {
+            "name": "Entities used"
+          }
+        }
+      },
+      "day_night": {
+        "name": "Day or night",
+        "state": {
+          "day": "Day",
+          "night": "Night"
+        },
+        "state_attributes": {
+          "source": {
+            "name": "Source",
+            "state": {
+              "sun": "Sun entity",
+              "clock": "Home Assistant clock",
+              "fixed_ambience": "Fixed ambience"
+            }
+          }
+        }
       }
     }
   }

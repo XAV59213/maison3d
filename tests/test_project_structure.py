@@ -299,15 +299,25 @@ class TestMaison3D(unittest.TestCase):
         self.assertIn("SensorDeviceClass.ENUM", sensors)
         self.assertIn("registry.async_remove(entity_id)", sensors)
         self.assertNotIn("_attr_name", sensors)
-        self.assertEqual(sensors.count("(SensorEntity)"), 1)
+        self.assertEqual(sensors.count("(SensorEntity)"), 2)  # status + base of the view sensors
+        for key in ("season_mode", "season", "photo", "ambience", "day_night"):
+            self.assertIn(f'key = "{key}"', sensors)
+        self.assertIn("EntityCategory.DIAGNOSTIC", sensors)
+        self.assertIn('self.entity_id = f"sensor.maison3d_{self.key}"', sensors)
+        self.assertIn('self._attr_unique_id = f"{entry.entry_id}_{self.key}"', sensors)
         init = (COMPONENT / "__init__.py").read_text(encoding="utf-8")
         self.assertIn("entry.runtime_data = Maison3DRuntimeData()", init)
         unload = init.split("async def async_unload_entry")[1]
         self.assertLess(unload.index("async_unload_platforms"), unload.index("async_remove_panel"))
         icons = json.loads((COMPONENT / "icons.json").read_text(encoding="utf-8"))
         self.assertIn("sensors_status", icons["entity"]["sensor"])
+        views = ("season_mode", "season", "photo", "ambience", "day_night")
+        for key in views:
+            self.assertIn(key, icons["entity"]["sensor"])
         for name in ("strings.json", "translations/en.json", "translations/fr.json"):
             data = json.loads((COMPONENT / name).read_text(encoding="utf-8"))
+            for key in views:
+                self.assertTrue(data["entity"]["sensor"][key]["name"], (name, key))
             sensor = data["entity"]["sensor"]["sensors_status"]
             self.assertEqual(set(sensor["state"]), {"ok", "not_configured", "degraded"}, name)
             self.assertIn("single_instance_allowed", data["config"]["abort"], name)

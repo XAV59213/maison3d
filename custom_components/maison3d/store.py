@@ -15,11 +15,14 @@ import voluptuous as vol
 
 from homeassistant.components import websocket_api
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.storage import Store
 
 from .const import DOMAIN
 
 STORAGE_KEY = f"{DOMAIN}.data"
+# Sent after every successful maison3d/save (the diagnostic sensors recompute).
+SIGNAL_SAVED = f"{DOMAIN}_project_saved"
 STORAGE_VERSION = 1
 SECTIONS = ("layout", "photo_settings", "view")
 MAX_ITEMS = 500
@@ -70,6 +73,7 @@ class Maison3DStore:
     """Load once, merge partial saves, write through the HA Store helper."""
 
     def __init__(self, hass: HomeAssistant) -> None:
+        self._hass = hass
         self._store: Store[dict[str, Any]] = Store(hass, STORAGE_VERSION, STORAGE_KEY)
         self.data: dict[str, Any] = {}
         self._loaded = False
@@ -92,7 +96,13 @@ class Maison3DStore:
         merged["updated_at"] = datetime.now(timezone.utc).isoformat()
         await self._store.async_save(merged)
         self.data = merged
+        async_dispatcher_send(self._hass, SIGNAL_SAVED)
         return merged
+
+
+def get_store(hass: HomeAssistant) -> Maison3DStore:
+    """The shared store (same object for the websocket commands and the sensors)."""
+    return _store(hass)
 
 
 def _store(hass: HomeAssistant) -> Maison3DStore:
