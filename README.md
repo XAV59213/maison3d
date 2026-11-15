@@ -48,7 +48,7 @@ Elle propose deux vues complémentaires :
 - 💡 **Lumières extérieures la nuit** : halos sur la photo quand les `light.*` / `switch.*` placées sont allumées (bascule d'un clic en option).
 - 🩺 **Capteurs de diagnostic** : saison, mode des saisons, photo, ambiance et jour / nuit calculés par Home Assistant.
 
-## 🖼️ Choisir sa propre photo — v2.3.6
+## 🖼️ Choisir sa propre photo
 
 Chaque utilisateur peut désormais utiliser **sa propre photographie de maison** comme arrière-plan fixe, avec toutes les animations Home Assistant au-dessus. L'image officielle livrée est utilisée si aucune image n'est renseignée ou si l'URL choisie est inaccessible.
 
@@ -118,31 +118,31 @@ Pour les activer :
 
 URL installée : `/maison3d-assets/images/<nom>`. Les photos fournies sont désormais au format **WebP** (même définition, environ 8 % plus légères) ; les anciennes adresses `…/maison3d-assets/….jpg` déjà enregistrées dans une configuration continuent de fonctionner (redirigées vers le fichier `.webp`). Elles sont générées par `scripts/generate_variant_images.py` (retouche PIL de la photo de référence, aucune image externe) : ce sont des **approximations**, pas de vraies photos prises sous la neige ou l'orage. Si vous avez défini **votre propre photo principale**, ces photos de la maison de référence ne sont jamais utilisées.
 
-Les quatre anciennes photos ci-dessous restent livrées pour compatibilité (URL `/maison3d-assets/images/jour.webp`…, l'ancienne adresse `jour.jpg` reste acceptée), mais ne sont plus choisies automatiquement :
+Les anciennes adresses `/maison3d-assets/images/jour.webp` (ou `.jpg`), et de même pour `nuageux`, `pluie` et `neige`, restent reconnues : elles pointent vers les photos actuelles équivalentes (`clair-jour.webp`, `nuageux-jour.webp`, `pluie-jour.webp`, `neige-jour.webp`).
 
 <table>
 <tr>
 <td align="center" width="50%">
   <strong>☀️ Jour ensoleillé</strong><br/>
-  <img src="custom_components/maison3d/www/images/jour.webp" alt="Photo de la propriété par beau temps" width="100%"/><br/>
-  <sub>jour.webp</sub>
+  <img src="custom_components/maison3d/www/images/clair-jour.webp" alt="Photo de la propriété par beau temps" width="100%"/><br/>
+  <sub>clair-jour.webp</sub>
 </td>
 <td align="center" width="50%">
   <strong>☁️ Ciel nuageux</strong><br/>
-  <img src="custom_components/maison3d/www/images/nuageux.webp" alt="Photo de la propriété par ciel couvert" width="100%"/><br/>
-  <sub>nuageux.webp</sub>
+  <img src="custom_components/maison3d/www/images/nuageux-jour.webp" alt="Photo de la propriété par ciel couvert" width="100%"/><br/>
+  <sub>nuageux-jour.webp</sub>
 </td>
 </tr>
 <tr>
 <td align="center">
   <strong>🌧️ Pluie</strong><br/>
-  <img src="custom_components/maison3d/www/images/pluie.webp" alt="Photo de la propriété sous la pluie" width="100%"/><br/>
-  <sub>pluie.webp</sub>
+  <img src="custom_components/maison3d/www/images/pluie-jour.webp" alt="Photo de la propriété sous la pluie" width="100%"/><br/>
+  <sub>pluie-jour.webp</sub>
 </td>
 <td align="center">
   <strong>❄️ Neige</strong><br/>
-  <img src="custom_components/maison3d/www/images/neige.webp" alt="Photo de la propriété sous la neige" width="100%"/><br/>
-  <sub>neige.webp</sub>
+  <img src="custom_components/maison3d/www/images/neige-jour.webp" alt="Photo de la propriété sous la neige" width="100%"/><br/>
+  <sub>neige-jour.webp</sub>
 </td>
 </tr>
 </table>
@@ -341,7 +341,7 @@ Dans le menu **⚙**, l'option **Animations** a trois valeurs, enregistrées ave
 
 En Auto, un indicateur **« animations réduites par le système »** apparaît dans le menu ⚙ lorsque la réduction est active.
 
-Les saisons suivent le calendrier local en mode Auto ; les boutons (ou le sélecteur) Saison de la barre du bas permettent de les forcer pour un aperçu. Une vraie photo enneigée présente de la neige sur les éléments de la propriété ; un simple filtre animé ne remplace pas une photographie d'hiver.
+Les saisons en mode Auto suivent la **date locale du fuseau horaire configuré dans Home Assistant** (`time_zone`, par exemple `Europe/Paris`), pas le calendrier astronomique (équinoxes / solstices) ni l’horloge du navigateur. Les boutons (ou le sélecteur) Saison de la barre du bas permettent de les forcer pour un aperçu. Une vraie photo enneigée présente de la neige sur les éléments de la propriété ; un simple filtre animé ne remplace pas une photographie d'hiver.
 
 ## 🎨 Personnaliser les images
 
@@ -366,7 +366,7 @@ Les saisons suivent le calendrier local en mode Auto ; les boutons (ou le sélec
 
 Les réglages du menu ⚙ sont **enregistrés dans Home Assistant** (voir « Sauvegarde dans Home Assistant ») et donc partagés entre vos appareils. Les images définies dans une carte restent dans la configuration de cette carte.
 
-## 🍂 Module des quatre saisons — calendrier Home Assistant
+## 🍂 Les quatre saisons (date et fuseau de Home Assistant)
 
 Les quatre saisons suivent **la date locale et le fuseau horaire configurés dans Home Assistant** (champ `time_zone`, par exemple `Europe/Paris`). La photo officielle de la propriété reste fixe ; le module `season-effects.js` superpose des animations propres à la saison.
 
@@ -379,11 +379,11 @@ Les quatre saisons suivent **la date locale et le fuseau horaire configurés dan
 
 **Mode automatique :** la date est vérifiée pendant le fonctionnement de la vue, ce qui permet de changer de saison au passage de minuit, même sans changement de capteur météo. Les conditions météo (pluie, orage, vent, etc.) restent indépendantes et peuvent s'ajouter à l'effet saisonnier.
 
-**Mode manuel :** les saisons de la barre du bas (cinq boutons, ou le sélecteur Saison sur petit écran) permettent de tester Printemps, Été, Automne, Hiver et Auto. Le bouton **◉ Saisons auto** rétablit le calendrier de Home Assistant.
+**Mode manuel :** les saisons de la barre du bas (cinq boutons, ou le sélecteur Saison sur petit écran) permettent de tester Printemps, Été, Automne, Hiver et Auto. Le bouton **◉ Saisons auto** rétablit ce calcul automatique selon la date et le fuseau de Home Assistant.
 
 Les saisons météorologiques ne coïncident pas exactement avec les dates astronomiques des équinoxes et solstices.
 
-## 🗺️ Accès rapide aux trois vues — v2.3.5
+## 🗺️ Accès rapide aux trois vues
 
 Les commandes **▣ Photo réelle**, **▤ Plan 2D** et **⬡ 3D éditable** restent accessibles depuis la barre au-dessus de l'image, même lorsque la vue photo est active.
 
@@ -456,6 +456,10 @@ Le plan 3D (objets, positions), les réglages du menu ⚙ (images, capteurs, sai
 - Les réglages propres à une carte (titre, hauteur, capteurs, images…) restent dans la configuration de la carte.
 
 Commandes websocket : `maison3d/get` (lecture) et `maison3d/save` (administrateur).
+
+## 🚀 Publier une version
+
+La publication se fait en poussant un tag `vX.Y.Z` (le manifeste et la ligne « Version actuelle » du README doivent porter le même numéro). Un unique workflow crée alors la release GitHub, avec les notes tirées de `CHANGELOG.md`. La procédure pas à pas est dans [CONTRIBUTING.md](CONTRIBUTING.md). Les anciennes releases déjà publiées ne sont pas modifiées.
 
 ## 🛠️ Dépannage
 

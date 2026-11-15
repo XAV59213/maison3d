@@ -15,11 +15,15 @@ assert.equal(resolveMainPhoto({parent:"javascript:alert(1)",local:"/local/my-hou
 console.log("Main photo selection, prioritization, and URL validation OK");
 // Bundled photos are WebP: old .jpg addresses of bundled files still work, user files are untouched.
 {const {bundledPhoto,pickWeatherPhoto}=await import("data:text/javascript;base64,"+Buffer.from(readFileSync("custom_components/maison3d/www/photo-source.js","utf8")).toString("base64"));
-assert.equal(bundledPhoto("/maison3d-assets/images/jour.jpg"),"/maison3d-assets/images/jour.webp");
+assert.equal(bundledPhoto("/maison3d-assets/images/jour.jpg"),"/maison3d-assets/images/clair-jour.webp");
+assert.equal(bundledPhoto("/maison3d-assets/images/jour.webp"),"/maison3d-assets/images/clair-jour.webp");
+assert.equal(bundledPhoto("/maison3d-assets/images/nuageux.jpg?v=1"),"/maison3d-assets/images/nuageux-jour.webp?v=1");
+assert.equal(bundledPhoto("/maison3d-assets/images/pluie.webp"),"/maison3d-assets/images/pluie-jour.webp");
+assert.equal(bundledPhoto("/maison3d-assets/images/neige.jpg"),"/maison3d-assets/images/neige-jour.webp");
 assert.equal(bundledPhoto("/maison3d-assets/maison3d-reference.jpg?v=3"),"/maison3d-assets/maison3d-reference.webp?v=3");
 for(const url of ["/local/maison3d/jour.jpg","/maison3d-media/a.jpg","https://example.org/a.jpg","/maison3d-assets/images/../x.jpg","/local/a.png"])assert.equal(bundledPhoto(url),url);
 assert.equal(resolveMainPhoto({parent:"/maison3d-assets/maison3d-reference.jpg"}),official);
-assert.equal(pickWeatherPhoto({kind:"rain",images:{rain_day:"/maison3d-assets/images/pluie.jpg"}}).path,"/maison3d-assets/images/pluie.webp");
+assert.equal(pickWeatherPhoto({kind:"rain",images:{rain_day:"/maison3d-assets/images/pluie.jpg"}}).path,"/maison3d-assets/images/pluie-jour.webp");
 // Old bundled main photo address = official photo: bundled weather photos stay enabled.
 assert.equal(pickWeatherPhoto({kind:"snow",mainPhoto:"/maison3d-assets/maison3d-reference.jpg"}).path,"/maison3d-assets/images/neige-jour.webp");}
 console.log("Bundled WebP + legacy .jpg addresses OK");

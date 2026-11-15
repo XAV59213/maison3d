@@ -1,0 +1,68 @@
+name: Release Maison 3D
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    if: github.repository == 'XAV59213/maison3d'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: browser-actions/setup-chrome@v1
+        id: chrome
+      - name: Verify tag, manifest and tests
+        env:
+          CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          VERSION="${TAG#v}"
+          if ! [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Unexpected tag: $TAG (expected vX.Y.Z)"
+            exit 1
+          fi
+          python -m pip install --quiet voluptuous
+          python - <<PY
+          import json, sys
+          from pathlib import Path
+          tag = "${TAG}"
+          version = "${VERSION}"
+          manifest = json.loads(Path("custom_components/maison3d/manifest.json").read_text())
+          if manifest.get("version") != version:
+              sys.exit(f"manifest.json version {manifest.get('version')!r} does not match tag {tag}")
+          readme = Path("README.md").read_text()
+          if f"**Version actuelle : v{version}**" not in readme:
+              sys.exit(f"README.md is missing « Version actuelle : v{version} »")
+          print(f"Version {version} matches the tag {tag}")
+          PY
+          python3 scripts/release_notes.py "$TAG" --write /tmp/release-notes.md
+          python -m compileall -q custom_components/maison3d
+          python3 -m unittest discover -s tests -q
+          for f in custom_components/maison3d/www/*.js; do
+            node --check "$f"
+          done
+          for t in tests/*.mjs; do
+            node "$t"
+          done
+          npm install --no-save puppeteer-core
+          node tests/headless/test_motion_reduced.mjs
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "$TAG already exists — leaving it unchanged"
+            exit 0
+          fi
+          TITLE="$(python3 scripts/release_notes.py "$TAG" --write /tmp/release-notes.md | head -n 1)"
+          gh release create "$TAG" --target "${GITHUB_SHA}" --latest --title "$TITLE" --notes-file /tmp/release-notes.md

@@ -9,6 +9,7 @@
  *  - Météo-France vigilance colours « Vert / Jaune / Orange / Rouge »
  *    (also green / yellow / orange / red, any case, « Vigilance jaune »…).
  */
+import {t as i18n} from "./i18n.js";
 export const VIGILANCE_LEVELS={vert:0,green:0,jaune:1,yellow:1,orange:2,rouge:3,red:3};
 const BINARY={on:1,off:0};
 export const fold=value=>String(value??"").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
@@ -121,18 +122,21 @@ export function sensorIssues(choices,states){
   }
   return issues;
 }
-const EXPECTED={moon_entity:"phase de lune attendue",sun_entity:"above_horizon / below_horizon attendu",
-  temperature_entity:"nombre attendu",wind_entity:"nombre attendu",cloud_entity:"pourcentage ou on/off attendu",
-  rain_entity:"nombre, on/off ou vigilance Vert/Jaune/Orange/Rouge attendu",
-  snow_entity:"nombre, on/off ou vigilance Vert/Jaune/Orange/Rouge attendu"};
-/** Short French warning for the settings (empty when there is nothing to say). */
-export function issueText(item,key=""){
+/** Short warning for the settings (empty when there is nothing to say). Default language: French. */
+export function issueText(item,key="",lang="fr"){
   if(!item)return "";
   const shown=item.state?" « "+item.state+" »":"";
-  return {missing:"⚠ "+item.entity_id+" introuvable",
-    unavailable:"⚠ "+item.entity_id+" indisponible",
-    unknown:"⚠ "+item.entity_id+" : valeur inconnue",
-    unrecognized:"⚠ Valeur non reconnue"+shown+(EXPECTED[key]?" ("+EXPECTED[key]+")":"")}[item.issue]||"";
+  const expected=item.issue==="unrecognized"&&i18n(lang,"expected_"+key)!=="expected_"+key
+    ?" ("+i18n(lang,"expected_"+key)+")":"";
+  if(item.issue==="unrecognized")return i18n(lang,"issue_unrecognized",{state:shown,expected});
+  if(item.issue==="missing"||item.issue==="unavailable"||item.issue==="unknown")
+    return i18n(lang,"issue_"+item.issue,{id:item.entity_id});
+  return "";
+}
+export function sourceLabel(source,lang="fr"){
+  const key="source_"+source;
+  const text=i18n(lang,key);
+  return text===key?source:text;
 }
 
 /**
@@ -196,6 +200,11 @@ const word=(text,re)=>re.test(fold(text));
 const deviceClass=entity=>fold(entity?.attributes?.device_class);
 const unit=entity=>fold(entity?.attributes?.unit_of_measurement);
 const domain=entity=>String(entity?.entity_id||"").split(".")[0];
+// Rain / snow selectors: skip timestamps (e.g. bermerain_next_rain) and "chance" / probability %.
+const chanceWords=/(?:^|[^a-z])(?:chance|probabilite|probability)(?:[^a-z]|$)/;
+function isTimestampOrChance(entity){
+  return deviceClass(entity)==="timestamp"||word(label(entity),chanceWords);
+}
 const label=entity=>String(entity?.entity_id||"")+" "+(entity?.attributes?.friendly_name||"");
 // Words at the start of a token only: « bermerain » (a place name) is not « rain ».
 const at=words=>new RegExp("(?:^|[^a-z])(?:"+words+")");
@@ -224,10 +233,12 @@ export function entityMatches(key,entity){
     // Rain: a rain / flood word or a precipitation device_class (never a leak / moisture
     // detector, « alerte_canicule » or « Bermerain »).
     case "rain_entity":
+      if(isTimestampOrChance(entity))return false;
       if(d==="binary_sensor")return word(label(entity),rainWords);
       return d==="sensor"&&(dc==="precipitation"||dc==="precipitation_intensity"||word(label(entity),rainWords));
     // Snow: a snow / ice word only.
     case "snow_entity":
+      if(isTimestampOrChance(entity))return false;
       return (d==="sensor"||d==="binary_sensor")&&word(label(entity),snowWords);
     default:return false;
   }

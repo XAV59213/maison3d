@@ -7,7 +7,8 @@
 import {createPhotoCinematics} from "./photo-cinematics.js";
 import {createMoonOverlay} from "./moon-effects.js";
 import {automaticSeason,haHour,SEASON_LABELS,createSeasonEffects} from "./season-effects.js";
-import {DEFAULT_MAIN_PHOTO,allowedPhotoUrl,bundledPhoto,resolveMainPhoto,IMAGE_SLOTS,IMAGE_KEYS,pickWeatherPhoto,suggestedFileName,responsiveSrcset,photoSizes} from "./photo-source.js";
+import {DEFAULT_MAIN_PHOTO,allowedPhotoUrl,bundledPhoto,resolveMainPhoto,IMAGE_SLOTS,IMAGE_KEYS,pickWeatherPhoto,suggestedFileName,responsiveSrcset,photoSizes,WEATHER_WAIT_MS,shouldDeferFirstPhoto} from "./photo-source.js";
+import {t,labelOf} from "./i18n.js";
 import {createFrostEffects,frostLevel,toCelsius} from "./frost-effects.js";
 import {onHaData,saveToHa,uploadToHa} from "./ha-storage.js";
 import {registerSection,markSaved,changed,createSaveControls,SAVE_STYLE} from "./draft.js";
@@ -22,6 +23,7 @@ export function createPhotoView({ensureScene=null}={}) {
   // Weather/season ambiences selectable as a fixed (saved) ambience.
   const AMBIANCES=["day","night","cloudy","rain","snow","wind","storm","fog","spring","summer","autumn","winter"];
   const DEFAULT=DEFAULT_MAIN_PHOTO;
+  let lang="fr";
   const STORAGE="maison3d:photo-settings:v1";
   const allowedUrl=allowedPhotoUrl;
   const defaults=()=>Object.fromEntries(KEYS.map(k=>[k,""]));
@@ -144,8 +146,8 @@ export function createPhotoView({ensureScene=null}={}) {
   try{const v=localStorage.getItem(BAR_KEY);if(v==="collapsed"||v==="expanded")barChoice=v}catch{}
   const setBar=collapsed=>{
     nav.classList.toggle("collapsed",collapsed);
-    barToggle.textContent=collapsed?"☰ Menu":"▾ Réduire";
-    barToggle.title=collapsed?"Afficher la barre de commandes":"Réduire la barre de commandes";
+    barToggle.textContent=collapsed?t(lang,"menu_show"):t(lang,"menu_hide");
+    barToggle.title=collapsed?t(lang,"menu_show_title"):t(lang,"menu_hide_title");
     barToggle.setAttribute("aria-expanded",String(!collapsed));
   };
   setBar(barChoice?barChoice==="collapsed":narrowCard());
@@ -479,7 +481,7 @@ export function createPhotoView({ensureScene=null}={}) {
   testSection.append(resetTest);settings.append(testSection);
   // 💡 Outdoor lights: add / remove light.* or switch.*, name, halo colour, intensity,
   // position by a click on the photo, optional click to toggle. Everything is a draft change.
-  let lang="fr",lightCandidates=null,lightLive={},userIsAdmin=false,placing=null,lightNotice="";
+  let lightCandidates=null,lightLive={},userIsAdmin=false,placing=null,lightNotice="";
   const lightsBox=document.createElement("fieldset");lightsBox.className="maison3d-lights-settings";
   const lightsLegend=document.createElement("legend");
   const lightsNote=document.createElement("p");
@@ -621,7 +623,7 @@ export function createPhotoView({ensureScene=null}={}) {
     state.effect=Boolean(value);
     state.effect_override=state.effect;
     effect.checked=state.effect;
-    effectsBtn.textContent=state.effect?"✦ Effets ON":"○ Effets OFF";
+    effectsBtn.textContent=state.effect?t(lang,"effects_on"):t(lang,"effects_off");
     persist();update();
   };
   effect.addEventListener("change",()=>setEffects(effect.checked));
@@ -800,6 +802,12 @@ export function createPhotoView({ensureScene=null}={}) {
   let haTimeZone="UTC";
   let lastAutoSeason="";
   let currentSrc="",active="day",lastFrame=0;
+  let weatherReady=false,weatherWait=null;
+  const markWeatherReady=()=>{
+    if(weatherReady)return;
+    weatherReady=true;
+    if(weatherWait){clearTimeout(weatherWait);weatherWait=null}
+  };
   const imageSizes=()=>photoSizes({width:innerWidth,height:innerHeight,ratio:(image.naturalWidth/image.naturalHeight)||1286/914,dpr:devicePixelRatio||1});
   addEventListener("resize",()=>{if(image.hasAttribute("srcset"))image.sizes=imageSizes()});
   let missingBundled=new Set();
@@ -835,6 +843,29 @@ export function createPhotoView({ensureScene=null}={}) {
     waxing_gibbous:"🌔",full_moon:"🌕",waning_gibbous:"🌖",
     last_quarter:"🌗",waning_crescent:"🌘"
   })[moonPhase(value)]||"🌙";
+  function applyLang(){
+    photoBtn.textContent=t(lang,"view_photo");
+    planBtn.textContent=t(lang,"view_plan");
+    planBtn.title=t(lang,"plan_title");
+    modelBtn.textContent=t(lang,"view_model");
+    optionsBtn.textContent=t(lang,"options");
+    nightBtn.textContent=t(lang,"night");
+    nightBtn.title=t(lang,"night_title");
+    dayBtn.textContent=t(lang,"day");
+    dayBtn.title=t(lang,"day_title");
+    autoBtn.textContent=t(lang,"auto");
+    autoBtn.title=t(lang,"auto_title");
+    effectsBtn.title=t(lang,"effects_title");
+    h.textContent=t(lang,"settings_title");
+    close.textContent=t(lang,"settings_close");
+    legend.textContent=t(lang,"test_legend");
+    frostTest.textContent=t(lang,"frost_add");
+    resetTest.textContent=t(lang,"reset_test");
+    const strengthText=strengthLabel.firstChild;
+    if(strengthText&&strengthText.nodeType===3)strengthText.textContent=t(lang,"intensity");
+    error.textContent=t(lang,"image_unreachable");
+    setBar(nav.classList.contains("collapsed"));
+  }
   function update(){
     const selected=weatherKey();
     active=selected;
@@ -854,7 +885,11 @@ export function createPhotoView({ensureScene=null}={}) {
     section.classList.toggle("night-photo",picked.nightPhoto&&!failedImages.has(candidate));
     const path=failedImages.has(candidate)
       ?(failedImages.has(mainPhoto)?DEFAULT:mainPhoto):candidate;
-    if(path!==currentSrc){
+    // Wait for the first weather payload (or WEATHER_WAIT_MS) to avoid downloading
+    // a default photo and then immediately replacing it.
+    if(shouldDeferFirstPhoto(weatherReady)){
+      /* photo not assigned yet */
+    }else if(path!==currentSrc){
       currentSrc=path;
       // Bundled photos: 640 / 960 px copies (srcset); custom images stay as they are.
       const srcset=responsiveSrcset(path);
@@ -877,24 +912,25 @@ export function createPhotoView({ensureScene=null}={}) {
     for(const [key,btn] of testButtons)btn.setAttribute("aria-pressed",String(test.weather===key));
     for(const [key,btn] of timeButtons)btn.setAttribute("aria-pressed",String(test.time===key));
     for(const [key,btn] of seasonTests)btn.setAttribute("aria-pressed",String(state.season===key));
-    const effectLabel=LABELS[selected]||selected;
-    const seasonLabel=SEASON_LABELS[seasonNow()]||seasonNow();
-    const testLabel=testing()?"🧪 Mode test · "+(test.weather!=="auto"?LABELS[test.weather]:effectLabel)+" · "+(night?"Nuit":"Jour"):"";
+    const effectLabel=labelOf(lang,selected)||LABELS[selected]||selected;
+    const seasonLabel=labelOf(lang,seasonNow())||SEASON_LABELS[seasonNow()]||seasonNow();
+    const testWeather=test.weather!=="auto"?labelOf(lang,test.weather)||LABELS[test.weather]:effectLabel;
+    const testLabel=testing()?t(lang,"status_test")+" · "+testWeather+" · "+t(lang,night?"status_night":"status_day"):"";
     status.classList.toggle("testing",testing());
     // Same word twice in a row (« Été · Été », « Nuit · Nuit ») is shown once.
-    const head=(testLabel||((state.mode==="auto"?"Automatique":"Aperçu manuel")+" · "+effectLabel)).split(" · ");
+    const head=(testLabel||((state.mode==="auto"?t(lang,"status_auto"):t(lang,"status_manual"))+" · "+effectLabel)).split(" · ");
     if(!head.includes(seasonLabel))head.push(seasonLabel);
     status.textContent=head.filter((w,i)=>w!==head[i-1]).join(" · ")+
       (typeof live.temperature==="number"?" · "+live.temperature+(live.temperatureUnit||"°C"):"")+
-      (phaseName?" · Lune : "+String(currentMoon):"")+
-      (state.moon_preview!=="auto"?" · Lune en test":"")+
-      (frostTarget()>0?(state.frost_preview||test.weather==="frost"?" · Gel en test":" · Gel"):"");
+      (phaseName?" · "+t(lang,"status_moon")+" : "+String(currentMoon):"")+
+      (state.moon_preview!=="auto"?" · "+t(lang,"status_moon_test"):"")+
+      (frostTarget()>0?" · "+t(lang,(state.frost_preview||test.weather==="frost")?"status_frost_test":"status_frost"):"");
     frostInput.checked=state.frost;
     frostTest.setAttribute("aria-pressed",String(state.frost_preview));
     nightBtn.setAttribute("aria-pressed",String(test.time==="night"));
     dayBtn.setAttribute("aria-pressed",String(test.time==="day"));
     autoBtn.setAttribute("aria-pressed",String(state.mode==="auto"&&!testing()));
-    effectsBtn.textContent=state.effect?"✦ Effets ON":"○ Effets OFF";
+    effectsBtn.textContent=state.effect?t(lang,"effects_on"):t(lang,"effects_off");
     effectsBtn.setAttribute("aria-pressed",String(state.effect));
     photoBtn.setAttribute("aria-pressed",String(state.enabled));
     modelBtn.setAttribute("aria-pressed",String(!state.enabled && state.model_view==="3d"));
@@ -998,7 +1034,7 @@ export function createPhotoView({ensureScene=null}={}) {
       return;
     }
     if(event.data?.type!=="maison3d:conditions")return;
-    if(typeof event.data.language==="string"&&event.data.language&&langOf(event.data.language)!==lang){lang=langOf(event.data.language);renderLightSettings()}
+    if(typeof event.data.language==="string"&&event.data.language){const next=langOf(event.data.language);if(next!==lang){lang=next;applyLang();renderLightSettings()}}
     userIsAdmin=event.data.user_is_admin===true;
     const lightStates=event.data.light_states&&typeof event.data.light_states==="object"?event.data.light_states:{};
     lightLive={};
@@ -1048,6 +1084,7 @@ export function createPhotoView({ensureScene=null}={}) {
         effective[key]={entity_id:item.entity_id.slice(0,150),source:item.source.slice(0,20)};
     }
     for(const key of SENSOR_KEYS)renderEntityField(key);
+    markWeatherReady();
     update();
   });
   let actual=0;
@@ -1180,6 +1217,8 @@ export function createPhotoView({ensureScene=null}={}) {
     writeLocal:v=>localStorage.setItem(STORAGE,JSON.stringify(v))
   });
   requestEntities();watchLights(true);
+  applyLang();
+  weatherWait=setTimeout(()=>{markWeatherReady();update()},WEATHER_WAIT_MS);
   update();
   if(!state.enabled && state.model_view==="2d"){
     withScene(()=>document.getElementById("topview")?.click());

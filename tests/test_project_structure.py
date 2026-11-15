@@ -102,9 +102,13 @@ class TestMaison3D(unittest.TestCase):
         photo = (COMPONENT / "www" / "photo-view.js").read_text(encoding="utf-8")
         start = photo.index('const BAR_KEY="maison3d:card-bar:v1";')
         block = photo[start:photo.index("nav.prepend(barToggle);", start)]
-        for marker in ('"☰ Menu":"▾ Réduire"', "setBar(barChoice?barChoice===\"collapsed\":narrowCard())",
+        for marker in ('t(lang,"menu_show")', 't(lang,"menu_hide")',
+                       "setBar(barChoice?barChoice===\"collapsed\":narrowCard())",
                        "innerWidth<=600", 'localStorage.setItem(BAR_KEY,barChoice)'):
             self.assertIn(marker, block)
+        i18n = (COMPONENT / "www" / "i18n.js").read_text(encoding="utf-8")
+        self.assertIn('menu_show:"☰ Menu"', i18n)
+        self.assertIn('menu_hide:"▾ Réduire"', i18n)
         self.assertNotIn("changed()", block)
         self.assertNotIn("persist()", block)
         self.assertIn("html.card-mode #maison3d-photo-controls.collapsed>:not(.bar-toggle):not(.maison3d-save.dirty){display:none!important}", photo)
@@ -260,7 +264,7 @@ class TestMaison3D(unittest.TestCase):
         photos = [www / "maison3d-reference.webp",
                   *sorted(p for p in (www / "images").glob("*.webp")
                           if p != interior and not re.search(r"-(640|960)\.webp$", p.name))]
-        self.assertEqual(len(photos), 19)
+        self.assertEqual(len(photos), 15)
         for path in photos:
             self.assertEqual(webp_size(path), (1286, 914), path.name)
         self.assertEqual(webp_size(interior), (1500, 845))
@@ -579,16 +583,17 @@ class TestMaison3D(unittest.TestCase):
         source = (COMPONENT / "www" / "photo-source.js").read_text(encoding="utf-8")
         generated = [f"{w}-{t}.webp" for w in ("clair", "nuageux", "pluie", "neige", "vent", "orage", "brouillard")
                      for t in ("jour", "nuit")]
-        for name in ("jour.webp", "nuageux.webp", "pluie.webp", "neige.webp", *generated):
+        for name in generated:
             path = images / name
             self.assertTrue(path.is_file(), f"Missing bundled photo: {name}")
             data = path.read_bytes()
             self.assertGreater(len(data), 20000)
-            if name in generated:
-                self.assertLess(len(data), 400000)
+            self.assertLess(len(data), 400000)
             self.assertEqual(data[:4], b"RIFF")
             self.assertEqual(data[8:12], b"WEBP")
             self.assertEqual(int.from_bytes(data[4:8], "little") + 8, len(data))
+        for retired in ("jour.webp", "nuageux.webp", "pluie.webp", "neige.webp"):
+            self.assertFalse((images / retired).exists(), retired)
         for word in ("clair", "nuageux", "pluie", "neige", "vent", "orage", "brouillard"):
             self.assertIn(f'"{word}"', source)
         self.assertIn('"-jour.webp"', source)
@@ -598,12 +603,11 @@ class TestMaison3D(unittest.TestCase):
         for name in generated:
             self.assertIn(name, readme)
         self.assertEqual(len({sha256((images / n).read_bytes()).hexdigest()
-            for n in ("jour.webp", "nuageux.webp", "pluie.webp", "neige.webp")}), 4)
+            for n in ("clair-jour.webp", "nuageux-jour.webp", "pluie-jour.webp", "neige-jour.webp")}), 4)
 
     def test_photo_weather_cinematics_and_import(self):
         module = (COMPONENT / "www" / "photo-cinematics.js").read_text(encoding="utf-8")
         photo = (COMPONENT / "www" / "photo-view.js").read_text(encoding="utf-8")
-        importer = (ROOT / "scripts" / "import_weather_images.py").read_text(encoding="utf-8")
         self.assertIn("createPhotoCinematics", module)
         self.assertIn('from "./photo-cinematics.js"', photo)
         self.assertIn("cinematics.frame(time", photo)
@@ -613,10 +617,7 @@ class TestMaison3D(unittest.TestCase):
         self.assertIn('type="range"', photo)
         self.assertIn("effect_intensity", photo)
         self.assertIn("fogBanks(", module)
-        for filename in ("jour.webp", "nuageux.webp", "pluie.webp", "neige.webp"):
-            self.assertIn(filename, importer)
-        self.assertIn('"WEBP"', importer)
-        self.assertIn("ZipFile", importer)
+        self.assertFalse((ROOT / "scripts" / "import_weather_images.py").exists())
 
     def test_photo_night_day_auto_buttons_and_visible_night_filter(self):
         photo = (COMPONENT / "www" / "photo-view.js").read_text(encoding="utf-8")
@@ -648,8 +649,10 @@ class TestMaison3D(unittest.TestCase):
         self.assertIn("canvas.className=\"maison3d-sky-moon\"", moon)
         self.assertIn("canvas.getContext", moon)
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
-        for img in ("jour.webp","nuageux.webp","pluie.webp","neige.webp"):
+        for img in ("clair-jour.webp","nuageux-jour.webp","pluie-jour.webp","neige-jour.webp"):
             self.assertIn('src="custom_components/maison3d/www/images/'+img+'"', readme)
+        for retired in ("jour.webp","nuageux.webp","pluie.webp","neige.webp"):
+            self.assertNotIn('src="custom_components/maison3d/www/images/'+retired+'"', readme)
 
     def test_fixed_photo_is_default_and_weather_only_changes_overlays(self):
         photo = (COMPONENT / "www" / "photo-view.js").read_text(encoding="utf-8")

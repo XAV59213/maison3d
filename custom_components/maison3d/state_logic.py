@@ -57,7 +57,6 @@ IMAGE_KEYS = (
     "day", "night", *[k for w in WEATHER_VARIANTS for k in (w, f"{w}_day", f"{w}_night")],
     *SEASONS, *[f"moon_{p}" for p in dict.fromkeys(MOON_PHASES.values())],
 )
-_LEGACY_BUNDLED = re.compile(r"^(/maison3d-assets/(?:images/[a-z-]+|maison3d-reference))\.jpe?g(\?.*)?$")
 
 # A state as given by Home Assistant (object with .state / .attributes) or None.
 StateGetter = Callable[[str], Any]
@@ -217,8 +216,40 @@ def allowed_photo_url(value: Any) -> bool:
     return bool(re.match(r"^https://[^/@\s]+(/|$)", value))
 
 
+# Retired unsuffixed photos (jour, nuageux, pluie, neige) → current daytime files.
+LEGACY_PHOTO_FILES = {
+    "jour": "clair-jour.webp",
+    "nuageux": "nuageux-jour.webp",
+    "pluie": "pluie-jour.webp",
+    "neige": "neige-jour.webp",
+}
+_LEGACY_NAME = re.compile(
+    r"^(/maison3d-assets/images/)(jour|nuageux|pluie|neige)\.(?:jpe?g|webp)(\?.*)?$"
+)
+_LEGACY_JPEG = re.compile(
+    r"^(/maison3d-assets/(?:images/[a-z-]+|maison3d-reference))\.jpe?g(\?.*)?$"
+)
+
+
 def bundled_photo(value: str) -> str:
-    return _LEGACY_BUNDLED.sub(r"\1.webp\2", value) if isinstance(value, str) else value
+    """Map retired or JPEG bundled URLs to the current WebP file. User URLs are unchanged."""
+    if not isinstance(value, str):
+        return value
+    match = _LEGACY_NAME.match(value)
+    if match:
+        return f"{match.group(1)}{LEGACY_PHOTO_FILES[match.group(2)]}{match.group(3) or ''}"
+    return _LEGACY_JPEG.sub(r"\1.webp\2", value)
+
+
+def rewrite_legacy_photo_path(path: str) -> str | None:
+    """Current asset path for a retired photo URL (no query string), else None."""
+    if not isinstance(path, str):
+        return None
+    match = _LEGACY_NAME.match(path)
+    if not match:
+        return None
+    return f"{match.group(1)}{LEGACY_PHOTO_FILES[match.group(2)]}"
+
 
 
 def main_photo(local: Any, integration: Any) -> str:

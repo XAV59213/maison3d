@@ -29,7 +29,8 @@
           "base_image_url": "Image principale (/local/…, /maison3d-media/…, HTTPS ou media-source://…)",
           "effects_enabled": "Activer les effets météo, lumineux et saisonniers",
           "frost_enabled": "Activer l'effet gel quand la température est inférieure ou égale à 0 °C",
-          "weather_photos_enabled": "Utiliser les photos météo jour/nuit (fournies ou personnalisées)"
+          "weather_photos_enabled": "Utiliser les photos météo jour/nuit (fournies ou personnalisées)",
+          "startup_grace_minutes": "Délai de grâce après le démarrage de Home Assistant (0 à 60 min, 15 par défaut). Pendant ce délai, une source tardive (introuvable ou indisponible, typiquement Netatmo) ne dégrade pas l’état des capteurs."
         }
       }
     },
@@ -58,6 +59,12 @@
           },
           "project_name": {
             "name": "Nom du projet"
+          },
+          "startup_grace": {
+            "name": "Délai de grâce au démarrage"
+          },
+          "startup_grace_minutes": {
+            "name": "Délai de grâce (minutes)"
           }
         }
       },

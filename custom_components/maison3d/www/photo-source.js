@@ -3,12 +3,24 @@ export const DEFAULT_MAIN_PHOTO="/maison3d-assets/maison3d-reference.webp";
 
 /**
  * Bundled photos are WebP. Old configurations may still point to
- * /maison3d-assets/…/*.jpg: map them to the WebP file that replaced them.
+ * /maison3d-assets/…/*.jpg, or to the retired unsuffixed files jour / nuageux /
+ * pluie / neige: map them to the current WebP (clair-jour, nuageux-jour, …).
  * User photos (/local/, /maison3d-media/, HTTPS…) are never touched.
  */
+const LEGACY_NAMES={jour:"clair-jour",nuageux:"nuageux-jour",pluie:"pluie-jour",neige:"neige-jour"};
+const LEGACY_NAME=/^(\/maison3d-assets\/images\/)(jour|nuageux|pluie|neige)\.(?:jpe?g|webp)(\?.*)?$/;
 const LEGACY_BUNDLED=/^(\/maison3d-assets\/(?:images\/[a-z-]+|maison3d-reference))\.jpe?g(\?.*)?$/;
 export function bundledPhoto(value){
-  return typeof value==="string"?value.replace(LEGACY_BUNDLED,"$1.webp$2"):value;
+  if(typeof value!=="string")return value;
+  const named=value.match(LEGACY_NAME);
+  if(named)return named[1]+LEGACY_NAMES[named[2]]+".webp"+(named[3]||"");
+  return value.replace(LEGACY_BUNDLED,"$1.webp$2");
+}
+
+/** Max wait for the first Home Assistant weather payload before loading the photo (ms). */
+export const WEATHER_WAIT_MS=1500;
+export function shouldDeferFirstPhoto(weatherReady){
+  return weatherReady!==true;
 }
 
 export function allowedPhotoUrl(value){
@@ -52,8 +64,9 @@ export const IMAGE_KEYS=IMAGE_SLOTS.map(([key])=>key);
 /**
  * Photos shipped in www/images/, named <météo>-<jour|nuit>.webp (generated from
  * the reference photo by scripts/generate_variant_images.py, without any drawn
- * interface). jour, nuageux, pluie and neige (.webp) stay available for
- * existing configurations but are no longer picked automatically.
+ * interface). The retired unsuffixed files (jour, nuageux, pluie, neige) are
+ * no longer shipped; bundledPhoto() and a Python HTTP redirect map those URLs
+ * to the current daytime photos.
  */
 const IMG="/maison3d-assets/images/";
 const FILES={day:"clair",cloudy:"nuageux",rain:"pluie",snow:"neige",wind:"vent",storm:"orage",fog:"brouillard"};

@@ -8,6 +8,8 @@
  * default, for administrators only or every Home Assistant user (checked by the card /
  * panel, then by Home Assistant itself).
  */
+import {langOf} from "./i18n.js";
+export {langOf};
 export const LIGHT_DOMAINS=["light","switch"];
 export const MAX_LIGHTS=24;
 export const DEFAULT_COLOR="#ffc46b";
@@ -139,7 +141,6 @@ export const TEXT={
     on:"on",off:"off",unavailable:"unavailable",missing:"not found",denied:"Refused by Home Assistant",toggled:"Command sent",full:"Maximum reached",
     position:"Position",clickTitle:"{name}: click to turn on / off"}
 };
-export const langOf=value=>String(value||"").toLowerCase().startsWith("fr")?"fr":"en";
 export const say=(lang,key,vars={})=>(TEXT[lang]?.[key]??TEXT.fr[key]??key).replace(/\{(\w+)\}/g,(_,k)=>vars[k]??"");
 /**
  * DOM layer over the photo: one halo per light that is on (night), plus markers while

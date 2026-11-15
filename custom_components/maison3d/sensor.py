@@ -21,7 +21,7 @@ from homeassistant.util import dt as dt_util
 
 from . import state_logic
 from .config_flow import DEFAULT_ENTITIES
-from .const import DEFAULT_PROJECT_NAME, DOMAIN
+from .const import DEFAULT_PROJECT_NAME, DOMAIN, startup_grace_minutes
 from .store import SIGNAL_SAVED, get_store
 
 _LOGGER = logging.getLogger(__name__)
@@ -32,10 +32,11 @@ STATE_NOT_CONFIGURED = "not_configured"
 STATE_DEGRADED = "degraded"
 STATES = [STATE_OK, STATE_NOT_CONFIGURED, STATE_DEGRADED]
 
-# Integrations that load after Maison 3D (e.g. Netatmo) create their entities a
-# few seconds later: during this grace period after Home Assistant has started,
-# a source that does not exist yet (« not_found ») does not make the sensor degraded.
-STARTUP_GRACE_SECONDS = 30
+# Integrations that load after Maison 3D (e.g. Netatmo) may appear later as
+# not_found, unavailable or unknown. During the grace period after Home Assistant
+# has started (default 15 minutes, 0–60 in the options flow) those states do not
+# make the diagnostic sensor degraded.
+GRACE_STATES = frozenset({"ok", "not_found", "unavailable", "unknown"})
 
 # Older versions had one diagnostic sensor per source slot; their status
 # is now in the « sensor_statuses » attribute of the single sensor.
@@ -125,7 +126,7 @@ class Maison3DConfigurationSensor(SensorEntity):
         statuses = [s for s in self._statuses().values() if s["state"] != "not_configured"]
         if not statuses:
             return STATE_NOT_CONFIGURED
-        tolerated = {"ok", "not_found"} if self._in_grace else {"ok"}
+        tolerated = GRACE_STATES if self._in_grace else {"ok"}
         if any(s["state"] not in tolerated for s in statuses):
             return STATE_DEGRADED
         return STATE_OK
@@ -147,11 +148,12 @@ class Maison3DConfigurationSensor(SensorEntity):
             "configured_count": sum(bool(v) for v in selected.values()),
             "available_count": sum(s["state"] == "ok" for s in statuses.values()),
             "startup_grace": self._in_grace,
+            "startup_grace_minutes": startup_grace_minutes(self._entry.options),
         }
 
     async def async_added_to_hass(self) -> None:
         """Update immediately when any of the configured sources change."""
-        # Grace period: until Home Assistant has started, then STARTUP_GRACE_SECONDS more.
+        # Grace period: until Home Assistant has started, then the configured minutes.
         @callback
         def _end_grace(_now=None) -> None:
             self._in_grace = False
@@ -159,7 +161,11 @@ class Maison3DConfigurationSensor(SensorEntity):
 
         @callback
         def _started(_hass) -> None:
-            self.async_on_remove(async_call_later(self.hass, STARTUP_GRACE_SECONDS, _end_grace))
+            seconds = startup_grace_minutes(self._entry.options) * 60
+            if seconds <= 0:
+                _end_grace()
+                return
+            self.async_on_remove(async_call_later(self.hass, seconds, _end_grace))
 
         self.async_on_remove(async_at_started(self.hass, _started))
         entity_ids = [eid for eid in self._configured().values() if eid]
