@@ -8,6 +8,27 @@ ROOT = Path(__file__).resolve().parents[1]
 COMPONENT = ROOT / "custom_components" / "maison3d"
 
 class TestMaison3D(unittest.TestCase):
+    def test_house_barn_interior_explorer(self):
+        page=(COMPONENT/"www"/"index.html").read_text(encoding="utf-8")
+        module=(COMPONENT/"www"/"interior-view.js").read_text(encoding="utf-8")
+        self.assertIn('from "./interior-view.js"',page)
+        self.assertIn('"interior-view.js"',page)
+        self.assertIn("createInteriorExplorer({THREE,scene,camera,controls",page)
+        self.assertIn('interior?.refresh()',page)
+        for marker in (
+            'add("outside","↩ Extérieur")',
+            'add("maison","🚪 Intérieur maison")',
+            'add("grange","🏚 Intérieur grange")',
+            'getItems().find(item=>item.id===key&&item.type==="building")',
+            'if(photoView.state.enabled){photoView.state.enabled=false;photoView.update()}',
+            'exterior.visible=false',
+            'restore();clear()',
+            'cameraBefore.position.copy(beforePosition)',
+            'presentation.cancel()',
+            'Volumes intérieurs provisoires',
+        ):
+            self.assertIn(marker,module)
+
     def test_manifest(self):
         manifest = json.loads((COMPONENT / "manifest.json").read_text(encoding="utf-8"))
         self.assertEqual(manifest["domain"], "maison3d")
