@@ -1,5 +1,15 @@
 /** Shared safe image URL selection for Lovelace and the photo view. */
-export const DEFAULT_MAIN_PHOTO="/maison3d-assets/maison3d-reference.jpg";
+export const DEFAULT_MAIN_PHOTO="/maison3d-assets/maison3d-reference.webp";
+
+/**
+ * Bundled photos are WebP. Old configurations may still point to
+ * /maison3d-assets/…/*.jpg: map them to the WebP file that replaced them.
+ * User photos (/local/, /maison3d-media/, HTTPS…) are never touched.
+ */
+const LEGACY_BUNDLED=/^(\/maison3d-assets\/(?:images\/[a-z-]+|maison3d-reference))\.jpe?g(\?.*)?$/;
+export function bundledPhoto(value){
+  return typeof value==="string"?value.replace(LEGACY_BUNDLED,"$1.webp$2"):value;
+}
 
 export function allowedPhotoUrl(value){
   if(typeof value!=="string"||value.length>500||/[\u0000-\u001f]/.test(value))return false;
@@ -20,7 +30,7 @@ export function allowedPhotoUrl(value){
  */
 export function resolveMainPhoto({parent="",local="",isCard=false}={}){
   const options=isCard?[parent]:[local,parent];
-  return options.find(allowedPhotoUrl)||DEFAULT_MAIN_PHOTO;
+  return bundledPhoto(options.find(allowedPhotoUrl))||DEFAULT_MAIN_PHOTO;
 }
 
 /** Weather keys that have a day and a night photo slot. */
@@ -40,16 +50,16 @@ export const IMAGE_SLOTS=[
 export const IMAGE_KEYS=IMAGE_SLOTS.map(([key])=>key);
 
 /**
- * Photos shipped in www/images/, named <météo>-<jour|nuit>.jpg (generated from
+ * Photos shipped in www/images/, named <météo>-<jour|nuit>.webp (generated from
  * the reference photo by scripts/generate_variant_images.py, without any drawn
- * interface). jour.jpg, nuageux.jpg, pluie.jpg and neige.jpg stay available for
+ * interface). jour, nuageux, pluie and neige (.webp) stay available for
  * existing configurations but are no longer picked automatically.
  */
 const IMG="/maison3d-assets/images/";
 const FILES={day:"clair",cloudy:"nuageux",rain:"pluie",snow:"neige",wind:"vent",storm:"orage",fog:"brouillard"};
 export const BUNDLED_IMAGES=Object.fromEntries(Object.entries(FILES).flatMap(([key,file])=>key==="day"
-  ?[["day",IMG+file+"-jour.jpg"],["night",IMG+file+"-nuit.jpg"]]
-  :[[key+"_day",IMG+file+"-jour.jpg"],[key+"_night",IMG+file+"-nuit.jpg"]]));
+  ?[["day",IMG+file+"-jour.webp"],["night",IMG+file+"-nuit.webp"]]
+  :[[key+"_day",IMG+file+"-jour.webp"],[key+"_night",IMG+file+"-nuit.webp"]]));
 
 /**
  * Alternative photo for a weather kind and time of day. Order:
@@ -60,8 +70,9 @@ export const BUNDLED_IMAGES=Object.fromEntries(Object.entries(FILES).flatMap(([k
 export function pickWeatherPhoto({kind="day",night=false,season="",lunarKey="",images={},mainPhoto=DEFAULT_MAIN_PHOTO,bundled=BUNDLED_IMAGES}={}){
   const tod=night?"night":"day";
   // Bundled photos show the reference house: skip them when the user has set their own main photo.
+  mainPhoto=bundledPhoto(mainPhoto);
   if(mainPhoto!==DEFAULT_MAIN_PHOTO)bundled={};
-  const custom=key=>allowedPhotoUrl(images[key])?images[key]:"";
+  const custom=key=>allowedPhotoUrl(images[key])?bundledPhoto(images[key]):"";
   const chain=[];
   if(WEATHER_VARIANTS.includes(kind)){
     chain.push([custom(kind+"_"+tod),night],[custom(kind),false],

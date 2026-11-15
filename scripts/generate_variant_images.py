@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Generate the bundled day/night weather photos from the reference photo.
 
-Pure retouching of www/maison3d-reference.jpg (no external images). The
+Pure retouching of www/maison3d-reference.webp (no external images). The
 reference is cropped to remove the interface drawn on its edges, so the
 generated photos contain no buttons: cloudy = grey sky, rain = wet darker ground, snow = white
 cover on grass/vegetation/roofs, storm = dark contrasted sky, fog = grey
@@ -19,7 +19,7 @@ from PIL import Image, ImageFilter
 
 WWW = Path(__file__).resolve().parents[1] / "custom_components" / "maison3d" / "www"
 IMAGES = WWW / "images"
-QUALITY = 76
+QUALITY = 80  # WebP, visually equivalent to the former JPEG files
 # Region of the reference photo without the drawn interface (toolbars, slider…).
 CLEAN_BOX = (80, 90, 1366, 1004)
 F = np.float32
@@ -27,7 +27,7 @@ F = np.float32
 
 def save(array: np.ndarray, name: str) -> None:
     image = Image.fromarray((np.clip(array, 0, 1) * 255 + 0.5).astype(np.uint8))
-    image.save(IMAGES / name, "JPEG", quality=QUALITY, optimize=True, progressive=True)
+    image.save(IMAGES / name, "WEBP", quality=QUALITY, method=6)
 
 
 def blur(a: np.ndarray, radius: float) -> np.ndarray:
@@ -112,7 +112,7 @@ def night(day: np.ndarray, lamps_from: np.ndarray, brightness: float = 0.38) -> 
 
 
 def main() -> None:
-    photo = Image.open(WWW / "maison3d-reference.jpg").convert("RGB")
+    photo = Image.open(WWW / "maison3d-reference.webp").convert("RGB")
     if photo.size[0] > 1400:  # original export with the drawn interface
         photo = photo.crop(CLEAN_BOX)
     ref = np.asarray(photo, dtype=F) / 255.0
@@ -120,11 +120,11 @@ def main() -> None:
         "nuageux": overcast(ref), "pluie": rain(ref), "neige": snow(ref),
         "vent": wind(ref), "orage": storm(ref), "brouillard": fog(ref),
     }
-    outputs = {"clair-jour.jpg": ref, "clair-nuit.jpg": night(ref, ref)}
+    outputs = {"clair-jour.webp": ref, "clair-nuit.webp": night(ref, ref)}
     for name, day in days.items():
-        outputs[f"{name}-jour.jpg"] = day
-        outputs[f"{name}-nuit.jpg"] = night(day, ref, 0.5 if name == "neige" else 0.38)
-    outputs["brouillard-nuit.jpg"] = fog(night(ref, ref), (0.16, 0.19, 0.25), 0.5)
+        outputs[f"{name}-jour.webp"] = day
+        outputs[f"{name}-nuit.webp"] = night(day, ref, 0.5 if name == "neige" else 0.38)
+    outputs["brouillard-nuit.webp"] = fog(night(ref, ref), (0.16, 0.19, 0.25), 0.5)
     total = 0
     for name, array in outputs.items():
         save(array, name)

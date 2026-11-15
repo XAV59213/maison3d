@@ -44,7 +44,7 @@ jobs:
           assert 'DEFAULT_PROJECT_NAME = "Maison 3D"' in (root/"const.py").read_text()
           old="Mar"+"ly"
           for path in repo.rglob("*"):
-              if ".git" in path.parts or not path.is_file() or path.suffix in {".jpg",".png",".zip",".pyc"}:
+              if ".git" in path.parts or not path.is_file() or path.suffix in {".jpg",".png",".webp",".zip",".pyc"}:
                   continue
               assert old not in path.read_text(encoding="utf-8", errors="ignore"), path
           PY

@@ -1,11 +1,13 @@
 /** Home Assistant custom panel wrapper for the Maison 3D editor. */
 import {createStorageBridge} from "./storage-bridge.js";
 import {createMediaResolver} from "./media-resolver.js";
+import {createHassTracker,isWeather,isMoon} from "./hass-tracker.js";
 class Maison3DPanel extends HTMLElement {
   constructor() {
     super();
     this._lastConditions = "";
     this._loaded = false;
+    this._tracker = createHassTracker();
     this._choices = {weather_entity:"",sun_entity:"sun.sun",moon_entity:"sensor.moon_phase",
       temperature_entity:"",wind_entity:"",rain_entity:"",snow_entity:"",cloud_entity:""};
     // Project (3D layout, photo settings, view) saved in Home Assistant for the iframe.
@@ -61,19 +63,22 @@ class Maison3DPanel extends HTMLElement {
     if (!this._loaded || !this._hass || !this._frame?.contentWindow) return;
 
     const states = this._hass.states || {};
-    // Prefer a known/available weather entity rather than an unknown one.
-    const diagnostic = Object.values(states).find(entity => entity.attributes?.maison3d_config === true);
+    // Memoised lookups: no scan of every entity on each Home Assistant update.
+    const diagnostic = this._tracker.diagnostic(states);
     const configured = diagnostic?.attributes?.entities || {};
     const choice = key => configured[key] || this._choices[key] || "";
+    // Prefer a known/available weather entity rather than an unknown one.
     const requested = choice("weather_entity") && states[choice("weather_entity")];
-    const weather = requested || Object.values(states).find(
-      entity => entity.entity_id?.startsWith("weather.") &&
-        entity.state !== "unknown" && entity.state !== "unavailable"
-    );
+    const weather = requested || this._tracker.find("weather", states, isWeather);
     const sun = states[choice("sun_entity") || "sun.sun"];
-    const moonState = states[choice("moon_entity")] ||
-      Object.values(states).find(entity=>entity.entity_id?.startsWith("sensor.") &&
-        entity.entity_id.includes("moon") && entity.state!=="unavailable");
+    const moonState = states[choice("moon_entity")] || this._tracker.find("moon", states, isMoon);
+    // Only the tracked entities matter: same state objects = nothing to send.
+    const keys = ["temperature_entity","wind_entity","rain_entity","snow_entity","cloud_entity","weather_entity","sun_entity","moon_entity"];
+    const dirty = this._tracker.changed([
+      ["config", this._hass.config], ["diagnostic", diagnostic], ["weather", weather], ["sun", sun], ["moon", moonState],
+      ...keys.map(key => [key, states[choice(key)]])
+    ]);
+    if (!force && !dirty) return;
     const attributes = weather?.attributes || {};
     const numeric = (key, fallback) => {
       const source = states[choice(key)];

@@ -7,7 +7,7 @@
 import {createPhotoCinematics} from "./photo-cinematics.js";
 import {createMoonOverlay} from "./moon-effects.js";
 import {automaticSeason,SEASON_LABELS,createSeasonEffects} from "./season-effects.js";
-import {DEFAULT_MAIN_PHOTO,allowedPhotoUrl,resolveMainPhoto,IMAGE_SLOTS,IMAGE_KEYS,pickWeatherPhoto,suggestedFileName} from "./photo-source.js";
+import {DEFAULT_MAIN_PHOTO,allowedPhotoUrl,bundledPhoto,resolveMainPhoto,IMAGE_SLOTS,IMAGE_KEYS,pickWeatherPhoto,suggestedFileName} from "./photo-source.js";
 import {createFrostEffects,frostLevel,toCelsius} from "./frost-effects.js";
 import {onHaData,saveToHa,uploadToHa} from "./ha-storage.js";
 export function createPhotoView() {
@@ -195,7 +195,7 @@ export function createPhotoView() {
     if(candidate&&!allowedUrl(candidate)){
       imageCheck.textContent="URL invalide";previewThumbnail.hidden=true;return;
     }
-    const target=candidate||resolveMainPhoto({parent:parentBasePhoto,isCard:isCardView});
+    const target=bundledPhoto(candidate)||resolveMainPhoto({parent:parentBasePhoto,isCard:isCardView});
     imageCheck.textContent="Vérification en cours…";
     previewThumbnail.hidden=true;
     const probe=new Image();

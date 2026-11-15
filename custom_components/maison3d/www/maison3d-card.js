@@ -2,11 +2,16 @@ import "./maison3d-card-editor.js";
 import {IMAGE_KEYS} from "./photo-source.js";
 import {createStorageBridge} from "./storage-bridge.js";
 import {createMediaResolver} from "./media-resolver.js";
+import {createHassTracker,isWeather,isMoon} from "./hass-tracker.js";
 /**
  * Maison 3D interactive Lovelace card.
  * Load as a JavaScript module resource: /maison3d-assets/maison3d-card.js
  */
 class Maison3DCard extends HTMLElement {
+  constructor() {
+    super();
+    this._tracker=createHassTracker();
+  }
   setConfig(config) {
     if (!config || (config.type && config.type !== "custom:maison3d-card")) {
       throw new Error("Maison 3D: type must be custom:maison3d-card");
@@ -126,14 +131,20 @@ class Maison3DCard extends HTMLElement {
   _updateStates(force=false) {
     if (!this._loaded || !this._frame?.contentWindow || !this._hass) return;
     const states=this._hass.states||{};
-    const diagnostic = Object.values(states).find(e=>e.attributes?.maison3d_config===true);
+    // Memoised lookups: no scan of every entity on each Home Assistant update.
+    const diagnostic=this._tracker.diagnostic(states);
     const integration = diagnostic?.attributes?.entities || {};
     const choice = key => this._config[key] || integration[key] || "";
-    const weather=(choice("weather_entity") && states[choice("weather_entity")]) ||
-      Object.values(states).find(s=>s.entity_id?.startsWith("weather.") &&
-        s.state!=="unknown" && s.state!=="unavailable");
+    const weather=(choice("weather_entity") && states[choice("weather_entity")]) || this._tracker.find("weather",states,isWeather);
     const sun=states[choice("sun_entity") || "sun.sun"];
-    const moon=states[choice("moon_entity")] || Object.values(states).find(s=>s.entity_id?.startsWith("sensor.") && s.entity_id.includes("moon") && s.state!=="unavailable");
+    const moon=states[choice("moon_entity")] || this._tracker.find("moon",states,isMoon);
+    // Only the tracked entities matter: same state objects = nothing to recompute or post.
+    const keys=["temperature_entity","wind_entity","rain_entity","snow_entity","cloud_entity","weather_entity","sun_entity","moon_entity"];
+    const dirty=this._tracker.changed([
+      ["config",this._hass.config],["diagnostic",diagnostic],["weather",weather],["sun",sun],["moon",moon],
+      ...keys.map(key=>[key,states[choice(key)]])
+    ]);
+    if (!force && !dirty) return;
     const attrs=weather?.attributes||{};
     const numeric=(entityId,fallback)=>{
       const entity=entityId&&states[entityId];
@@ -179,7 +190,7 @@ class Maison3DCard extends HTMLElement {
 
   // Card option → integration option → neutral default.
   _projectName() {
-    const diagnostic=Object.values(this._hass?.states||{}).find(e=>e.attributes?.maison3d_config===true);
+    const diagnostic=this._hass?.states?this._tracker.diagnostic(this._hass.states):undefined;
     const attribute=diagnostic?.attributes?.project_name;
     return this._config?.project_name||(typeof attribute==="string"?attribute.trim().slice(0,60):"")||"Maison 3D";
   }
