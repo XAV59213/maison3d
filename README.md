@@ -9,6 +9,7 @@
 [![Tests](https://github.com/XAV59213/maison3d/actions/workflows/validate.yml/badge.svg)](https://github.com/XAV59213/maison3d/actions/workflows/validate.yml)
 [![Home Assistant](https://img.shields.io/badge/Home%20Assistant-Int%C3%A9gration-41BDF5?logo=homeassistant&logoColor=white)](https://www.home-assistant.io/)
 [![HACS](https://img.shields.io/badge/HACS-Int%C3%A9gration-1d89d7)](https://www.hacs.xyz/)
+[![Discuter sur Forum Domotique](docs/badges/forum-domotique-badge-40.svg)](https://forumdomotique.com/forums/topic/4096-%F0%9F%8F%A1-projet-en-cours-maison-3d-votre-maison-qui-vit-au-rythme-de-la-m%C3%A9t%C3%A9o-dans-home-assistant/)
 
 <img src="custom_components/maison3d/www/maison3d-reference.webp" alt="Vue officielle de la propriété avec rampe, maison, jardin, abri métallique et garage" width="100%" />
 
