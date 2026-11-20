@@ -4,6 +4,10 @@ Les notes de chaque version officielle. Lorsqu’un tag `vX.Y.Z` est poussé, le
 
 Les notes des versions antérieures à v2.10.1 restent sur la [page Releases](https://github.com/XAV59213/maison3d/releases).
 
+## v2.16.3 — Badge GitHub Stars
+
+- Un badge GitHub Stars apparaît en haut du README, à côté des autres badges, et mène à la page des stargazers du dépôt.
+
 ## v2.16.2 — Badge Forum Domotique
 
 - Un badge « Discuter sur Forum Domotique » apparaît en haut du README, à côté des autres badges, et mène au [sujet du projet sur Forum Domotique](https://forumdomotique.com/forums/topic/4096-%F0%9F%8F%A1-projet-en-cours-maison-3d-votre-maison-qui-vit-au-rythme-de-la-m%C3%A9t%C3%A9o-dans-home-assistant/).
